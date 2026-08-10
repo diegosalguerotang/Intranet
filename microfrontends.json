@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "intranet-general": {
+      "packageName": "intranet-negliaf",
+      "development": {
+        "fallback": "intranet-general.vercel.app"
+      }
+    }
+  }
+}
