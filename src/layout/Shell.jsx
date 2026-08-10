@@ -66,7 +66,7 @@ export default function Shell() {
       <aside className="fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-borde bg-white px-3.5 py-5 shadow-[2px_0_6px_rgba(0,0,0,0.05)]">
         <div className="mb-6 px-3">
           <div className="text-[16px] font-bold tracking-tight text-tinta">
-            Grupo<span className="text-petroleo">NEGLIAF</span>
+            Grupo<span className="text-petroleo">ER</span>
           </div>
           <div className="text-[9.5px] font-medium uppercase tracking-[0.18em] text-acero">
             Intranet · BackOffice

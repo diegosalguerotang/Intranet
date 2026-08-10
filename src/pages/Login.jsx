@@ -29,7 +29,7 @@ export default function Login() {
       {/* Marca centrada */}
       <div className="container mx-auto mt-14 mb-6 px-4 text-center">
         <div className="text-[34px] font-bold leading-none tracking-tight text-tinta">
-          Grupo<span className="text-petroleo">NEGLIAF</span>
+          Grupo<span className="text-petroleo">ER</span>
         </div>
         <div className="mt-1.5 text-[13px] font-medium uppercase tracking-[0.3em] text-acero">
           Intranet Corporativa
@@ -87,7 +87,7 @@ export default function Login() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Demostración — cualquier DNI de 8 dígitos y clave ingresan.
               <br />
-              Acceso restringido a personal autorizado del Grupo NEGLIAF.
+              Acceso restringido a personal autorizado del Grupo ER.
             </p>
           </form>
         </div>
