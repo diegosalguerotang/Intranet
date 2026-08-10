@@ -1,36 +1,43 @@
 @import "tailwindcss";
 
+/*
+  Design system adaptado del estilo corporativo de intranets tipo ManpowerGroup:
+  azul primario #3569a0, azul acero #5481ab (cabeceras), acento naranja #dc6e00,
+  texto #4c4b4b sobre fondo #f0f0f0, tipografía Helvetica Neue.
+  Los nombres de token se conservan para no tocar cada página.
+*/
 @theme {
-  --font-sans: "Archivo", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 
-  --color-tinta: #16323c;
-  --color-tinta-2: #20454f;
-  --color-tinta-3: #102a33;
-  --color-petroleo: #1f5c6b;
-  --color-petroleo-cl: #2f7d90;
-  --color-papel: #f5f3ef;
-  --color-borde: #ddd9d2;
-  --color-borde-f: #c6c1b8;
-  --color-gris: #6e7b80;
-  --color-gris-cl: #96a0a4;
-  --color-pend: #a8570f;
-  --color-pend-bg: #fbf0e2;
-  --color-conf: #2c6a4e;
-  --color-conf-bg: #e7f1eb;
-  --color-alerta: #9c2b21;
-  --color-alerta-bg: #fbebe9;
+  --color-tinta: #1d3f72;      /* azul marino — titulares y marca */
+  --color-tinta-2: #28507a;    /* azul marino claro */
+  --color-tinta-3: #16345c;    /* marino profundo */
+  --color-petroleo: #3569a0;   /* azul primario — botones, enlaces, iconos */
+  --color-petroleo-cl: #3b76b3;/* hover del primario */
+  --color-acero: #5481ab;      /* cabeceras de tablas y modales */
+  --color-papel: #f0f0f0;      /* fondo de la aplicación */
+  --color-borde: #dee2e6;
+  --color-borde-f: #c9cdd2;
+  --color-gris: #4c4b4b;       /* texto base */
+  --color-gris-cl: #a8a8a8;    /* texto atenuado / placeholders */
+  --color-pend: #dc6e00;       /* acento naranja — pendientes, activo */
+  --color-pend-bg: #fdf0e0;
+  --color-conf: #47775f;       /* confirmado */
+  --color-conf-bg: #eaf1ed;
+  --color-alerta: #c43f49;     /* peligro */
+  --color-alerta-bg: #fae9ea;
 }
 
 body {
   font-family: var(--font-sans);
   background: var(--color-papel);
-  color: var(--color-tinta);
+  color: var(--color-gris);
   -webkit-font-smoothing: antialiased;
   font-size: 14px;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-petroleo-cl);
+  outline: 2px solid var(--color-petroleo);
   outline-offset: 2px;
 }

@@ -26,7 +26,7 @@ const NAV_ADMIN = [
 function NavGroup({ title, items }) {
   return (
     <div>
-      <h3 className="mb-2 mt-6 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[#6d949e] first:mt-0">
+      <h3 className="mb-2 mt-6 px-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-gris-cl first:mt-0">
         {title}
       </h3>
       {items.map(({ to, icon: Icon, label, code, end }) => (
@@ -35,16 +35,20 @@ function NavGroup({ title, items }) {
           to={to}
           end={end}
           className={({ isActive }) =>
-            `mb-0.5 flex items-center gap-2.5 rounded-[5px] border-l-2 px-3 py-2 text-[12.5px] font-medium transition-colors ${
+            `mb-0.5 flex items-center gap-2.5 rounded-[4px] border-l-[3px] px-3 py-2 text-[13px] font-medium transition-colors ${
               isActive
-                ? "border-pend bg-[#1c4553] font-semibold text-white"
-                : "border-transparent text-[#b4c8cd] hover:bg-[#183b47]"
+                ? "border-pend bg-pend-bg font-semibold text-pend"
+                : "border-transparent text-gris hover:bg-papel hover:text-tinta"
             }`
           }
         >
-          <Icon size={15} className="shrink-0" />
-          <span className="flex-1">{label}</span>
-          <span className="font-mono text-[9px] text-[#6d949e]">{code}</span>
+          {({ isActive }) => (
+            <>
+              <Icon size={15} className={`shrink-0 ${isActive ? "text-pend" : "text-petroleo"}`} />
+              <span className="flex-1">{label}</span>
+              <span className="font-mono text-[9px] text-gris-cl">{code}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </div>
@@ -59,10 +63,12 @@ export default function Shell() {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="fixed inset-y-0 left-0 flex w-[248px] flex-col bg-tinta-3 px-3.5 py-5">
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-borde bg-white px-3.5 py-5 shadow-[2px_0_6px_rgba(0,0,0,0.05)]">
         <div className="mb-6 px-3">
-          <div className="text-[15px] font-bold tracking-tight text-white">Grupo NEGLIAF</div>
-          <div className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#7fa3ac]">
+          <div className="text-[16px] font-bold tracking-tight text-tinta">
+            Grupo<span className="text-petroleo">NEGLIAF</span>
+          </div>
+          <div className="text-[9.5px] font-medium uppercase tracking-[0.18em] text-acero">
             Intranet · BackOffice
           </div>
         </div>
@@ -72,12 +78,19 @@ export default function Shell() {
           <NavGroup title="Administración" items={NAV_ADMIN} />
         </nav>
 
-        <div className="mt-4 border-t border-[#234a56] px-3 pt-4">
-          <div className="text-[12.5px] font-semibold text-white">{user.nombre}</div>
-          <div className="text-[11px] text-[#7fa3ac]">{user.rol}</div>
+        <div className="mt-4 border-t border-borde px-3 pt-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-petroleo text-[13px] font-bold text-white">
+              {user.nombre.split(" ").map((p) => p[0]).slice(0, 2).join("")}
+            </div>
+            <div>
+              <div className="text-[12.5px] font-semibold leading-tight text-tinta">{user.nombre}</div>
+              <div className="text-[11px] text-gris-cl">{user.rol}</div>
+            </div>
+          </div>
           <button
             onClick={() => { setUser(null); navigate("/login"); }}
-            className="mt-2.5 flex items-center gap-1.5 text-[11.5px] font-medium text-[#8fb0b9] hover:text-white"
+            className="mt-3 flex items-center gap-1.5 text-[11.5px] font-medium text-gris-cl hover:text-pend"
           >
             <LogOut size={13} /> Cerrar sesión
           </button>
@@ -85,18 +98,18 @@ export default function Shell() {
       </aside>
 
       <div className="ml-[248px] flex-1">
-        <header className="sticky top-0 z-40 flex h-[50px] items-center gap-3 border-b border-[#2b4f5a] bg-tinta px-5 text-white">
-          <Building2 size={15} className="text-[#7fa3ac]" />
+        <header className="sticky top-0 z-30 flex h-[52px] items-center gap-3 bg-white px-5 shadow-[0_1px_6px_rgba(0,0,0,0.12)]">
+          <Building2 size={16} className="text-petroleo" />
           <select
             value={empresaId}
             onChange={(e) => setEmpresaId(e.target.value)}
-            className="rounded-[5px] border border-[#2b4f5a] bg-tinta-2 px-2.5 py-1.5 text-[12.5px] font-semibold text-white focus:outline-none"
+            className="rounded-[4px] border border-borde-f bg-white px-2.5 py-1.5 text-[13px] font-semibold text-tinta focus:border-petroleo focus:outline-none"
           >
             {db.empresas.map((e) => (
               <option key={e.id} value={e.id}>{e.nombre}</option>
             ))}
           </select>
-          <span className="ml-auto font-mono text-[10.5px] text-[#6d949e]">
+          <span className="ml-auto font-mono text-[10.5px] text-gris-cl">
             {origen === "supabase" ? "Conectado a Supabase" : "Datos locales de demostración"}
           </span>
         </header>
