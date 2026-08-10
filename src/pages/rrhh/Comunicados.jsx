@@ -4,16 +4,21 @@ import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Field, Input, Textarea, Select, Note, Badge, Table, Td, Progress, Modal,
 } from "../../components/ui";
-import { COMUNICADOS, SEDES, PERSONAL } from "../../data/mock";
 
 export default function Comunicados() {
-  const { empresaId } = useApp();
+  const { empresaId, db, addComunicado } = useApp();
   const [nuevo, setNuevo] = useState(false);
-  const [comunicados, setComunicados] = useState(COMUNICADOS);
   const [detalle, setDetalle] = useState(null);
+  const comunicados = db.comunicados;
 
   const publicar = (c) => {
-    setComunicados((xs) => [{ ...c, id: xs.length + 1, publicado: "2026-08-10", leidos: 0, estado: "vigente" }, ...xs]);
+    addComunicado({
+      ...c,
+      id: Date.now(),
+      publicado: new Date().toISOString().slice(0, 10),
+      leidos: 0,
+      estado: "vigente",
+    });
     setNuevo(false);
   };
 
@@ -74,6 +79,7 @@ export default function Comunicados() {
 
 // RRH-16 — Nuevo comunicado con segmentación y alcance calculado
 function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
+  const { db } = useApp();
   const [titulo, setTitulo] = useState("");
   const [cuerpo, setCuerpo] = useState("");
   const [vence, setVence] = useState("");
@@ -83,16 +89,16 @@ function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
 
   const alcance =
     nivel === "grupo"
-      ? PERSONAL.filter((p) => p.estado === "vigente").length * 22 // dotación de demostración
+      ? db.personal.filter((p) => p.estado === "vigente").length * 22 // dotación de demostración
       : nivel === "empresa"
-      ? PERSONAL.filter((p) => p.empresa === empresaId && p.estado === "vigente").length * 24
-      : PERSONAL.filter((p) => p.sede === sedeSel && p.estado === "vigente").length * 21;
+      ? db.personal.filter((p) => p.empresa === empresaId && p.estado === "vigente").length * 24
+      : db.personal.filter((p) => p.sede === sedeSel && p.estado === "vigente").length * 21;
   const conCelular = Math.round(alcance * 0.96);
 
   const segmento =
     nivel === "grupo" ? "Todo el grupo"
     : nivel === "empresa" ? "Toda la empresa"
-    : SEDES.find((s) => s.id === sedeSel)?.nombre ?? "Sede";
+    : db.sedes.find((s) => s.id === sedeSel)?.nombre ?? "Sede";
 
   return (
     <Modal open={open} onClose={onClose} title="RRH-16 · Nuevo comunicado" wide>
@@ -118,7 +124,7 @@ function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
             <Field label="Sede" required>
               <Select value={sedeSel} onChange={(e) => setSedeSel(e.target.value)}>
                 <option value="">Elegir…</option>
-                {SEDES.filter((s) => s.empresa === empresaId).map((s) => (
+                {db.sedes.filter((s) => s.empresa === empresaId).map((s) => (
                   <option key={s.id} value={s.id}>{s.nombre}</option>
                 ))}
               </Select>

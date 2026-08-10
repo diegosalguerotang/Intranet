@@ -4,7 +4,6 @@ import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Input, Select, Field, Modal, Note,
 } from "../../components/ui";
-import { ACTIVOS, PERSONAL, SEDES, persona, sede } from "../../data/mock";
 
 const ESTADOS = {
   disponible: { tone: "conf", label: "Disponible" },
@@ -15,15 +14,15 @@ const ESTADOS = {
 
 // ADQ-01 — Inventario de activos
 export default function Inventario() {
-  const { empresaId } = useApp();
+  const { empresaId, db, persona, asignarActivo, devolverActivo } = useApp();
   const [q, setQ] = useState("");
   const [fCat, setFCat] = useState("");
   const [fEstado, setFEstado] = useState("");
-  const [activos, setActivos] = useState(ACTIVOS);
   const [alta, setAlta] = useState(false);
   const [asignar, setAsignar] = useState(null); // activo a asignar
   const [devolver, setDevolver] = useState(null); // activo a devolver
   const [aviso, setAviso] = useState(null);
+  const activos = db.activos;
 
   const filas = useMemo(
     () =>
@@ -49,17 +48,16 @@ export default function Inventario() {
 
   const ejecutarAsignacion = (codigo, dni) => {
     const p = persona(dni);
-    setActivos((xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: "asignado", asignado: dni, sede: p?.sede } : a)));
+    asignarActivo(codigo, dni, p?.sede ?? null);
     setAsignar(null);
     setAviso(`Activo ${codigo} asignado a ${p?.nombre}. El cargo digital entró al motor de acuses y aparecerá en su portal como pendiente de confirmar.`);
   };
 
   const ejecutarDevolucion = (codigo, destino) => {
-    setActivos((xs) =>
-      xs.map((a) => (a.codigo === codigo ? { ...a, estado: destino, asignado: null, sede: destino === "mantenimiento" ? a.sede : null } : a))
-    );
+    const actual = activos.find((a) => a.codigo === codigo);
+    devolverActivo(codigo, destino, destino === "mantenimiento" ? actual?.sede ?? null : null);
     setDevolver(null);
-    setAviso(`Devolución de ${codigo} registrada. El activo quedó ${destino === "mantenimiento" ? "en mantenimiento" : "disponible"} y el cargo del trabajador se cerró.`);
+    setAviso(`Devolución de ${codigo} registrada. El activo quedó ${destino === "mantenimiento" ? "en mantenimiento" : destino === "baja" ? "de baja" : "disponible"} y el cargo del trabajador se cerró.`);
   };
 
   return (
@@ -190,9 +188,10 @@ function AltaActivo({ open, onClose }) {
 
 // ADQ-03 — Asignar activo
 function AsignarActivo({ activo, onClose, onAsignar }) {
+  const { db } = useApp();
   const [dni, setDni] = useState("");
   const [cargo, setCargo] = useState(true);
-  const vigentes = PERSONAL.filter((p) => p.estado === "vigente");
+  const vigentes = db.personal.filter((p) => p.estado === "vigente");
 
   return (
     <Modal open={!!activo} onClose={onClose} title="ADQ-03 · Asignar activo">
@@ -234,6 +233,7 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
 
 // ADQ-04 — Devolución de activo
 function DevolucionActivo({ activo, onClose, onDevolver }) {
+  const { persona } = useApp();
   const [destino, setDestino] = useState("disponible");
 
   return (

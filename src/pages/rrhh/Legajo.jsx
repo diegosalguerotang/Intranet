@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Download } from "lucide-react";
 import { PageHeader, Card, Badge, Button, Table, Td, EmptyState, Note } from "../../components/ui";
-import { persona, sede, empresa, ACUSES, MEMORANDUMS, ACTIVOS, EPP_ENTREGAS, CONTRATOS, AUDITORIA } from "../../data/mock";
+import { useApp } from "../../state";
+import { AUDITORIA } from "../../data/mock";
 
 const TABS = ["Datos personales", "Vínculos", "Documentos", "Disciplina", "Activos", "Actividad"];
 
@@ -16,6 +17,7 @@ const ESTADO_ACUSE = {
 export default function Legajo() {
   const { dni } = useParams();
   const [tab, setTab] = useState(0);
+  const { db, persona, sede, empresaPor } = useApp();
   const p = persona(dni);
 
   if (!p) {
@@ -23,12 +25,12 @@ export default function Legajo() {
   }
 
   const s = sede(p.sede);
-  const e = empresa(p.empresa);
-  const acuses = ACUSES.filter((a) => a.dni === dni);
-  const memos = MEMORANDUMS.filter((m) => m.dni === dni);
-  const activos = ACTIVOS.filter((a) => a.asignado === dni);
-  const epp = EPP_ENTREGAS.filter((x) => x.dni === dni);
-  const contrato = CONTRATOS.find((c) => c.dni === dni);
+  const e = empresaPor(p.empresa);
+  const acuses = db.acuses.filter((a) => a.dni === dni);
+  const memos = db.memorandums.filter((m) => m.dni === dni);
+  const activos = db.activos.filter((a) => a.asignado === dni);
+  const epp = db.epp_entregas.filter((x) => x.dni === dni);
+  const contrato = db.contratos.find((c) => c.dni === dni);
   const antiguedad = new Date().getFullYear() - new Date(p.ingreso).getFullYear();
 
   return (

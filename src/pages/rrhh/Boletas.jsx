@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { FileUp, AlertCircle, CheckCircle2 } from "lucide-react";
+import { FileUp, CheckCircle2 } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Field, Select, Note, Badge, Table, Td, Progress,
 } from "../../components/ui";
-import { LOTES } from "../../data/mock";
 
 const PASOS = ["Periodo y tipo", "Carga del archivo", "Excepciones", "Revisión", "Publicado"];
 
@@ -16,15 +15,18 @@ const EXCEPCIONES_DEMO = [
 ];
 
 export default function Boletas() {
-  const { empresa, empresaId } = useApp();
+  const { db, empresaId, empresaPor, addLote, user } = useApp();
   const [paso, setPaso] = useState(0);
+  const [empresaLote, setEmpresaLote] = useState(empresaId);
   const [tipo, setTipo] = useState("Boleta de pago");
   const [periodo, setPeriodo] = useState("Agosto 2026");
   const [procesando, setProcesando] = useState(false);
   const [excepciones, setExcepciones] = useState(EXCEPCIONES_DEMO);
+  const [loteCreado, setLoteCreado] = useState(null);
 
-  const loteExistente = LOTES.find(
-    (l) => l.empresa === empresaId && l.tipo === tipo && l.periodo === periodo
+  const emp = empresaPor(empresaLote);
+  const loteExistente = db.lotes.find(
+    (l) => l.empresa === empresaLote && l.tipo === tipo && l.periodo === periodo
   );
   const sinResolver = excepciones.filter((x) => !x.resuelto).length;
 
@@ -36,17 +38,35 @@ export default function Boletas() {
     setTimeout(() => { setProcesando(false); setPaso(2); }, 1400);
   };
 
-  const reiniciar = () => { setPaso(0); setExcepciones(EXCEPCIONES_DEMO); };
+  const publicar = () => {
+    const codigoTipo = { "Boleta de pago": "BOL", "Gratificación": "GRA", "Liquidación de CTS": "CTS", "Utilidades": "UTI" }[tipo] ?? "DOC";
+    const codigoEmp = (emp?.corto ?? "EMP").slice(0, 3).toUpperCase();
+    const [mes, anio] = periodo.split(" ");
+    const meses = { Enero: "01", Febrero: "02", Marzo: "03", Abril: "04", Mayo: "05", Junio: "06", Julio: "07", Agosto: "08", Septiembre: "09", Octubre: "10", Noviembre: "11", Diciembre: "12" };
+    const correlativo = db.lotes.filter((l) => l.empresa === empresaLote && l.tipo === tipo && l.periodo === periodo).length + 1;
+    const lote = {
+      id: `${codigoTipo}-${codigoEmp}-${anio}${meses[mes] ?? "00"}-${String(correlativo).padStart(3, "0")}`,
+      empresa: empresaLote, tipo, periodo,
+      publicado: new Date().toISOString().slice(0, 16).replace("T", " "),
+      por: user?.nombre ?? "RRHH",
+      total: 310, confirmados: 0, asistidos: 0, pendientes: 310, avisos: 299,
+      version: loteExistente ? (loteExistente.version ?? 1) + 1 : 1,
+    };
+    addLote(lote);
+    setLoteCreado(lote);
+    setPaso(4);
+  };
+
+  const reiniciar = () => { setPaso(0); setExcepciones(EXCEPCIONES_DEMO); setLoteCreado(null); };
 
   return (
     <>
       <PageHeader
         code="RRH-06 → RRH-10 · Asistente de carga"
         title="Carga de boletas"
-        subtitle={`Flujo de mayor volumen del sistema. Funciona con el PDF que la planilla de ${empresa.corto} ya genera hoy.`}
+        subtitle="Flujo de mayor volumen del sistema. Funciona con el PDF que la planilla ya genera hoy."
       />
 
-      {/* Indicador de pasos */}
       <div className="mb-6 flex items-center gap-0">
         {PASOS.map((p, i) => (
           <div key={p} className="flex items-center">
@@ -69,8 +89,12 @@ export default function Boletas() {
       {paso === 0 && (
         <Card className="max-w-xl">
           <div className="space-y-4">
-            <Field label="Empresa">
-              <Select disabled><option>{empresa.nombre}</option></Select>
+            <Field label="Empresa" required hint="Cada lote pertenece a una sola razón social: sus documentos llevan el membrete y RUC de esa empresa.">
+              <Select value={empresaLote} onChange={(e) => setEmpresaLote(e.target.value)}>
+                {db.empresas.map((e) => (
+                  <option key={e.id} value={e.id}>{e.nombre} — RUC {e.ruc}</option>
+                ))}
+              </Select>
             </Field>
             <Field label="Tipo de documento" required>
               <Select value={tipo} onChange={(e) => setTipo(e.target.value)}>
@@ -90,8 +114,8 @@ export default function Boletas() {
             {loteExistente && (
               <Note tone="pend">
                 Ya existe el lote <b>{loteExistente.id}</b> publicado para esta combinación. Continuar cargará una{" "}
-                <b>corrección de versión</b>: los documentos corregidos generarán versión 2 con acuse nuevo, sin tocar
-                ningún acuse existente. Nunca se sobrescribe en silencio.
+                <b>corrección de versión</b>: los documentos corregidos generarán versión {(loteExistente.version ?? 1) + 1}{" "}
+                con acuse nuevo, sin tocar ningún acuse existente. Nunca se sobrescribe en silencio.
               </Note>
             )}
             <Button onClick={() => setPaso(1)}>
@@ -105,6 +129,9 @@ export default function Boletas() {
       {paso === 1 && (
         <Card className="max-w-xl">
           <div className="space-y-4">
+            <Note tone="neutral">
+              Lote para <b>{emp?.nombre}</b> · {tipo} · {periodo}
+            </Note>
             <div
               className={`rounded-md border-2 border-dashed px-6 py-12 text-center transition-colors ${
                 procesando ? "border-petroleo bg-conf-bg/40" : "cursor-pointer border-borde-f bg-papel/60 hover:border-petroleo-cl"
@@ -189,7 +216,7 @@ export default function Boletas() {
           <h2 className="mb-4 text-[15px] font-bold text-tinta">Revisión previa a la publicación</h2>
           <div className="mb-4 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
             {[
-              ["Empresa", empresa.corto],
+              ["Empresa", emp?.corto],
               ["Tipo", tipo],
               ["Periodo", periodo],
               ["A publicar", "310 boletas"],
@@ -214,23 +241,23 @@ export default function Boletas() {
           </div>
           <div className="mt-4 flex gap-2">
             <Button variant="secondary" onClick={() => setPaso(2)}>Atrás</Button>
-            <Button onClick={() => setPaso(4)}>Publicar</Button>
+            <Button onClick={publicar}>Publicar</Button>
           </div>
         </Card>
       )}
 
       {/* Paso 5 — RRH-10 */}
-      {paso === 4 && (
+      {paso === 4 && loteCreado && (
         <Card className="max-w-2xl">
           <div className="mb-4 flex items-center gap-3">
             <CheckCircle2 size={26} className="text-conf" />
             <div>
               <h2 className="text-[15px] font-bold text-tinta">Publicación confirmada</h2>
-              <div className="font-mono text-[12px] text-gris">Lote BOL-NEG-202608-001 · registrado en auditoría</div>
+              <div className="font-mono text-[12px] text-gris">Lote {loteCreado.id} · registrado en auditoría</div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[["Publicadas", "310"], ["Avisos WhatsApp", "299"], ["Acuse asistido", "11"], ["Excepciones", "0"]].map(([k, v]) => (
+            {[["Publicadas", "310"], ["Avisos WhatsApp", "299"], ["Acuse asistido", "11"], ["Versión", `v${loteCreado.version}`]].map(([k, v]) => (
               <div key={k} className="rounded-md bg-papel px-3 py-3 text-center">
                 <div className="text-[20px] font-bold text-tinta">{v}</div>
                 <div className="font-mono text-[9.5px] uppercase tracking-wide text-gris">{k}</div>
@@ -246,22 +273,28 @@ export default function Boletas() {
 
       {paso < 2 && (
         <div className="mt-6 max-w-xl">
-          <h3 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-gris">Lotes recientes</h3>
+          <h3 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-gris">
+            Lotes recientes — {emp?.corto}
+          </h3>
           <Card pad={false}>
-            <Table head={["Lote", "Tipo", "Periodo", "Recepción"]}>
-              {LOTES.filter((l) => l.empresa === empresaId).map((l) => (
-                <tr key={l.id}>
-                  <Td className="font-mono text-[12px]">{l.id}</Td>
-                  <Td>{l.tipo}</Td>
-                  <Td className="text-gris">{l.periodo}</Td>
-                  <Td>
-                    <Badge tone={l.pendientes === 0 ? "conf" : "pend"}>
-                      {Math.round(((l.confirmados + l.asistidos) / l.total) * 100)}%
-                    </Badge>
-                  </Td>
-                </tr>
-              ))}
-            </Table>
+            {db.lotes.filter((l) => l.empresa === empresaLote).length === 0 ? (
+              <div className="p-4 text-[12.5px] text-gris">Esta empresa aún no tiene lotes publicados.</div>
+            ) : (
+              <Table head={["Lote", "Tipo", "Periodo", "Recepción"]}>
+                {db.lotes.filter((l) => l.empresa === empresaLote).map((l) => (
+                  <tr key={l.id}>
+                    <Td className="font-mono text-[12px]">{l.id}</Td>
+                    <Td>{l.tipo}</Td>
+                    <Td className="text-gris">{l.periodo}</Td>
+                    <Td>
+                      <Badge tone={l.pendientes === 0 ? "conf" : "pend"}>
+                        {Math.round(((l.confirmados + l.asistidos) / l.total) * 100)}%
+                      </Badge>
+                    </Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
           </Card>
         </div>
       )}

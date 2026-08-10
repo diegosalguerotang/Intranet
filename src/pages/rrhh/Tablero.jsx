@@ -2,19 +2,18 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { useApp } from "../../state";
 import { PageHeader, Card, Stat, Progress, Badge, Note } from "../../components/ui";
-import { PERSONAL, LOTES, SEDES, MEMORANDUMS, CONTRATOS, persona } from "../../data/mock";
 
 export default function Tablero() {
-  const { empresa, empresaId } = useApp();
-  const dotacion = PERSONAL.filter((p) => p.empresa === empresaId && p.estado === "vigente");
-  const lote = LOTES.find((l) => l.empresa === empresaId);
+  const { empresa, empresaId, db } = useApp();
+  const dotacion = db.personal.filter((p) => p.empresa === empresaId && p.estado === "vigente");
+  const lote = db.lotes.find((l) => l.empresa === empresaId);
   const pctRecepcion = lote ? Math.round(((lote.confirmados + lote.asistidos) / lote.total) * 100) : null;
   const nuncaIngresaron = dotacion.filter((p) => p.portal === "nunca_ingreso");
   const sinCelular = dotacion.filter((p) => p.portal === "sin_celular");
-  const porVencer = CONTRATOS.filter((c) => c.estado === "por_vencer");
-  const descargosPendientes = MEMORANDUMS.filter((m) => m.estado === "descargo_presentado");
+  const porVencer = db.contratos.filter((c) => c.estado === "por_vencer");
+  const descargosPendientes = db.memorandums.filter((m) => m.estado === "descargo_presentado");
 
-  const porSede = SEDES.filter((s) => s.empresa === empresaId).map((s) => {
+  const porSede = db.sedes.filter((s) => s.empresa === empresaId).map((s) => {
     const n = dotacion.filter((p) => p.sede === s.id).length;
     // Distribución de avance de ejemplo por sede
     const pct = { sunat: 96, migraciones: 82, minedu: 78, ins: 91 }[s.id] ?? 85;

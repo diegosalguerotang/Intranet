@@ -1,14 +1,15 @@
 import { Download } from "lucide-react";
+import { useApp } from "../../state";
 import { PageHeader, Card, Table, Td, Button, Note } from "../../components/ui";
-import { ACTIVOS, LINEAS, SEDES, sede } from "../../data/mock";
 
 // ADQ-07 — Costo de activos por sede
 export default function Costos() {
-  const filas = SEDES.map((s) => {
-    const activosSede = ACTIVOS.filter((a) => a.sede === s.id && a.estado !== "baja");
+  const { db } = useApp();
+  const filas = db.sedes.map((s) => {
+    const activosSede = db.activos.filter((a) => a.sede === s.id && a.estado !== "baja");
     const valor = activosSede.reduce((sum, a) => sum + a.valor, 0);
-    const lineasSede = LINEAS.filter((l) => {
-      const eq = l.equipo ? ACTIVOS.find((a) => a.codigo === l.equipo) : null;
+    const lineasSede = db.lineas.filter((l) => {
+      const eq = l.equipo ? db.activos.find((a) => a.codigo === l.equipo) : null;
       return eq?.sede === s.id && l.estado === "activa";
     });
     const costoLineas = lineasSede.reduce((sum, l) => sum + l.costo, 0);

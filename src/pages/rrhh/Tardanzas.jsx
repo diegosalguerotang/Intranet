@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Upload, AlertTriangle } from "lucide-react";
+import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Note, Table, Td, Select, Badge,
 } from "../../components/ui";
-import { TARDANZAS, persona, sede } from "../../data/mock";
 
 // RRH-20 — Tardanzas y asistencia (solo lectura, importación)
 export default function Tardanzas() {
-  const [importado, setImportado] = useState(true);
+  const { db, persona, sede } = useApp();
   const [aviso, setAviso] = useState(null);
 
   return (
@@ -40,7 +40,7 @@ export default function Tardanzas() {
           </Select>
         </div>
         <Table head={["DNI", "Trabajador", "Sede", "Tardanzas", "Minutos", "Descuento ref. (S/)", ""]}>
-          {TARDANZAS.map((t) => {
+          {db.tardanzas.map((t) => {
             const p = persona(t.dni);
             const reiterada = t.tardanzas >= 2;
             return (

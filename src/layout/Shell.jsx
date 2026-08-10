@@ -4,7 +4,6 @@ import {
   Clock, FileSignature, Boxes, Smartphone, HardHat, PieChart, LogOut, Building2,
 } from "lucide-react";
 import { useApp } from "../state";
-import { EMPRESAS } from "../data/mock";
 
 const NAV_RRHH = [
   { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true },
@@ -53,7 +52,7 @@ function NavGroup({ title, items }) {
 }
 
 export default function Shell() {
-  const { user, setUser, empresaId, setEmpresaId } = useApp();
+  const { user, setUser, empresaId, setEmpresaId, db, origen } = useApp();
   const navigate = useNavigate();
 
   if (!user) return <Navigate to="/login" replace />;
@@ -93,12 +92,12 @@ export default function Shell() {
             onChange={(e) => setEmpresaId(e.target.value)}
             className="rounded-[5px] border border-[#2b4f5a] bg-tinta-2 px-2.5 py-1.5 text-[12.5px] font-semibold text-white focus:outline-none"
           >
-            {EMPRESAS.map((e) => (
+            {db.empresas.map((e) => (
               <option key={e.id} value={e.id}>{e.nombre}</option>
             ))}
           </select>
           <span className="ml-auto font-mono text-[10.5px] text-[#6d949e]">
-            Ambiente de demostración — datos ficticios
+            {origen === "supabase" ? "Conectado a Supabase" : "Datos locales de demostración"}
           </span>
         </header>
         <main className="mx-auto max-w-[1180px] px-6 py-7">

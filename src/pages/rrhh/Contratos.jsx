@@ -4,15 +4,14 @@ import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Note, Badge, Table, Td, Modal, Field, Select, Stat,
 } from "../../components/ui";
-import { PLANTILLAS, CONTRATOS, persona, empresa } from "../../data/mock";
 
 export default function Contratos() {
-  const { empresaId } = useApp();
+  const { empresaId, db, persona } = useApp();
   const [tab, setTab] = useState("vencimientos");
   const [lote, setLote] = useState(false);
 
-  const plantillas = PLANTILLAS.filter((p) => p.empresa === empresaId);
-  const porVencer = CONTRATOS.filter((c) => c.estado === "por_vencer");
+  const plantillas = db.plantillas.filter((p) => p.empresa === empresaId);
+  const porVencer = db.contratos.filter((c) => c.estado === "por_vencer");
 
   return (
     <>
@@ -24,9 +23,9 @@ export default function Contratos() {
       />
 
       <div className="mb-5 flex flex-wrap gap-4">
-        <Stat label="Contratos vigentes" value={CONTRATOS.filter((c) => c.estado === "vigente").length + porVencer.length} />
+        <Stat label="Contratos vigentes" value={db.contratos.filter((c) => c.estado === "vigente").length + porVencer.length} />
         <Stat label="Vencen en 30 días" value={porVencer.length} tone="pend" hint="Decidir renovación o no renovación" />
-        <Stat label="Pendientes de firma" value={CONTRATOS.filter((c) => c.firma === "pendiente").length} tone="alerta" />
+        <Stat label="Pendientes de firma" value={db.contratos.filter((c) => c.firma === "pendiente").length} tone="alerta" />
         <Stat label="Plantillas activas" value={plantillas.length} />
       </div>
 
@@ -47,7 +46,7 @@ export default function Contratos() {
       {tab === "vencimientos" && (
         <Card pad={false}>
           <Table head={["Trabajador", "Tipo", "Inicio", "Fin", "Firma", "Estado"]}>
-            {CONTRATOS.map((c, i) => (
+            {db.contratos.map((c, i) => (
               <tr key={i} className="hover:bg-papel/60">
                 <Td className="font-semibold">{persona(c.dni)?.nombre}</Td>
                 <Td className="text-gris">{c.tipo}</Td>
@@ -104,8 +103,9 @@ export default function Contratos() {
 
 // RRH-15 — Generar contratos en lote
 function GenerarLote({ open, onClose, plantillas, empresaId }) {
+  const { empresaPor } = useApp();
   const [paso, setPaso] = useState(1);
-  const e = empresa(empresaId);
+  const e = empresaPor(empresaId);
   const cerrar = () => { setPaso(1); onClose(); };
 
   return (

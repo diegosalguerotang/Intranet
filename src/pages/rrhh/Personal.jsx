@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { UserPlus, Upload, Download, Send } from "lucide-react";
+import { UserPlus, Upload, Download, Send, Trash2 } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Table, Td, Badge, Button, Input, Select, Field, Modal, Note, EmptyState,
 } from "../../components/ui";
-import { PERSONAL, SEDES, CARGOS, sede } from "../../data/mock";
+import { CARGOS } from "../../data/mock";
 
 const PORTAL_BADGE = {
   activo: { tone: "conf", label: "Activo" },
@@ -14,20 +14,21 @@ const PORTAL_BADGE = {
 };
 
 export default function Personal() {
-  const { empresaId } = useApp();
+  const { empresaId, db, sede, addPersonal, deletePersonal } = useApp();
   const [q, setQ] = useState("");
   const [fSede, setFSede] = useState("");
   const [fPortal, setFPortal] = useState("");
   const [fEstado, setFEstado] = useState("vigente");
   const [alta, setAlta] = useState(false);
   const [importar, setImportar] = useState(false);
+  const [eliminar, setEliminar] = useState(null); // persona a eliminar
   const [aviso, setAviso] = useState(null);
 
-  const sedesEmpresa = SEDES.filter((s) => s.empresa === empresaId);
+  const sedesEmpresa = db.sedes.filter((s) => s.empresa === empresaId);
 
   const filas = useMemo(
     () =>
-      PERSONAL.filter(
+      db.personal.filter(
         (p) =>
           p.empresa === empresaId &&
           (!fEstado || p.estado === fEstado) &&
@@ -35,8 +36,20 @@ export default function Personal() {
           (!fPortal || p.portal === fPortal) &&
           (!q || p.dni.includes(q) || p.nombre.toLowerCase().includes(q.toLowerCase()))
       ),
-    [empresaId, q, fSede, fPortal, fEstado]
+    [db.personal, empresaId, q, fSede, fPortal, fEstado]
   );
+
+  const guardarAlta = (row) => {
+    addPersonal({ ...row, empresa: empresaId });
+    setAlta(false);
+    setAviso(`${row.nombre} registrado en el maestro de personal. Se generó su clave provisional de acceso al portal.`);
+  };
+
+  const confirmarEliminar = () => {
+    deletePersonal(eliminar.dni);
+    setAviso(`${eliminar.nombre} fue eliminado del maestro de personal.`);
+    setEliminar(null);
+  };
 
   return (
     <>
@@ -58,6 +71,8 @@ export default function Personal() {
           </>
         }
       />
+
+      {aviso && <div className="mb-4"><Note tone="conf">{aviso}</Note></div>}
 
       <Card pad={false} className="overflow-hidden">
         <div className="flex flex-wrap gap-2.5 border-b border-borde bg-papel/50 p-3.5">
@@ -88,26 +103,35 @@ export default function Personal() {
         ) : (
           <Table head={["DNI", "Trabajador", "Cargo", "Sede", "Ingreso", "Portal", ""]}>
             {filas.map((p) => {
-              const pb = PORTAL_BADGE[p.portal];
+              const pb = PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo;
               return (
                 <tr key={p.dni} className="hover:bg-papel/60">
                   <Td className="font-mono text-[12px]">{p.dni}</Td>
                   <Td>
                     <Link to={`/rrhh/personal/${p.dni}`} className="font-semibold text-petroleo hover:underline">
                       {p.nombre}
-                    </Link>
+                    </Link>{" "}
                     {p.estado === "cesado" && <Badge tone="neutral">Cesado</Badge>}
                   </Td>
                   <Td className="text-gris">{p.cargo}</Td>
-                  <Td className="text-gris">{sede(p.sede)?.cliente}</Td>
+                  <Td className="text-gris">{sede(p.sede)?.cliente ?? "—"}</Td>
                   <Td className="font-mono text-[12px] text-gris">{p.ingreso}</Td>
                   <Td><Badge tone={pb.tone}>{pb.label}</Badge></Td>
                   <Td>
-                    {p.portal === "nunca_ingreso" && (
-                      <Button variant="ghost" size="sm" onClick={() => setAviso(`Clave provisional reenviada a ${p.nombre}.`)}>
-                        <Send size={12} /> Reenviar clave
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-end gap-1">
+                      {p.portal === "nunca_ingreso" && (
+                        <Button variant="ghost" size="sm" onClick={() => setAviso(`Clave provisional reenviada a ${p.nombre}.`)}>
+                          <Send size={12} /> Reenviar clave
+                        </Button>
+                      )}
+                      <button
+                        onClick={() => setEliminar(p)}
+                        className="rounded p-1.5 text-gris-cl transition-colors hover:bg-alerta-bg hover:text-alerta"
+                        title="Eliminar trabajador"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </Td>
                 </tr>
               );
@@ -116,84 +140,115 @@ export default function Personal() {
         )}
       </Card>
 
-      {aviso && (
-        <div className="mt-4">
-          <Note tone="conf">{aviso}</Note>
-        </div>
-      )}
-
-      <AltaTrabajador open={alta} onClose={() => setAlta(false)} sedes={sedesEmpresa} />
+      <AltaTrabajador open={alta} onClose={() => setAlta(false)} onGuardar={guardarAlta} sedes={sedesEmpresa} personal={db.personal} />
       <ImportarPlanilla open={importar} onClose={() => setImportar(false)} />
+
+      <Modal open={!!eliminar} onClose={() => setEliminar(null)} title="Eliminar trabajador">
+        {eliminar && (
+          <div className="space-y-4">
+            <Note tone="alerta">
+              Vas a eliminar a <b>{eliminar.nombre}</b> (DNI {eliminar.dni}) del maestro de personal. Esta acción quedará
+              registrada en auditoría.
+            </Note>
+            <Note tone="neutral">
+              Recomendación del documento de arquitectura: para un cese laboral usa el cierre del vínculo (el historial
+              nunca se borra). La eliminación definitiva es solo para registros creados por error.
+            </Note>
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={confirmarEliminar}>Eliminar definitivamente</Button>
+              <Button variant="secondary" onClick={() => setEliminar(null)}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }
 
 // RRH-04 — Alta de trabajador
-function AltaTrabajador({ open, onClose, sedes }) {
-  const [dni, setDni] = useState("");
-  const [ok, setOk] = useState(false);
-  const existente = PERSONAL.find((p) => p.dni === dni);
+function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
+  const vacio = { dni: "", nombre: "", celular: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "" };
+  const [form, setForm] = useState(vacio);
+  const [error, setError] = useState(null);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const existente = personal.find((p) => p.dni === form.dni);
 
   const guardar = (e) => {
     e.preventDefault();
-    setOk(true);
+    if (form.dni.length !== 8) return setError("El DNI debe tener 8 dígitos.");
+    if (existente) return setError("Este DNI ya está registrado. Para una recontratación, abre un nuevo vínculo desde su legajo.");
+    if (!form.nombre.trim()) return setError("Ingresa los nombres y apellidos.");
+    if (!form.sede) return setError("Toda alta requiere sede asignada: la segmentación posterior depende de ese dato.");
+    if (!form.ingreso) return setError("Ingresa la fecha de ingreso.");
+    onGuardar({
+      dni: form.dni,
+      nombre: form.nombre.trim(),
+      cargo: form.cargo,
+      sede: form.sede,
+      ingreso: form.ingreso,
+      celular: form.celular || null,
+      portal: form.celular ? "nunca_ingreso" : "sin_celular",
+      estado: "vigente",
+      banco: form.banco,
+      cuenta: form.cuenta || null,
+    });
+    setForm(vacio);
+    setError(null);
   };
 
-  const cerrar = () => { setOk(false); setDni(""); onClose(); };
+  const cerrar = () => { setForm(vacio); setError(null); onClose(); };
 
   return (
     <Modal open={open} onClose={cerrar} title="RRH-04 · Alta de trabajador" wide>
-      {ok ? (
-        <div className="space-y-4">
-          <Note tone="conf">
-            Trabajador registrado (demostración). Se generó la clave provisional y se envió por el canal configurado.
-          </Note>
-          <Button onClick={cerrar}>Entendido</Button>
+      <form onSubmit={guardar} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="DNI" required hint="Si el DNI ya existe como Persona, se agrega un vínculo sin duplicarla.">
+            <Input inputMode="numeric" maxLength={8} value={form.dni} onChange={(e) => setForm((f) => ({ ...f, dni: e.target.value.replace(/\D/g, "") }))} />
+          </Field>
+          <Field label="Nombres y apellidos" required>
+            <Input placeholder="Como figura en el DNI" value={form.nombre} onChange={set("nombre")} />
+          </Field>
         </div>
-      ) : (
-        <form onSubmit={guardar} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="DNI" required hint="Si el DNI ya existe como Persona, se agrega un vínculo sin duplicarla.">
-              <Input inputMode="numeric" maxLength={8} value={dni} onChange={(e) => setDni(e.target.value.replace(/\D/g, ""))} />
-            </Field>
-            <Field label="Nombres y apellidos" required>
-              <Input placeholder="Como figura en el DNI" />
-            </Field>
-          </div>
-          {existente && (
-            <Note tone="pend">
-              El DNI {dni} ya existe: <b>{existente.nombre}</b>. Se abrirá un nuevo vínculo laboral sobre la misma
-              Persona y conservará todo su historial.
-            </Note>
-          )}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Celular"><Input inputMode="numeric" maxLength={9} placeholder="9 dígitos" /></Field>
-            <Field label="Sede" required>
-              <Select>{sedes.map((s) => <option key={s.id}>{s.nombre}</option>)}</Select>
-            </Field>
-            <Field label="Cargo" required>
-              <Select>{CARGOS.map((c) => <option key={c}>{c}</option>)}</Select>
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Fecha de ingreso" required><Input type="date" /></Field>
-            <Field label="Tipo de contrato">
-              <Select><option>Plazo fijo</option><option>Indeterminado</option></Select>
-            </Field>
-            <Field label="Cuenta de haberes" hint="Dato sensible: su consulta queda en auditoría.">
-              <Input placeholder="CCI" />
-            </Field>
-          </div>
-          <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
-            <input type="checkbox" defaultChecked className="accent-petroleo" />
-            Crear acceso al portal y enviar clave provisional
-          </label>
-          <div className="flex gap-2">
-            <Button type="submit">Guardar</Button>
-            <Button type="button" variant="secondary" onClick={cerrar}>Cancelar</Button>
-          </div>
-        </form>
-      )}
+        {existente && (
+          <Note tone="pend">
+            El DNI {form.dni} ya existe: <b>{existente.nombre}</b>. No se creará un duplicado.
+          </Note>
+        )}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Celular" hint="Sin celular queda marcado para acuse asistido.">
+            <Input inputMode="numeric" maxLength={9} placeholder="9 dígitos" value={form.celular} onChange={(e) => setForm((f) => ({ ...f, celular: e.target.value.replace(/\D/g, "") }))} />
+          </Field>
+          <Field label="Sede" required>
+            <Select value={form.sede} onChange={set("sede")}>
+              <option value="">Elegir sede…</option>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </Select>
+          </Field>
+          <Field label="Cargo" required>
+            <Select value={form.cargo} onChange={set("cargo")}>
+              {CARGOS.map((c) => <option key={c}>{c}</option>)}
+            </Select>
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Fecha de ingreso" required>
+            <Input type="date" value={form.ingreso} onChange={set("ingreso")} />
+          </Field>
+          <Field label="Banco de haberes">
+            <Select value={form.banco} onChange={set("banco")}>
+              <option>BCP</option><option>BBVA</option><option>Interbank</option><option>Scotiabank</option>
+            </Select>
+          </Field>
+          <Field label="Cuenta (CCI)" hint="Dato sensible: su consulta queda en auditoría.">
+            <Input value={form.cuenta} onChange={set("cuenta")} />
+          </Field>
+        </div>
+        {error && <Note tone="alerta">{error}</Note>}
+        <div className="flex gap-2">
+          <Button type="submit">Guardar</Button>
+          <Button type="button" variant="secondary" onClick={cerrar}>Cancelar</Button>
+        </div>
+      </form>
     </Modal>
   );
 }
@@ -221,21 +276,15 @@ function ImportarPlanilla({ open, onClose }) {
       )}
       {paso === 2 && (
         <div className="space-y-4">
-          <Note tone="neutral">
-            <b>planilla_agosto_2026.xlsx</b> — 312 filas leídas (simulación)
-          </Note>
+          <Note tone="neutral"><b>planilla_agosto_2026.xlsx</b> — 312 filas leídas (simulación)</Note>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">6</div><div className="font-mono text-[10px] uppercase text-gris">Nuevos</div></div>
             <div className="rounded-md bg-pend-bg py-4"><div className="text-[22px] font-bold text-pend">14</div><div className="font-mono text-[10px] uppercase text-gris">A actualizar</div></div>
             <div className="rounded-md bg-alerta-bg py-4"><div className="text-[22px] font-bold text-alerta">2</div><div className="font-mono text-[10px] uppercase text-gris">Con error</div></div>
           </div>
           <Note tone="pend">
-            2 filas con error: fila 87 (DNI de 7 dígitos), fila 203 (sede no reconocida "SUNAT LIMA CERC").
-            Ninguna fila se aplica hasta confirmar; la importación es transaccional.
-          </Note>
-          <Note tone="neutral">
-            3 trabajadores existentes no figuran en el archivo. La importación <b>no</b> los da de baja: quedan listados
-            como diferencia para que RRHH decida.
+            2 filas con error: fila 87 (DNI de 7 dígitos), fila 203 (sede no reconocida). Ninguna fila se aplica hasta
+            confirmar; la importación es transaccional.
           </Note>
           <div className="flex gap-2">
             <Button onClick={() => setPaso(3)}>Confirmar importación</Button>

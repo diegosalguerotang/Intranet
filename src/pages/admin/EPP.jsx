@@ -1,30 +1,33 @@
 import { useState } from "react";
 import { HardHat, Users } from "lucide-react";
+import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Modal, Field, Input, Select, Note,
 } from "../../components/ui";
-import { EPP_ENTREGAS, PERSONAL, SEDES, persona, sede } from "../../data/mock";
 
 // ADQ-06 — Entrega de EPP y uniformes
 export default function EPP() {
-  const [entregas, setEntregas] = useState(EPP_ENTREGAS);
+  const { db, persona, sede, addEpp } = useApp();
   const [individual, setIndividual] = useState(false);
   const [masiva, setMasiva] = useState(false);
   const [aviso, setAviso] = useState(null);
+  const entregas = db.epp_entregas;
 
   const porReponer = entregas.filter((e) => e.estado === "por_reponer");
 
+  const hoy = new Date().toISOString().slice(0, 10);
+  const en3Meses = new Date(Date.now() + 92 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
   const registrarMasiva = (sedeId) => {
-    const s = SEDES.find((x) => x.id === sedeId);
-    const cuadrilla = PERSONAL.filter((p) => p.sede === sedeId && p.estado === "vigente");
-    setEntregas((xs) => [
-      ...cuadrilla.map((p, i) => ({
-        id: xs.length + i + 1, dni: p.dni,
+    const s = db.sedes.find((x) => x.id === sedeId);
+    const cuadrilla = db.personal.filter((p) => p.sede === sedeId && p.estado === "vigente");
+    addEpp(
+      cuadrilla.map((p, i) => ({
+        id: Date.now() + i, dni: p.dni,
         items: "Guantes de nitrilo (2), Mascarilla (5), Uniforme (1)",
-        entrega: "2026-08-10", reposicion: "2026-11-10", estado: "vigente",
-      })),
-      ...xs,
-    ]);
+        entrega: hoy, reposicion: en3Meses, estado: "vigente",
+      }))
+    );
     setMasiva(false);
     setAviso(`Entrega masiva registrada para ${cuadrilla.length} trabajadores de ${s?.nombre}. Cada cargo entró al motor de acuses.`);
   };
@@ -72,38 +75,68 @@ export default function EPP() {
         </Table>
       </Card>
 
-      <Modal open={individual} onClose={() => setIndividual(false)} title="ADQ-06 · Registrar entrega de EPP">
-        <form onSubmit={(e) => { e.preventDefault(); setIndividual(false); setAviso("Entrega registrada. El cargo digital entró al motor de acuses."); }} className="space-y-4">
-          <Field label="Trabajador" required>
-            <Select>
-              {PERSONAL.filter((p) => p.estado === "vigente").map((p) => (
-                <option key={p.dni}>{p.nombre} — {p.dni}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Ítems entregados" required>
-            <Input placeholder="Ej. Guantes (2), Mascarilla (5), Botas talla 40 (1)" />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Fecha de entrega"><Input type="date" defaultValue="2026-08-10" /></Field>
-            <Field label="Reposición estimada"><Input type="date" defaultValue="2026-11-10" /></Field>
-          </div>
-          <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
-            <input type="checkbox" defaultChecked className="accent-petroleo" />
-            Generar cargo para acuse (activo por defecto)
-          </label>
-          <Button type="submit">Registrar entrega</Button>
-        </form>
-      </Modal>
+      <EntregaIndividual
+        open={individual}
+        onClose={() => setIndividual(false)}
+        personal={db.personal}
+        hoy={hoy}
+        reposicion={en3Meses}
+        onGuardar={(entrega) => {
+          addEpp([entrega]);
+          setIndividual(false);
+          setAviso("Entrega registrada. El cargo digital entró al motor de acuses.");
+        }}
+      />
 
       <EntregaMasiva open={masiva} onClose={() => setMasiva(false)} onRegistrar={registrarMasiva} />
     </>
   );
 }
 
+function EntregaIndividual({ open, onClose, personal, hoy, reposicion, onGuardar }) {
+  const vigentes = personal.filter((p) => p.estado === "vigente");
+  const [dni, setDni] = useState("");
+  const [items, setItems] = useState("");
+
+  const guardar = (e) => {
+    e.preventDefault();
+    if (!dni || !items.trim()) return;
+    onGuardar({ id: Date.now(), dni, items: items.trim(), entrega: hoy, reposicion, estado: "vigente" });
+    setDni(""); setItems("");
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="ADQ-06 · Registrar entrega de EPP">
+      <form onSubmit={guardar} className="space-y-4">
+        <Field label="Trabajador" required>
+          <Select value={dni} onChange={(e) => setDni(e.target.value)}>
+            <option value="">Elegir…</option>
+            {vigentes.map((p) => (
+              <option key={p.dni} value={p.dni}>{p.nombre} — {p.dni}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Ítems entregados" required>
+          <Input placeholder="Ej. Guantes (2), Mascarilla (5), Botas talla 40 (1)" value={items} onChange={(e) => setItems(e.target.value)} />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Fecha de entrega"><Input type="date" defaultValue={hoy} /></Field>
+          <Field label="Reposición estimada"><Input type="date" defaultValue={reposicion} /></Field>
+        </div>
+        <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
+          <input type="checkbox" defaultChecked className="accent-petroleo" />
+          Generar cargo para acuse (activo por defecto)
+        </label>
+        <Button type="submit" disabled={!dni || !items.trim()}>Registrar entrega</Button>
+      </form>
+    </Modal>
+  );
+}
+
 function EntregaMasiva({ open, onClose, onRegistrar }) {
+  const { db } = useApp();
   const [sedeId, setSedeId] = useState("");
-  const cuadrilla = sedeId ? PERSONAL.filter((p) => p.sede === sedeId && p.estado === "vigente").length : 0;
+  const cuadrilla = sedeId ? db.personal.filter((p) => p.sede === sedeId && p.estado === "vigente").length : 0;
 
   return (
     <Modal open={open} onClose={onClose} title="ADQ-06 · Entrega masiva por sede">
@@ -112,7 +145,7 @@ function EntregaMasiva({ open, onClose, onRegistrar }) {
         <Field label="Sede" required>
           <Select value={sedeId} onChange={(e) => setSedeId(e.target.value)}>
             <option value="">Elegir sede…</option>
-            {SEDES.map((s) => (
+            {db.sedes.map((s) => (
               <option key={s.id} value={s.id}>{s.nombre}</option>
             ))}
           </Select>

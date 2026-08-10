@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { AlertTriangle, FileDown, Paperclip } from "lucide-react";
+import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Field, Input, Textarea, Select, Note, Badge, Table, Td, Modal, Stat,
 } from "../../components/ui";
-import { MEMORANDUMS, PERSONAL, persona } from "../../data/mock";
 
 const ESTADOS = {
   emitido_sin_notificar: { tone: "alerta", label: "Emitido sin notificar" },
@@ -16,24 +16,26 @@ const ESTADOS = {
 
 // RRH-18 / RRH-19 — Emisión y bandeja de memorándums
 export default function Memorandums() {
+  const { db, persona, addMemo, resolverMemo } = useApp();
   const [emitir, setEmitir] = useState(false);
-  const [memos, setMemos] = useState(MEMORANDUMS);
   const [detalle, setDetalle] = useState(null);
   const [filtro, setFiltro] = useState("");
+  const memos = db.memorandums;
 
   const filas = memos.filter((m) => !filtro || m.estado === filtro);
 
   const emitirMemo = (datos) => {
     const correlativo = `01${43 + memos.length}-2026`;
-    setMemos((xs) => [
-      { id: correlativo, ...datos, emitido: "2026-08-10", notificado: null, vence: null, estado: "emitido_sin_notificar", descargo: null, resolucion: null },
-      ...xs,
-    ]);
+    addMemo({
+      id: correlativo, ...datos,
+      emitido: new Date().toISOString().slice(0, 10),
+      notificado: null, vence: null, estado: "emitido_sin_notificar", descargo: null, resolucion: null,
+    });
     setEmitir(false);
   };
 
   const resolver = (id, decision) => {
-    setMemos((xs) => xs.map((m) => (m.id === id ? { ...m, estado: "resuelto", resolucion: { fecha: "2026-08-10", decision } } : m)));
+    resolverMemo(id, { fecha: new Date().toISOString().slice(0, 10), decision });
     setDetalle(null);
   };
 
@@ -149,13 +151,14 @@ export default function Memorandums() {
 
 // RRH-18 — Emitir memorándum
 function EmitirMemo({ open, onClose, onEmitir, precarga }) {
+  const { db } = useApp();
   const [dni, setDni] = useState(precarga?.dni ?? "");
   const [tipo, setTipo] = useState("Llamada de atención");
   const [motivo, setMotivo] = useState(precarga?.motivo ?? "");
   const [articulo, setArticulo] = useState("Art. 12 RIT");
   const [plazoDias, setPlazoDias] = useState(5);
 
-  const vigentes = PERSONAL.filter((p) => p.estado === "vigente");
+  const vigentes = db.personal.filter((p) => p.estado === "vigente");
 
   return (
     <Modal open={open} onClose={onClose} title="RRH-18 · Emitir memorándum" wide>

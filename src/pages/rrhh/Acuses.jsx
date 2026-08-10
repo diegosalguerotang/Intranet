@@ -3,9 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Send, Camera } from "lucide-react";
 import { useApp } from "../../state";
 import {
-  PageHeader, Card, Stat, Table, Td, Badge, Button, Select, Note, Modal, Field, Input, Textarea,
+  PageHeader, Card, Stat, Table, Td, Badge, Button, Select, Note, Modal, Field, Input,
 } from "../../components/ui";
-import { ACUSES, LOTES, persona, sede, empresa } from "../../data/mock";
 
 const ESTADOS = {
   confirmado: { tone: "conf", label: "Confirmado" },
@@ -16,18 +15,17 @@ const ESTADOS = {
 
 // RRH-11 — Seguimiento de acuses
 export default function Acuses() {
-  const { empresaId } = useApp();
+  const { empresaId, db, persona, sede, registrarAcuseAsistido } = useApp();
   const [fEstado, setFEstado] = useState("");
   const [fSede, setFSede] = useState("");
-  const [asistido, setAsistido] = useState(null); // dni al que se registra acuse asistido
-  const [acuses, setAcuses] = useState(ACUSES);
+  const [asistido, setAsistido] = useState(null); // acuse al que se registra asistencia
   const [aviso, setAviso] = useState(null);
 
-  const lote = LOTES.find((l) => l.empresa === empresaId);
+  const lote = db.lotes.find((l) => l.empresa === empresaId);
 
   const filas = useMemo(
     () =>
-      acuses.filter((a) => {
+      db.acuses.filter((a) => {
         const p = persona(a.dni);
         return (
           p?.empresa === empresaId &&
@@ -35,7 +33,7 @@ export default function Acuses() {
           (!fSede || p.sede === fSede)
         );
       }),
-    [acuses, empresaId, fEstado, fSede]
+    [db.acuses, db.personal, empresaId, fEstado, fSede]
   );
 
   const counts = {
@@ -45,19 +43,14 @@ export default function Acuses() {
     nunca: filas.filter((a) => a.estado === "nunca_ingreso").length,
   };
 
-  const registrarAsistido = (dni, datos) => {
-    setAcuses((xs) =>
-      xs.map((a) =>
-        a.dni === dni
-          ? {
-              ...a, estado: "asistido", modalidad: "asistido", fecha: "2026-08-10 13:30",
-              supervisor: "Registro RRHH", motivo: datos.motivo, fechaEntrega: datos.fechaEntrega,
-              dispositivo: "Registrado desde BackOffice", ip: "—",
-              hash: "e4a9b1d7f3f1a9c7e2b8d4a6f0c5e1b7a9d3f8c2e6a4b0d9f1c7e3a5b8d2f6c0",
-            }
-          : a
-      )
-    );
+  const registrarAsistido = (acuse, datos) => {
+    registrarAcuseAsistido(acuse.dni, acuse.lote, {
+      estado: "asistido", modalidad: "asistido",
+      fecha: new Date().toISOString().slice(0, 16).replace("T", " "),
+      supervisor: "Registro RRHH", motivo: datos.motivo, fechaEntrega: datos.fechaEntrega,
+      dispositivo: "Registrado desde BackOffice", ip: "—",
+      hash: "e4a9b1d7f3f1a9c7e2b8d4a6f0c5e1b7a9d3f8c2e6a4b0d9f1c7e3a5b8d2f6c0",
+    });
     setAsistido(null);
     setAviso("Acuse asistido registrado. Queda marcado como modalidad asistida y nunca se mezcla con los acuses propios en los conteos.");
   };
@@ -123,7 +116,7 @@ export default function Acuses() {
                       Ver evidencia
                     </Link>
                   ) : (
-                    <Button variant="ghost" size="sm" onClick={() => setAsistido(a.dni)}>
+                    <Button variant="ghost" size="sm" onClick={() => setAsistido(a)}>
                       Registrar acuse asistido
                     </Button>
                   )}
@@ -134,21 +127,22 @@ export default function Acuses() {
         </Table>
       </Card>
 
-      <AcuseAsistido dni={asistido} onClose={() => setAsistido(null)} onRegistrar={registrarAsistido} />
+      <AcuseAsistido acuse={asistido} onClose={() => setAsistido(null)} onRegistrar={registrarAsistido} />
     </>
   );
 }
 
 // RRH-13 — Registrar acuse asistido
-function AcuseAsistido({ dni, onClose, onRegistrar }) {
+function AcuseAsistido({ acuse, onClose, onRegistrar }) {
+  const { persona } = useApp();
   const [motivo, setMotivo] = useState("Sin celular");
   const [fechaEntrega, setFechaEntrega] = useState("2026-08-10");
   const [foto, setFoto] = useState(false);
   const [declaro, setDeclaro] = useState(false);
-  const p = dni ? persona(dni) : null;
+  const p = acuse ? persona(acuse.dni) : null;
 
   return (
-    <Modal open={!!dni} onClose={onClose} title="RRH-13 · Registrar acuse asistido">
+    <Modal open={!!acuse} onClose={onClose} title="RRH-13 · Registrar acuse asistido">
       {p && (
         <div className="space-y-4">
           <Note tone="neutral">
@@ -183,7 +177,7 @@ function AcuseAsistido({ dni, onClose, onRegistrar }) {
             corresponde a su firma.
           </label>
           <div className="flex gap-2">
-            <Button disabled={!foto || !declaro} onClick={() => onRegistrar(dni, { motivo, fechaEntrega })}>
+            <Button disabled={!foto || !declaro} onClick={() => onRegistrar(acuse, { motivo, fechaEntrega })}>
               Registrar acuse
             </Button>
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>
@@ -197,9 +191,10 @@ function AcuseAsistido({ dni, onClose, onRegistrar }) {
 // RRH-12 — Constancia de entrega
 export function Constancia() {
   const { dni } = useParams();
-  const a = ACUSES.find((x) => x.dni === dni && (x.estado === "confirmado" || x.estado === "asistido"));
+  const { db, persona, empresaPor } = useApp();
+  const a = db.acuses.find((x) => x.dni === dni && (x.estado === "confirmado" || x.estado === "asistido"));
   const p = persona(dni);
-  const e = p ? empresa(p.empresa) : null;
+  const e = p ? empresaPor(p.empresa) : null;
 
   if (!a || !p) {
     return (
