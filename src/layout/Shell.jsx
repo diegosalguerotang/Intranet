@@ -2,6 +2,7 @@ import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, PieChart, LogOut, Building2,
+  UserCog, ShieldCheck, KeyRound, ScrollText,
 } from "lucide-react";
 import { useApp } from "../state";
 
@@ -21,6 +22,13 @@ const NAV_ADMIN = [
   { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05" },
   { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06" },
   { to: "/admin/costos", icon: PieChart, label: "Costo por sede", code: "ADQ-07" },
+];
+
+const NAV_ACCESOS = [
+  { to: "/accesos/usuarios", icon: UserCog, label: "Usuarios administrativos", code: "ACC-01" },
+  { to: "/accesos/perfiles", icon: ShieldCheck, label: "Perfiles", code: "ACC-03" },
+  { to: "/accesos/politica", icon: KeyRound, label: "Política de acceso", code: "ACC-05" },
+  { to: "/accesos/registro", icon: ScrollText, label: "Registro de accesos", code: "ACC-06" },
 ];
 
 function NavGroup({ title, items }) {
@@ -76,6 +84,7 @@ export default function Shell() {
         <nav className="flex-1 overflow-y-auto">
           <NavGroup title="Recursos Humanos" items={NAV_RRHH} />
           <NavGroup title="Administración" items={NAV_ADMIN} />
+          <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} />
         </nav>
 
         <div className="mt-4 border-t border-borde px-3 pt-4">

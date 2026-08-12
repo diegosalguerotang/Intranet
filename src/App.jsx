@@ -15,6 +15,11 @@ import Inventario from "./pages/admin/Inventario";
 import Lineas from "./pages/admin/Lineas";
 import EPP from "./pages/admin/EPP";
 import Costos from "./pages/admin/Costos";
+import Usuarios from "./pages/accesos/Usuarios";
+import Perfiles from "./pages/accesos/Perfiles";
+import PerfilEditor from "./pages/accesos/PerfilEditor";
+import Politica from "./pages/accesos/Politica";
+import RegistroAccesos from "./pages/accesos/RegistroAccesos";
 
 export default function App() {
   return (
@@ -38,6 +43,11 @@ export default function App() {
             <Route path="/admin/lineas" element={<Lineas />} />
             <Route path="/admin/epp" element={<EPP />} />
             <Route path="/admin/costos" element={<Costos />} />
+            <Route path="/accesos/usuarios" element={<Usuarios />} />
+            <Route path="/accesos/perfiles" element={<Perfiles />} />
+            <Route path="/accesos/perfiles/:id" element={<PerfilEditor />} />
+            <Route path="/accesos/politica" element={<Politica />} />
+            <Route path="/accesos/registro" element={<RegistroAccesos />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
