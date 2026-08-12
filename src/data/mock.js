@@ -17,7 +17,7 @@ export const SEDES = [
   { id: "ucv", empresa: "promant", nombre: "UCV — Lima Norte", cliente: "UCV", supervisor: "Ana Silva" },
 ];
 
-export const CARGOS = ["Operario de limpieza", "Supervisor de sede", "Técnico de mantenimiento", "Auxiliar de servicios", "Analista RRHH"];
+export const CARGOS = ["Operario de limpieza", "Supervisor de sede", "Técnico de mantenimiento", "Auxiliar de servicios", "Analista RRHH", "Jefe de RRHH"];
 
 export const PERSONAL = [
   { dni: "45231876", nombre: "Rosa Quispe Huamán", cargo: "Operario de limpieza", sede: "sunat", empresa: "negliaf", ingreso: "2023-03-01", celular: "987654321", portal: "activo", estado: "vigente", banco: "BCP", cuenta: "191-23456789-0-11" },
@@ -35,6 +35,8 @@ export const PERSONAL = [
   { dni: "46654387", nombre: "Ana Silva Cárdenas", cargo: "Supervisor de sede", sede: "ucv", empresa: "promant", ingreso: "2023-05-01", celular: "922334455", portal: "activo", estado: "vigente", banco: "Interbank", cuenta: "898-3005544332" },
   { dni: "48012765", nombre: "Víctor Salas Quiroz", cargo: "Operario de limpieza", sede: "essalud", empresa: "bremco", ingreso: "2024-06-01", celular: "933445566", portal: "activo", estado: "vigente", banco: "BBVA", cuenta: "0011-0987-06543210" },
   { dni: "39876120", nombre: "Gladys Ponce Aroni", cargo: "Operario de limpieza", sede: "sunat", empresa: "negliaf", ingreso: "2020-08-01", celular: "944556677", portal: "activo", estado: "cesado", cese: "2026-06-30", banco: "BCP", cuenta: "191-99887766-0-88" },
+  { dni: "40776655", nombre: "Diego Salguero Tang", cargo: "Jefe de RRHH", sede: "sunat", empresa: "negliaf", ingreso: "2020-01-15", celular: "999888777", portal: "activo", estado: "vigente", banco: "BCP", cuenta: "191-55667788-0-01" },
+  { dni: "40881122", nombre: "Karina Prado Salas", cargo: "Analista RRHH", sede: "sunat", empresa: "negliaf", ingreso: "2021-04-01", celular: "988776655", portal: "activo", estado: "vigente", banco: "Interbank", cuenta: "898-3007788990" },
 ];
 
 // Lote de boletas de julio 2026 (Caso 1)
@@ -129,6 +131,91 @@ export const AUDITORIA = [
   { fecha: "2026-08-10 09:12", usuario: "D. Salguero", rol: "Jefe RRHH", accion: "Publicación de lote", entidad: "BOL-NEG-202607-001", ip: "200.48.12.5" },
   { fecha: "2026-08-10 08:55", usuario: "K. Prado", rol: "Analista RRHH", accion: "Consulta de legajo", entidad: "DNI 45231876", ip: "200.48.12.8" },
   { fecha: "2026-08-09 17:30", usuario: "J. Mamani", rol: "Supervisor", accion: "Acuse asistido", entidad: "DNI 41887203 · Boleta jul-26", ip: "181.65.44.2" },
+];
+
+// ---- Accesos y Roles (ACC-01…ACC-06) ----
+// Perfiles sugeridos del Anexo A. La matriz es {modulo: nivel 0..3};
+// un perfil con esSuperadmin=true no lleva matriz (se ignora completa).
+
+export const PERFILES = [
+  { id: "superadmin", version: 1, nombre: "Superadministrador",
+    descripcion: "Control total del grupo. La marca ignora la matriz y el alcance.",
+    esSuperadmin: true, verRemuneracion: false, verDocumentosTerceros: false, exportarDatosPersonales: false,
+    estado: "activo", matriz: {}, usuarios: 1, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+  { id: "rrhh-operativo", version: 1, nombre: "RRHH operativo",
+    descripcion: "Opera los módulos de RRHH del día a día, sin aprobaciones.",
+    esSuperadmin: false, verRemuneracion: false, verDocumentosTerceros: false, exportarDatosPersonales: false,
+    estado: "activo",
+    matriz: { personal: 2, boletas: 2, acuses: 2, comunicados: 2, memorandums: 2, contratos: 2, tardanzas: 2, activos: 1, accesos: 0, auditoria: 0, configuracion: 1 },
+    usuarios: 1, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+  { id: "jefatura-rrhh", version: 1, nombre: "Jefatura de RRHH",
+    descripcion: "Opera y aprueba en los módulos de RRHH. Ve remuneración y exporta datos personales.",
+    esSuperadmin: false, verRemuneracion: true, verDocumentosTerceros: true, exportarDatosPersonales: true,
+    estado: "activo",
+    matriz: { personal: 3, boletas: 3, acuses: 2, comunicados: 3, memorandums: 3, contratos: 3, tardanzas: 2, activos: 1, accesos: 0, auditoria: 0, configuracion: 1 },
+    usuarios: 0, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+  { id: "administracion", version: 1, nombre: "Administración",
+    descripcion: "Gestiona activos, equipos y EPP de todo el grupo.",
+    esSuperadmin: false, verRemuneracion: false, verDocumentosTerceros: false, exportarDatosPersonales: false,
+    estado: "activo",
+    matriz: { personal: 1, boletas: 0, acuses: 0, comunicados: 0, memorandums: 0, contratos: 0, tardanzas: 0, activos: 3, accesos: 0, auditoria: 0, configuracion: 1 },
+    usuarios: 0, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+  { id: "supervisor-sede", version: 1, nombre: "Supervisor de sede",
+    descripcion: "Registra acuses asistidos y consulta su cuadrilla, sin ver el contenido de las boletas.",
+    esSuperadmin: false, verRemuneracion: false, verDocumentosTerceros: false, exportarDatosPersonales: false,
+    estado: "activo",
+    matriz: { personal: 1, boletas: 0, acuses: 2, comunicados: 1, memorandums: 0, contratos: 0, tardanzas: 0, activos: 0, accesos: 0, auditoria: 0, configuracion: 0 },
+    usuarios: 2, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+  { id: "auditor", version: 1, nombre: "Auditor",
+    descripcion: "Solo lectura en los once módulos, con exportación de datos personales.",
+    esSuperadmin: false, verRemuneracion: false, verDocumentosTerceros: false, exportarDatosPersonales: true,
+    estado: "activo",
+    matriz: { personal: 1, boletas: 1, acuses: 1, comunicados: 1, memorandums: 1, contratos: 1, tardanzas: 1, activos: 1, accesos: 1, auditoria: 1, configuracion: 1 },
+    usuarios: 0, modificado: "2026-08-12 09:00", modificadoPor: "Sistema" },
+];
+
+export const PERFIL_VERSIONES = PERFILES.map((p) => ({
+  perfilId: p.id, version: 1, nombre: p.nombre, esSuperadmin: p.esSuperadmin,
+  matriz: p.matriz, creado: "2026-08-12 09:00", por: "Sistema",
+}));
+
+export const USUARIOS_ADMIN = [
+  { id: 1, dni: "40776655", nombre: "Diego Salguero Tang", perfil: "superadmin", perfilNombre: "Superadministrador",
+    esSuperadmin: true, correo: "dsalguero@grupoer.pe", celular: "999888777", estado: "activo",
+    empresas: [], sedes: [], ultimoIngreso: "2026-08-12 08:45", nuncaIngreso: false, inconsistencia: false,
+    cargo: "Jefe de RRHH", sede: "sunat", empresa: "negliaf", creado: "2026-08-01" },
+  { id: 2, dni: "40881122", nombre: "Karina Prado Salas", perfil: "rrhh-operativo", perfilNombre: "RRHH operativo",
+    esSuperadmin: false, correo: "kprado@grupoer.pe", celular: "988776655", estado: "activo",
+    empresas: ["negliaf", "bremco", "promant", "lamericana"], sedes: [], ultimoIngreso: "2026-08-11 17:20",
+    nuncaIngreso: false, inconsistencia: false, cargo: "Analista RRHH", sede: "sunat", empresa: "negliaf", creado: "2026-08-01" },
+  { id: 3, dni: "40125634", nombre: "Julio Mamani Apaza", perfil: "supervisor-sede", perfilNombre: "Supervisor de sede",
+    esSuperadmin: false, correo: null, celular: "912345678", estado: "activo",
+    empresas: ["negliaf"], sedes: ["sunat", "migraciones"], ultimoIngreso: "2026-08-09 17:30",
+    nuncaIngreso: false, inconsistencia: false, cargo: "Supervisor de sede", sede: "migraciones", empresa: "negliaf", creado: "2026-08-02" },
+  { id: 4, dni: "43906712", nombre: "Carmen Torres Vega", perfil: "supervisor-sede", perfilNombre: "Supervisor de sede",
+    esSuperadmin: false, correo: "ctorres@grupoer.pe", celular: "934567812", estado: "activo",
+    empresas: ["negliaf"], sedes: ["minedu", "ins"], ultimoIngreso: null,
+    nuncaIngreso: true, inconsistencia: false, cargo: "Supervisor de sede", sede: "minedu", empresa: "negliaf", creado: "2026-08-10" },
+];
+
+// Fila única: la política rige para toda la instalación.
+export const POLITICA_ACCESO = [{
+  sesionBackofficeHoras: 8, sesionPortalDias: 30,
+  multisesionBackoffice: false, multisesionPortal: true,
+  intentosBloqueo: 5, bloqueoMinutos: 15,
+  recuperacionDefecto: "whatsapp", claveLongitudMin: 8, claveProvisionalDias: 7,
+  actualizado: null, actualizadoPor: null,
+}];
+
+export const REGISTRO_ACCESOS = [
+  { id: 8, fecha: "2026-08-12 08:45", usuario: "Diego Salguero Tang", perfil: "Superadministrador", superficie: "backoffice", resultado: "exitoso", ip: "200.48.12.5", dispositivo: "Windows · Chrome", empresa: "negliaf" },
+  { id: 7, fecha: "2026-08-11 19:02", usuario: "Rosa Quispe Huamán", perfil: "Portal del Trabajador", superficie: "portal", resultado: "exitoso", ip: "181.65.212.44", dispositivo: "Android 12 · Chrome Mobile", empresa: "negliaf" },
+  { id: 6, fecha: "2026-08-11 17:20", usuario: "Karina Prado Salas", perfil: "RRHH operativo", superficie: "backoffice", resultado: "exitoso", ip: "200.48.12.8", dispositivo: "Windows · Edge", empresa: "negliaf" },
+  { id: 5, fecha: "2026-08-11 12:44", usuario: "Karina Prado Salas", perfil: "RRHH operativo", superficie: "backoffice", resultado: "fallido", ip: "200.48.12.8", dispositivo: "Windows · Edge", empresa: "negliaf" },
+  { id: 4, fecha: "2026-08-10 21:15", usuario: "Miguel Paredes Luna", perfil: "Portal del Trabajador", superficie: "portal", resultado: "fallido", ip: "190.42.77.31", dispositivo: "Android 10 · Chrome Mobile", empresa: "negliaf" },
+  { id: 3, fecha: "2026-08-10 21:18", usuario: "Miguel Paredes Luna", perfil: "Portal del Trabajador", superficie: "portal", resultado: "bloqueado", ip: "190.42.77.31", dispositivo: "Android 10 · Chrome Mobile", empresa: "negliaf" },
+  { id: 2, fecha: "2026-08-09 17:30", usuario: "Julio Mamani Apaza", perfil: "Supervisor de sede", superficie: "backoffice", resultado: "exitoso", ip: "181.65.44.2", dispositivo: "Android 12 · Chrome Mobile", empresa: "negliaf" },
+  { id: 1, fecha: "2026-08-09 07:58", usuario: "Víctor Salas Quiroz", perfil: "Portal del Trabajador", superficie: "portal", resultado: "exitoso", ip: "201.230.14.9", dispositivo: "Android 13 · Chrome Mobile", empresa: "bremco" },
 ];
 
 export const persona = (dni) => PERSONAL.find((p) => p.dni === dni);
