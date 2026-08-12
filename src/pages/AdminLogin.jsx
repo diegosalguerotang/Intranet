@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Mail, KeyRound } from "lucide-react";
 import { useApp } from "../state";
-import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr } from "../lib/supabase";
+import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas } from "../lib/supabase";
 import { Note } from "../components/ui";
 
 // Puerta del BackOffice (/admin/login): correo + clave contra Supabase Auth.
@@ -43,7 +43,7 @@ export default function AdminLogin() {
         const esRed = !errAuth.status || errAuth.status === 0 || errAuth.status >= 500;
         if (esRed) {
           // Diagnóstico de canales: qué transporte funciona en ESTE navegador.
-          const diag = ["v6"];
+          const diag = ["v7"];
           const probar = async (nombre, fn) => {
             try {
               const r = await fn(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: supabaseAnonKey } });
@@ -55,6 +55,14 @@ export default function AdminLogin() {
           await probar("fetchGlobal", (...a) => window.fetch(...a));
           await probar("fetchIframe", fetchNativo);
           await probar("xhr", fetchXhr);
+          // XHR sin ninguna cabecera, clave solo por URL (inmune a interceptores)
+          try {
+            const r = await fetchXhr(`${supabaseUrl}/auth/v1/health?apikey=${encodeURIComponent(supabaseAnonKey)}`, {});
+            diag.push(`xhrUrl:${r.status}`);
+          } catch (e) {
+            diag.push(`xhrUrl:ERR(${(e.message ?? "?").slice(0, 40)})`);
+          }
+          if (cabecerasFallidas.size) diag.push(`cabecerasBloqueadas:[${[...cabecerasFallidas].join(",")}]`);
           setError(`No hay conexión con el servidor de autenticación. ${errAuth.name ?? "?"}: ${errAuth.message ?? "?"} · Diagnóstico: ${diag.join(" · ")}`);
           return;
         }
@@ -146,7 +154,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v6-autocurable
+              Todo intento de ingreso queda registrado. · v7-autocurable
             </p>
           </form>
         </div>

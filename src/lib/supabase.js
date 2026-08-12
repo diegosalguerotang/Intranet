@@ -38,13 +38,19 @@ function obtenerFetchNativo() {
 // mínimo que supabase-js necesita de la interfaz fetch.
 export function fetchXhr(input, init = {}) {
   return new Promise((resolve, reject) => {
-    const destino = typeof input === "string" ? input : input.url;
-    const x = new XMLHttpRequest();
-    x.open(init.method ?? "GET", destino);
+    let destino = typeof input === "string" ? input : input.url;
     const h = init.headers ?? {};
     const pares = h instanceof Headers ? [...h.entries()] : Array.isArray(h) ? h : Object.entries(h);
+    // La clave API viaja TAMBIÉN por URL: Supabase la acepta ahí, y así
+    // sobrevive a interceptores que eliminan o corrompen cabeceras.
+    const apikey = pares.find(([k]) => k.toLowerCase() === "apikey")?.[1];
+    if (apikey && !destino.includes("apikey=")) {
+      destino += (destino.includes("?") ? "&" : "?") + "apikey=" + encodeURIComponent(apikey);
+    }
+    const x = new XMLHttpRequest();
+    x.open(init.method ?? "GET", destino);
     for (const [k, v] of pares) {
-      try { x.setRequestHeader(k, v); } catch { /* cabecera inválida: se omite */ }
+      try { x.setRequestHeader(k, v); } catch { cabecerasFallidas.add(k); }
     }
     x.onload = () => {
       const cab = new Headers();
@@ -62,15 +68,23 @@ export function fetchXhr(input, init = {}) {
 
 export const fetchNativo = obtenerFetchNativo();
 
-// Autorreparación: si el canal fetch está roto por un interceptor (cabeceras
-// corruptas → TypeError síncrono), se conmuta a XHR de forma permanente.
+// Registro de cabeceras que un interceptor impidió establecer (diagnóstico).
+export const cabecerasFallidas = new Set();
+
+// Autorreparación: si el canal fetch está roto por un interceptor, se conmuta
+// a XHR de forma permanente. OJO: el error puede venir de otro realm (iframe
+// o content script), así que se decide por el MENSAJE, nunca por instanceof.
+const esFetchRoto = (e) =>
+  /ISO-8859-1|Failed to read the 'headers'|Failed to execute 'fetch'|Failed to fetch|NetworkError|Load failed/i
+    .test(e?.message ?? "");
+
 let usarXhr = false;
 async function fetchRobusto(input, init) {
   if (usarXhr) return fetchXhr(input, init);
   try {
     return await fetchNativo(input, init);
   } catch (e) {
-    if (e instanceof TypeError && /ISO-8859-1|headers|Failed to fetch/i.test(e.message ?? "")) {
+    if (esFetchRoto(e)) {
       usarXhr = true;
       return fetchXhr(input, init);
     }
