@@ -49,9 +49,21 @@ const LOCAL = {
   registroAccesos: MOCK.REGISTRO_ACCESOS,
 };
 
+// MODO DEMO temporal (pedido de Diego, 2026-08-12): entra directo como
+// superadministrador sin pasar por /admin/login, mientras se resuelve el
+// interceptor de su navegador que corrompe las peticiones (ver AdminLogin).
+// Poner en false para reactivar el login real: toda la maquinaria de
+// autenticación (Supabase Auth, bitácora, bloqueo, cambio de clave) queda
+// intacta y verificada.
+const MODO_DEMO = true;
+const USUARIO_DEMO = {
+  id: 0, nombre: "Diego Salguero Tang", rol: "Superadministrador · demo",
+  correo: "diegosalguerotang@gmail.com", esSuperadmin: true, requiereCambio: false,
+};
+
 export function AppProvider({ children }) {
   // undefined = verificando sesión · null = sin sesión · objeto = autenticado
-  const [user, setUser] = useState(supabaseListo ? undefined : null);
+  const [user, setUser] = useState(MODO_DEMO ? USUARIO_DEMO : supabaseListo ? undefined : null);
   const [empresaId, setEmpresaId] = useState("negliaf");
   const [db, setDb] = useState(LOCAL);
   const [origen, setOrigen] = useState("local"); // "supabase" | "local"
@@ -80,7 +92,7 @@ export function AppProvider({ children }) {
   // del padrón de usuarios administrativos. Tener cuenta en el proveedor no
   // basta: sin fila activa en usuarios_admin, se expulsa.
   useEffect(() => {
-    if (!supabaseListo) return;
+    if (MODO_DEMO || !supabaseListo) return;
     let activo = true;
     const resolver = async (session) => {
       const email = session?.user?.email;
@@ -106,6 +118,7 @@ export function AppProvider({ children }) {
   }, []);
 
   const salir = async () => {
+    if (MODO_DEMO) return; // en demo no hay sesión que cerrar
     if (supabaseListo) await supabase.auth.signOut();
     setUser(null);
   };
