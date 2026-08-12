@@ -444,6 +444,22 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- RLS (misma política demo permisiva de schema.sql; se endurecerá con
+-- Supabase Auth) y defensa extra sobre el registro inmutable
+-- ---------------------------------------------------------------------------
+do $$
+declare t text;
+begin
+  foreach t in array array['perfiles','perfil_permisos','usuarios_admin',
+    'usuario_alcance_empresa','usuario_alcance_sede','politica_acceso','registro_accesos']
+  loop
+    execute format('alter table %I enable row level security', t);
+    execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
+  end loop;
+end $$;
+revoke update, delete on registro_accesos from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
 -- VISTAS DE LECTURA (contrato de datos con la interfaz)
 -- ---------------------------------------------------------------------------
 create view v_perfiles as

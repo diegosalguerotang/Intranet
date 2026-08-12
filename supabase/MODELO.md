@@ -3,6 +3,11 @@
 Basado en la **Arquitectura Funcional v1.0**. Este documento explica las decisiones
 estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 
+> **Orden de aplicación en un reset:** primero `schema.sql` (esquema base) y
+> después `accesos.sql` (módulo de Accesos y Roles). El segundo depende de
+> `personas`, `empresas`, `sedes`, `vinculos`, `fn_bloquear_cambios` y
+> `fn_auditar`.
+
 ## Principios (no negociables)
 
 1. **Persona ≠ Vínculo.** La `persona` es única por DNI y persiste para siempre.
@@ -80,6 +85,59 @@ demostración (`acceso_demo`). Cuando entre Supabase Auth:
 
 Los registros probatorios (`acuses`, `descargos`, `auditoria`) ya están
 protegidos hoy: triggers de inmutabilidad + REVOKE de UPDATE/DELETE.
+
+## Accesos y Roles (`accesos.sql`, pantallas ACC-01…ACC-06)
+
+Especificado en «Módulo de Accesos y Roles v1.0» (absorbe ADM-03, que queda
+liberado). Tres piezas y una marca:
+
+- **Perfil** (`perfiles` + `perfil_permisos`): dice **qué** puede hacer
+  alguien, nunca sobre quiénes. Es del Grupo (no se filtra por empresa).
+  **Versionado**: PK `(id, version)`; cada guardado inserta una versión nueva
+  (`guardar_perfil` devuelve la versión) y las anteriores no se tocan, de modo
+  que la auditoría puede responder "qué permisos tenía este usuario el día que
+  hizo esto". Los usuarios asignados pasan a la versión nueva en el mismo
+  guardado (efecto en la siguiente petición, no en el siguiente ingreso).
+  Niveles 0–3 acumulativos; el nivel 3 solo existe en los 8 módulos con algo
+  que aprobar (CHECK `nivel_3_solo_con_aprobacion`). Tres casillas especiales
+  transversales (remuneración, documentos de terceros, exportación de datos
+  personales) como booleanos del perfil.
+- **Alcance** (`usuario_alcance_empresa` / `usuario_alcance_sede`): vive en el
+  usuario, no en el perfil, y **solo restringe**. Sin filas de sede = todas
+  las sedes de las empresas asignadas.
+- **Usuario administrativo** (`usuarios_admin`): siempre referencia una
+  `persona` existente (FK) — toda acción lleva el nombre de quien la ejecutó.
+  Clave provisional de un solo uso con registro de cómo se entregó
+  (`correo` / `pantalla`).
+- **Superadministrador**: una **marca** del perfil, no un nivel. Ignora matriz
+  y alcance.
+
+**Invariantes garantizados por el esquema** (verificados contra el proyecto):
+
+| Invariante | Mecanismo |
+|---|---|
+| Siempre queda ≥ 1 superadministrador activo | trigger `fn_proteger_ultimo_superadmin` |
+| Un perfil superadmin no lleva matriz | trigger `fn_superadmin_sin_matriz` |
+| Nombre de perfil único en el sistema | trigger `fn_perfil_nombre_unico` |
+| `registro_accesos` inmutable para todos | trigger `fn_bloquear_cambios` + REVOKE update/delete |
+| Perfil en uso no se elimina | FK desde `usuarios_admin`; `desactivar_perfil` solo cambia estado |
+
+**Evaluación del permiso**: la función `puede(usuario, modulo, nivel, empresa,
+sede)` implementa la regla única de la spec (estado → marca → nivel → alcance)
+y queda lista para conectarse a Supabase Auth + RLS. Hasta entonces el login
+demo no restringe la navegación del BackOffice; el módulo administra los datos.
+
+**Política de acceso** (`politica_acceso`): fila única (CHECK `id = 1`) con
+las reglas de sesión/bloqueo/claves por superficie; `guardar_politica`
+registra autor y momento, y el trigger de auditoría conserva valor anterior y
+nuevo. **Registro de accesos** (`registro_accesos`): corte especializado de la
+auditoría con `perfil_version` vigente al momento del ingreso; cubre Portal y
+BackOffice.
+
+Herramientas: `scripts/aplicar-sql.mjs` (Management API vía Node; el token de
+la CLI se carga con `scripts/token-supabase.ps1` desde el Administrador de
+credenciales) y `scripts/verificar-*.sql|mjs` (verificaciones positivas,
+negativas y E2E con la clave publishable).
 
 ## Pendientes de modelado (marcados POR DEFINIR en los documentos)
 
