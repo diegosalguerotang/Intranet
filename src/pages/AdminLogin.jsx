@@ -37,6 +37,14 @@ export default function AdminLogin() {
       }
       const { error: errAuth } = await supabase.auth.signInWithPassword({ email, password: clave });
       if (errAuth) {
+        // Un fallo de RED no es una credencial mal escrita: decir "usuario o
+        // clave incorrectos" cuando el servidor nunca respondió despista al
+        // usuario y no deja rastro en ACC-06.
+        const esRed = !errAuth.status || errAuth.status === 0 || errAuth.status >= 500;
+        if (esRed) {
+          setError("No hay conexión con el servidor de autenticación. Revisa tu red (o si un antivirus/proxy bloquea supabase.co) y vuelve a intentarlo.");
+          return;
+        }
         await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
         setError(MENSAJE_UNICO);
         return;
