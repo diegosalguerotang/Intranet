@@ -1,4 +1,7 @@
 {
   "framework": "vite",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/supa/:path*", "destination": "https://mzpbdkrmokfxrrsotfgs.supabase.co/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
