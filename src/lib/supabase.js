@@ -15,3 +15,4 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "sb_publishable_qgPwZ8
 // Si aún no hay clave configurada, la app funciona con los datos de demostración locales.
 export const supabaseListo = anonKey !== "__ANON_KEY__";
 export const supabase = supabaseListo ? createClient(url, anonKey) : null;
+export const supabaseUrl = url;

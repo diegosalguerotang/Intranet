@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Mail, KeyRound } from "lucide-react";
 import { useApp } from "../state";
-import { supabase, supabaseListo } from "../lib/supabase";
+import { supabase, supabaseListo, supabaseUrl } from "../lib/supabase";
 import { Note } from "../components/ui";
 
 // Puerta del BackOffice (/admin/login): correo + clave contra Supabase Auth.
@@ -42,7 +42,7 @@ export default function AdminLogin() {
         // usuario y no deja rastro en ACC-06.
         const esRed = !errAuth.status || errAuth.status === 0 || errAuth.status >= 500;
         if (esRed) {
-          setError("No hay conexión con el servidor de autenticación. Revisa tu red (o si un antivirus/proxy bloquea supabase.co) y vuelve a intentarlo.");
+          setError(`No hay conexión con el servidor de autenticación. Detalle técnico: ${errAuth.name ?? "?"} · ${errAuth.message ?? "?"} · servidor: ${supabaseUrl}`);
           return;
         }
         await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
@@ -133,7 +133,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado.
+              Todo intento de ingreso queda registrado. · v4-proxy
             </p>
           </form>
         </div>
