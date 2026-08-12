@@ -17,6 +17,7 @@ drop table if exists registro_accesos, usuario_alcance_sede,
 drop function if exists guardar_perfil, desactivar_perfil, crear_usuario_admin,
   actualizar_usuario_admin, suspender_usuario_admin, reactivar_usuario_admin,
   reenviar_clave, guardar_politica, puede,
+  verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
   fn_perfil_nombre_unico, fn_superadmin_sin_matriz,
   fn_proteger_ultimo_superadmin cascade;
 
@@ -91,6 +92,7 @@ create table usuarios_admin (
   estado         text not null default 'activo' check (estado in ('activo','suspendido')),
   clave_provisional text,
   clave_entregada   text check (clave_entregada in ('correo','pantalla')),
+  requiere_cambio_clave boolean not null default false,
   ultimo_ingreso timestamptz,
   creado_por     text not null,
   creado_en      timestamptz not null default now(),
@@ -150,7 +152,10 @@ create table politica_acceso (
   bloqueo_minutos         int not null default 15 check (bloqueo_minutos > 0),
   recuperacion_defecto    text not null default 'whatsapp'
     check (recuperacion_defecto in ('whatsapp','sms','manual')),
-  clave_longitud_min      int not null default 8 check (clave_longitud_min >= 6),
+  -- Longitud mínima DIFERENCIADA (Cierre de Acceso v1.0): el operario tipea
+  -- en celulares de gama baja; el usuario administrativo no tiene esa excusa.
+  clave_longitud_min_portal     int not null default 6  check (clave_longitud_min_portal >= 6),
+  clave_longitud_min_backoffice int not null default 12 check (clave_longitud_min_backoffice >= 12),
   clave_provisional_dias  int not null default 7 check (clave_provisional_dias > 0),
   actualizado_por text,
   actualizado_en  timestamptz
@@ -164,6 +169,7 @@ create table registro_accesos (
   id             bigint generated always as identity primary key,
   usuario_id     bigint references usuarios_admin(id),
   dni            text,                                -- ingreso por Portal (trabajador)
+  correo         text,                                -- intento por BackOffice (aun inexistente)
   perfil_id      text,
   perfil_version integer,                             -- perfil VIGENTE en ese momento
   superficie     text not null check (superficie in ('portal','backoffice')),
@@ -305,22 +311,64 @@ create function guardar_politica(
   p_backoffice_horas int, p_portal_dias int,
   p_multisesion_backoffice boolean, p_multisesion_portal boolean,
   p_intentos int, p_bloqueo_min int, p_recuperacion text,
-  p_clave_min int, p_provisional_dias int, p_por text
+  p_clave_min_portal int, p_clave_min_backoffice int,
+  p_provisional_dias int, p_por text
 ) returns void language plpgsql security definer as $$
 begin
   update politica_acceso
-  set sesion_backoffice_horas = p_backoffice_horas,
-      sesion_portal_dias      = p_portal_dias,
-      multisesion_backoffice  = p_multisesion_backoffice,
-      multisesion_portal      = p_multisesion_portal,
-      intentos_bloqueo        = p_intentos,
-      bloqueo_minutos         = p_bloqueo_min,
-      recuperacion_defecto    = p_recuperacion,
-      clave_longitud_min      = p_clave_min,
-      clave_provisional_dias  = p_provisional_dias,
-      actualizado_por         = p_por,
-      actualizado_en          = now()
+  set sesion_backoffice_horas       = p_backoffice_horas,
+      sesion_portal_dias            = p_portal_dias,
+      multisesion_backoffice        = p_multisesion_backoffice,
+      multisesion_portal            = p_multisesion_portal,
+      intentos_bloqueo              = p_intentos,
+      bloqueo_minutos               = p_bloqueo_min,
+      recuperacion_defecto          = p_recuperacion,
+      clave_longitud_min_portal     = p_clave_min_portal,
+      clave_longitud_min_backoffice = p_clave_min_backoffice,
+      clave_provisional_dias        = p_provisional_dias,
+      actualizado_por               = p_por,
+      actualizado_en                = now()
   where id = 1;
+end $$;
+
+-- Bloqueo por intentos fallidos (ACC-05): fallidos consecutivos posteriores
+-- al último ingreso exitoso, dentro de la ventana de bloqueo.
+create function verificar_bloqueo(p_correo text) returns boolean
+language plpgsql stable security definer as $$
+declare pol politica_acceso%rowtype; ultimo_ok timestamptz; fallidos int;
+begin
+  select * into pol from politica_acceso where id = 1;
+  select max(fecha) into ultimo_ok from registro_accesos
+  where correo = p_correo and resultado = 'exitoso';
+  select count(*) into fallidos from registro_accesos
+  where correo = p_correo and resultado = 'fallido'
+    and fecha > now() - make_interval(mins => pol.bloqueo_minutos)
+    and (ultimo_ok is null or fecha > ultimo_ok);
+  return fallidos >= pol.intentos_bloqueo;
+end $$;
+
+-- Bitácora de login del BackOffice: registra TODO intento (incluidos correos
+-- inexistentes, con usuario_id nulo) y actualiza ultimo_ingreso si fue exitoso.
+create function registrar_ingreso(p_correo text, p_resultado text, p_dispositivo text)
+returns void language plpgsql security definer as $$
+declare u usuarios_admin%rowtype;
+begin
+  select * into u from usuarios_admin where correo = p_correo;
+  insert into registro_accesos (usuario_id, dni, correo, perfil_id, perfil_version,
+                                superficie, resultado, ip, dispositivo)
+  values (u.id, u.persona_dni, p_correo, u.perfil_id, u.perfil_version,
+          'backoffice', p_resultado, null, p_dispositivo);
+  if p_resultado = 'exitoso' and u.id is not null then
+    update usuarios_admin set ultimo_ingreso = now() where id = u.id;
+  end if;
+end $$;
+
+create function marcar_clave_cambiada(p_correo text) returns void
+language plpgsql security definer as $$
+begin
+  update usuarios_admin
+  set requiere_cambio_clave = false, clave_provisional = null
+  where correo = p_correo;
 end $$;
 
 -- LA regla de evaluación (una sola, aplica en todas partes). Queda lista para
@@ -495,6 +543,7 @@ select u.id, u.persona_dni as dni, pe.nombre,
        u.perfil_id as perfil, pf.nombre as "perfilNombre",
        pf.es_superadmin as "esSuperadmin",
        u.correo, u.celular, u.estado,
+       u.requiere_cambio_clave as "requiereCambio",
        coalesce((select jsonb_agg(a.empresa_id) from usuario_alcance_empresa a
                  where a.usuario_id = u.id), '[]'::jsonb) as empresas,
        coalesce((select jsonb_agg(a.sede_id) from usuario_alcance_sede a
@@ -519,7 +568,8 @@ select sesion_backoffice_horas as "sesionBackofficeHoras",
        intentos_bloqueo        as "intentosBloqueo",
        bloqueo_minutos         as "bloqueoMinutos",
        recuperacion_defecto    as "recuperacionDefecto",
-       clave_longitud_min      as "claveLongitudMin",
+       clave_longitud_min_portal     as "claveLongitudMinPortal",
+       clave_longitud_min_backoffice as "claveLongitudMinBackoffice",
        clave_provisional_dias  as "claveProvisionalDias",
        to_char(actualizado_en, 'YYYY-MM-DD HH24:MI') as actualizado,
        actualizado_por as "actualizadoPor"
@@ -528,8 +578,9 @@ from politica_acceso where id = 1;
 create view v_registro_accesos as
 select r.id,
        to_char(r.fecha, 'YYYY-MM-DD HH24:MI') as fecha,
-       coalesce(pe.nombre, r.dni, '—') as usuario,
-       coalesce(pf.nombre, 'Portal del Trabajador') as perfil,   -- versión vigente AL MOMENTO
+       coalesce(pe.nombre, r.dni, r.correo, '—') as usuario,
+       coalesce(pf.nombre, case when r.superficie = 'portal'
+                then 'Portal del Trabajador' else '—' end) as perfil,   -- versión vigente AL MOMENTO
        r.superficie, r.resultado, r.ip, r.dispositivo,
        vi.empresa_id as empresa
 from registro_accesos r
