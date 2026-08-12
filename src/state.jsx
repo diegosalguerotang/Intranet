@@ -21,6 +21,11 @@ const FUENTES = {
   activos: "v_activos",
   lineas: "lineas",
   epp_entregas: "v_epp_entregas",
+  perfiles: "v_perfiles",
+  perfilVersiones: "v_perfil_versiones",
+  usuariosAdmin: "v_usuarios_admin",
+  politica: "v_politica_acceso",
+  registroAccesos: "v_registro_accesos",
 };
 
 const LOCAL = {
@@ -37,6 +42,11 @@ const LOCAL = {
   activos: MOCK.ACTIVOS,
   lineas: MOCK.LINEAS,
   epp_entregas: MOCK.EPP_ENTREGAS,
+  perfiles: MOCK.PERFILES,
+  perfilVersiones: MOCK.PERFIL_VERSIONES,
+  usuariosAdmin: MOCK.USUARIOS_ADMIN,
+  politica: MOCK.POLITICA_ACCESO,
+  registroAccesos: MOCK.REGISTRO_ACCESOS,
 };
 
 export function AppProvider({ children }) {
@@ -140,6 +150,63 @@ export function AppProvider({ children }) {
           recargar("lineas");
         });
       }
+    },
+    // ---- Accesos y Roles ----
+    guardarPerfil: (perfil) => {
+      const previa = db.perfiles.find((p) => p.id === perfil.id);
+      const version = (previa?.version ?? 0) + 1;
+      const ahora = new Date().toISOString().slice(0, 16).replace("T", " ");
+      const autor = user?.nombre ?? "BackOffice";
+      const fila = { ...perfil, version, estado: "activo", usuarios: previa?.usuarios ?? 0, modificado: ahora, modificadoPor: autor };
+      local("perfiles", (xs) => [fila, ...xs.filter((p) => p.id !== perfil.id)]);
+      local("perfilVersiones", (xs) => [{ perfilId: perfil.id, version, nombre: perfil.nombre, esSuperadmin: perfil.esSuperadmin, matriz: perfil.matriz, creado: ahora, por: autor }, ...xs]);
+      rpc("guardar_perfil", {
+        p_id: perfil.id, p_nombre: perfil.nombre, p_descripcion: perfil.descripcion,
+        p_superadmin: perfil.esSuperadmin, p_ver_remuneracion: perfil.verRemuneracion,
+        p_ver_documentos: perfil.verDocumentosTerceros, p_exportar: perfil.exportarDatosPersonales,
+        p_matriz: perfil.matriz, p_por: autor,
+      }, "perfiles", "perfilVersiones", "usuariosAdmin");
+    },
+    desactivarPerfil: (id) => {
+      local("perfiles", (xs) => xs.map((p) => (p.id === id ? { ...p, estado: "desactivado" } : p)));
+      rpc("desactivar_perfil", { p_id: id }, "perfiles");
+    },
+    crearUsuarioAdmin: (u) => {
+      local("usuariosAdmin", (xs) => [{ ...u, id: Math.max(0, ...xs.map((x) => x.id)) + 1, estado: "activo", ultimoIngreso: null, nuncaIngreso: true, inconsistencia: false, creado: new Date().toISOString().slice(0, 10) }, ...xs]);
+      local("perfiles", (xs) => xs.map((p) => (p.id === u.perfil ? { ...p, usuarios: p.usuarios + 1 } : p)));
+      rpc("crear_usuario_admin", {
+        p_dni: u.dni, p_perfil: u.perfil, p_correo: u.correo, p_celular: u.celular,
+        p_empresas: u.empresas, p_sedes: u.sedes, p_clave: u.clave, p_por: user?.nombre ?? "BackOffice",
+      }, "usuariosAdmin", "perfiles");
+    },
+    actualizarUsuarioAdmin: (id, cambios) => {
+      local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, ...cambios } : x)));
+      rpc("actualizar_usuario_admin", {
+        p_id: id, p_perfil: cambios.perfil, p_correo: cambios.correo, p_celular: cambios.celular,
+        p_empresas: cambios.empresas, p_sedes: cambios.sedes, p_estado: cambios.estado,
+      }, "usuariosAdmin", "perfiles");
+    },
+    suspenderUsuarioAdmin: (id) => {
+      local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
+      rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");
+    },
+    reactivarUsuarioAdmin: (id) => {
+      local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "activo" } : x)));
+      rpc("reactivar_usuario_admin", { p_id: id }, "usuariosAdmin");
+    },
+    reenviarClave: (id, clave) => {
+      rpc("reenviar_clave", { p_id: id, p_clave: clave }, "usuariosAdmin");
+    },
+    guardarPolitica: (p) => {
+      const ahora = new Date().toISOString().slice(0, 16).replace("T", " ");
+      local("politica", () => [{ ...p, actualizado: ahora, actualizadoPor: user?.nombre ?? "BackOffice" }]);
+      rpc("guardar_politica", {
+        p_backoffice_horas: p.sesionBackofficeHoras, p_portal_dias: p.sesionPortalDias,
+        p_multisesion_backoffice: p.multisesionBackoffice, p_multisesion_portal: p.multisesionPortal,
+        p_intentos: p.intentosBloqueo, p_bloqueo_min: p.bloqueoMinutos,
+        p_recuperacion: p.recuperacionDefecto, p_clave_min: p.claveLongitudMin,
+        p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
+      }, "politica");
     },
     addEpp: (rows) => {
       local("epp_entregas", (xs) => [...rows, ...xs]);
