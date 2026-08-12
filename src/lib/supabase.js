@@ -33,9 +33,55 @@ function obtenerFetchNativo() {
   return (...args) => fetch(...args);
 }
 
+// Canal alternativo sobre XMLHttpRequest: los interceptores que parchean
+// fetch (incluso dentro de iframes) casi nunca tocan XHR. Implementa lo
+// mínimo que supabase-js necesita de la interfaz fetch.
+export function fetchXhr(input, init = {}) {
+  return new Promise((resolve, reject) => {
+    const destino = typeof input === "string" ? input : input.url;
+    const x = new XMLHttpRequest();
+    x.open(init.method ?? "GET", destino);
+    const h = init.headers ?? {};
+    const pares = h instanceof Headers ? [...h.entries()] : Array.isArray(h) ? h : Object.entries(h);
+    for (const [k, v] of pares) {
+      try { x.setRequestHeader(k, v); } catch { /* cabecera inválida: se omite */ }
+    }
+    x.onload = () => {
+      const cab = new Headers();
+      x.getAllResponseHeaders().trim().split(/[\r\n]+/).filter(Boolean).forEach((linea) => {
+        const i = linea.indexOf(": ");
+        if (i > 0) { try { cab.append(linea.slice(0, i), linea.slice(i + 2)); } catch { /* ignorar */ } }
+      });
+      resolve(new Response(x.responseText || null, { status: x.status, statusText: x.statusText, headers: cab }));
+    };
+    x.onerror = () => reject(new TypeError("Fallo de red (XHR)"));
+    x.ontimeout = () => reject(new TypeError("Tiempo de espera agotado (XHR)"));
+    x.send(init.body ?? null);
+  });
+}
+
+export const fetchNativo = obtenerFetchNativo();
+
+// Autorreparación: si el canal fetch está roto por un interceptor (cabeceras
+// corruptas → TypeError síncrono), se conmuta a XHR de forma permanente.
+let usarXhr = false;
+async function fetchRobusto(input, init) {
+  if (usarXhr) return fetchXhr(input, init);
+  try {
+    return await fetchNativo(input, init);
+  } catch (e) {
+    if (e instanceof TypeError && /ISO-8859-1|headers|Failed to fetch/i.test(e.message ?? "")) {
+      usarXhr = true;
+      return fetchXhr(input, init);
+    }
+    throw e;
+  }
+}
+
 // Si aún no hay clave configurada, la app funciona con los datos de demostración locales.
 export const supabaseListo = anonKey !== "__ANON_KEY__";
 export const supabase = supabaseListo
-  ? createClient(url, anonKey, { global: { fetch: obtenerFetchNativo() } })
+  ? createClient(url, anonKey, { global: { fetch: fetchRobusto } })
   : null;
 export const supabaseUrl = url;
+export const supabaseAnonKey = anonKey;

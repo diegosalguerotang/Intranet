@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Mail, KeyRound } from "lucide-react";
 import { useApp } from "../state";
-import { supabase, supabaseListo, supabaseUrl } from "../lib/supabase";
+import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr } from "../lib/supabase";
 import { Note } from "../components/ui";
 
 // Puerta del BackOffice (/admin/login): correo + clave contra Supabase Auth.
@@ -42,7 +42,20 @@ export default function AdminLogin() {
         // usuario y no deja rastro en ACC-06.
         const esRed = !errAuth.status || errAuth.status === 0 || errAuth.status >= 500;
         if (esRed) {
-          setError(`No hay conexión con el servidor de autenticación. Detalle técnico: ${errAuth.name ?? "?"} · ${errAuth.message ?? "?"} · servidor: ${supabaseUrl}`);
+          // Diagnóstico de canales: qué transporte funciona en ESTE navegador.
+          const diag = ["v6"];
+          const probar = async (nombre, fn) => {
+            try {
+              const r = await fn(`${supabaseUrl}/auth/v1/health`, { headers: { apikey: supabaseAnonKey } });
+              diag.push(`${nombre}:${r.status}`);
+            } catch (e) {
+              diag.push(`${nombre}:ERR(${(e.message ?? "?").slice(0, 45)})`);
+            }
+          };
+          await probar("fetchGlobal", (...a) => window.fetch(...a));
+          await probar("fetchIframe", fetchNativo);
+          await probar("xhr", fetchXhr);
+          setError(`No hay conexión con el servidor de autenticación. ${errAuth.name ?? "?"}: ${errAuth.message ?? "?"} · Diagnóstico: ${diag.join(" · ")}`);
           return;
         }
         await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
@@ -133,7 +146,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v5-blindado
+              Todo intento de ingreso queda registrado. · v6-autocurable
             </p>
           </form>
         </div>
