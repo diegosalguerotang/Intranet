@@ -5,6 +5,7 @@ import {
   UserCog, ShieldCheck, KeyRound, ScrollText,
 } from "lucide-react";
 import { useApp } from "../state";
+import CambioClave from "../pages/CambioClave";
 
 const NAV_RRHH = [
   { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true },
@@ -64,10 +65,18 @@ function NavGroup({ title, items }) {
 }
 
 export default function Shell() {
-  const { user, setUser, empresaId, setEmpresaId, db, origen } = useApp();
+  const { user, salir, empresaId, setEmpresaId, db, origen } = useApp();
   const navigate = useNavigate();
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (user === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-papel text-[13px] text-gris-cl">
+        Verificando sesión…
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/admin/login" replace />;
+  if (user.requiereCambio) return <CambioClave />;
 
   return (
     <div className="flex min-h-screen">
@@ -98,7 +107,7 @@ export default function Shell() {
             </div>
           </div>
           <button
-            onClick={() => { setUser(null); navigate("/login"); }}
+            onClick={async () => { await salir(); navigate("/admin/login"); }}
             className="mt-3 flex items-center gap-1.5 text-[11.5px] font-medium text-gris-cl hover:text-pend"
           >
             <LogOut size={13} /> Cerrar sesión

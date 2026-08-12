@@ -181,19 +181,19 @@ export const PERFIL_VERSIONES = PERFILES.map((p) => ({
 
 export const USUARIOS_ADMIN = [
   { id: 1, dni: "40776655", nombre: "Diego Salguero Tang", perfil: "superadmin", perfilNombre: "Superadministrador",
-    esSuperadmin: true, correo: "dsalguero@grupoer.pe", celular: "999888777", estado: "activo",
+    esSuperadmin: true, correo: "dsalguero@grupoer.pe", celular: "999888777", estado: "activo", requiereCambio: false,
     empresas: [], sedes: [], ultimoIngreso: "2026-08-12 08:45", nuncaIngreso: false, inconsistencia: false,
     cargo: "Jefe de RRHH", sede: "sunat", empresa: "negliaf", creado: "2026-08-01" },
   { id: 2, dni: "40881122", nombre: "Karina Prado Salas", perfil: "rrhh-operativo", perfilNombre: "RRHH operativo",
-    esSuperadmin: false, correo: "kprado@grupoer.pe", celular: "988776655", estado: "activo",
+    esSuperadmin: false, correo: "kprado@grupoer.pe", celular: "988776655", estado: "activo", requiereCambio: false,
     empresas: ["negliaf", "bremco", "promant", "lamericana"], sedes: [], ultimoIngreso: "2026-08-11 17:20",
     nuncaIngreso: false, inconsistencia: false, cargo: "Analista RRHH", sede: "sunat", empresa: "negliaf", creado: "2026-08-01" },
   { id: 3, dni: "40125634", nombre: "Julio Mamani Apaza", perfil: "supervisor-sede", perfilNombre: "Supervisor de sede",
-    esSuperadmin: false, correo: null, celular: "912345678", estado: "activo",
+    esSuperadmin: false, correo: null, celular: "912345678", estado: "activo", requiereCambio: false,
     empresas: ["negliaf"], sedes: ["sunat", "migraciones"], ultimoIngreso: "2026-08-09 17:30",
     nuncaIngreso: false, inconsistencia: false, cargo: "Supervisor de sede", sede: "migraciones", empresa: "negliaf", creado: "2026-08-02" },
   { id: 4, dni: "43906712", nombre: "Carmen Torres Vega", perfil: "supervisor-sede", perfilNombre: "Supervisor de sede",
-    esSuperadmin: false, correo: "ctorres@grupoer.pe", celular: "934567812", estado: "activo",
+    esSuperadmin: false, correo: "ctorres@grupoer.pe", celular: "934567812", estado: "activo", requiereCambio: false,
     empresas: ["negliaf"], sedes: ["minedu", "ins"], ultimoIngreso: null,
     nuncaIngreso: true, inconsistencia: false, cargo: "Supervisor de sede", sede: "minedu", empresa: "negliaf", creado: "2026-08-10" },
 ];
@@ -203,8 +203,8 @@ export const POLITICA_ACCESO = [{
   sesionBackofficeHoras: 8, sesionPortalDias: 30,
   multisesionBackoffice: false, multisesionPortal: true,
   intentosBloqueo: 5, bloqueoMinutos: 15,
-  recuperacionDefecto: "whatsapp", claveLongitudMin: 8, claveProvisionalDias: 7,
-  actualizado: null, actualizadoPor: null,
+  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 12,
+  claveProvisionalDias: 7, actualizado: null, actualizadoPor: null,
 }];
 
 export const REGISTRO_ACCESOS = [

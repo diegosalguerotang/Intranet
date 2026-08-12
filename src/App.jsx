@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./state";
 import Shell from "./layout/Shell";
-import Login from "./pages/Login";
+import AdminLogin from "./pages/AdminLogin";
 import Tablero from "./pages/rrhh/Tablero";
 import Personal from "./pages/rrhh/Personal";
 import Legajo from "./pages/rrhh/Legajo";
@@ -26,7 +26,10 @@ export default function App() {
     <AppProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          {/* Puerta del BackOffice. /login queda reservado al Portal del
+              Trabajador (aún no construido) y por ahora redirige. */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/login" element={<Navigate to="/admin/login" replace />} />
           <Route element={<Shell />}>
             <Route path="/" element={<Navigate to="/rrhh" replace />} />
             <Route path="/rrhh" element={<Tablero />} />

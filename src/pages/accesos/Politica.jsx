@@ -7,7 +7,8 @@ const RECOMENDADOS = {
   sesionBackofficeHoras: 8, sesionPortalDias: 30,
   multisesionBackoffice: false, multisesionPortal: true,
   intentosBloqueo: 5, bloqueoMinutos: 15,
-  recuperacionDefecto: "whatsapp", claveLongitudMin: 8, claveProvisionalDias: 7,
+  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 12,
+  claveProvisionalDias: 7,
 };
 
 export default function Politica() {
@@ -80,8 +81,13 @@ export default function Politica() {
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-[13px] font-bold text-tinta">Claves</h2>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <h2 className="mb-1 text-[13px] font-bold text-tinta">Claves</h2>
+          <p className="mb-4 text-[11.5px] leading-snug text-gris-cl">
+            Longitud mínima diferenciada: los trabajadores tipean en celulares de gama baja y una exigencia alta
+            destruye la adopción; los usuarios administrativos operan sobre datos de todo el grupo y no tienen esa
+            excusa.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Recuperación de clave por defecto (Portal)" hint="Los tres métodos coexisten; aquí se define cuál se ofrece primero.">
               <Select value={p.recuperacionDefecto} onChange={(e) => set("recuperacionDefecto", e.target.value)}>
                 <option value="whatsapp">WhatsApp</option>
@@ -89,11 +95,16 @@ export default function Politica() {
                 <option value="manual">Restablecimiento manual por RRHH</option>
               </Select>
             </Field>
-            <Field label="Longitud mínima de la clave">
-              <Input type="number" min={6} value={p.claveLongitudMin} onChange={num("claveLongitudMin")} />
-            </Field>
             <Field label="Vigencia de la clave provisional (días)">
               <Input type="number" min={1} value={p.claveProvisionalDias} onChange={num("claveProvisionalDias")} />
+            </Field>
+            <Field label="Clave mínima — Portal del Trabajador" hint="No menor de 6.">
+              <Input type="number" min={6} value={p.claveLongitudMinPortal}
+                onChange={(e) => set("claveLongitudMinPortal", Math.max(6, Number(e.target.value) || 6))} />
+            </Field>
+            <Field label="Clave mínima — BackOffice" hint="No menor de 12.">
+              <Input type="number" min={12} value={p.claveLongitudMinBackoffice}
+                onChange={(e) => set("claveLongitudMinBackoffice", Math.max(12, Number(e.target.value) || 12))} />
             </Field>
           </div>
         </Card>

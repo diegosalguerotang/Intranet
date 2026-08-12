@@ -50,7 +50,8 @@ const LOCAL = {
 };
 
 export function AppProvider({ children }) {
-  const [user, setUser] = useState(null);
+  // undefined = verificando sesión · null = sin sesión · objeto = autenticado
+  const [user, setUser] = useState(supabaseListo ? undefined : null);
   const [empresaId, setEmpresaId] = useState("negliaf");
   const [db, setDb] = useState(LOCAL);
   const [origen, setOrigen] = useState("local"); // "supabase" | "local"
@@ -74,6 +75,49 @@ export function AppProvider({ children }) {
     if (!supabaseListo) return;
     recargar().then((ok) => setOrigen(ok ? "supabase" : "local"));
   }, []);
+
+  // Cierre de acceso: el usuario se deriva de la sesión de Supabase Auth y
+  // del padrón de usuarios administrativos. Tener cuenta en el proveedor no
+  // basta: sin fila activa en usuarios_admin, se expulsa.
+  useEffect(() => {
+    if (!supabaseListo) return;
+    let activo = true;
+    const resolver = async (session) => {
+      const email = session?.user?.email;
+      if (!email) { if (activo) setUser(null); return; }
+      const { data, error } = await supabase
+        .from("v_usuarios_admin").select("*").eq("correo", email).maybeSingle();
+      if (!activo) return;
+      if (error || !data || data.estado !== "activo") {
+        await supabase.auth.signOut();
+        setUser(null);
+        return;
+      }
+      setUser({
+        id: data.id, nombre: data.nombre, rol: data.perfilNombre, correo: data.correo,
+        esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
+      });
+    };
+    supabase.auth.getSession().then(({ data }) => resolver(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((evento, session) => {
+      if (evento !== "TOKEN_REFRESHED") resolver(session);
+    });
+    return () => { activo = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const salir = async () => {
+    if (supabaseListo) await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  // El primer ingreso exige reemplazar la clave provisional antes de operar.
+  const claveCambiada = async () => {
+    if (supabaseListo && user?.correo) {
+      await supabase.rpc("marcar_clave_cambiada", { p_correo: user.correo });
+      await recargar("usuariosAdmin");
+    }
+    setUser((u) => (u ? { ...u, requiereCambio: false } : u));
+  };
 
   const empresa = db.empresas.find((e) => e.id === empresaId);
   const persona = (dni) => db.personal.find((p) => p.dni === dni);
@@ -204,7 +248,8 @@ export function AppProvider({ children }) {
         p_backoffice_horas: p.sesionBackofficeHoras, p_portal_dias: p.sesionPortalDias,
         p_multisesion_backoffice: p.multisesionBackoffice, p_multisesion_portal: p.multisesionPortal,
         p_intentos: p.intentosBloqueo, p_bloqueo_min: p.bloqueoMinutos,
-        p_recuperacion: p.recuperacionDefecto, p_clave_min: p.claveLongitudMin,
+        p_recuperacion: p.recuperacionDefecto,
+        p_clave_min_portal: p.claveLongitudMinPortal, p_clave_min_backoffice: p.claveLongitudMinBackoffice,
         p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
       }, "politica");
     },
@@ -223,7 +268,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppCtx.Provider
-      value={{ user, setUser, empresaId, setEmpresaId, empresa, db, origen, persona, sede, empresaPor, recargar, ...acciones }}
+      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, origen, persona, sede, empresaPor, recargar, ...acciones }}
     >
       {children}
     </AppCtx.Provider>
