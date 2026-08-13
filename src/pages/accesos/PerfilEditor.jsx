@@ -11,24 +11,29 @@ const slug = (s) =>
 // Resumen en lenguaje natural: requisito, no adorno. Quien crea perfiles no
 // siempre lee matrices, y una casilla marcada por error es invisible en una
 // tabla de once filas.
-function ResumenNatural({ superadmin, matriz, casillas }) {
+function ResumenNatural({ superadmin, matriz, casillas, empresas, nombresEmpresas }) {
   if (superadmin) {
     return (
       <Note tone="pend">
-        Quien tenga este perfil opera sobre <b>todo el grupo, en todos los módulos</b>, ignora la matriz y el
+        Quien tenga esta categoría opera sobre <b>todo el grupo, en todos los módulos</b>, ignora la matriz y el
         alcance, y es el único que puede crear otros superadministradores.
       </Note>
     );
   }
   const frases = [];
+  if (empresas?.length) {
+    frases.push(`Opera únicamente sobre ${empresas.map((id) => nombresEmpresas?.[id] ?? id).join(", ")}.`);
+  } else {
+    frases.push("⚠ Sin razones sociales: la categoría no puede guardarse así.");
+  }
   MODULOS.forEach((m) => {
     const n = matriz[m.id] ?? 0;
     if (n === 1) frases.push(`En ${m.nombre} solo puede ${m.ver}.`);
     if (n >= 2) frases.push(`En ${m.nombre} puede ${m.ver}, y también ${m.accionar}${n === 3 ? `; además puede ${m.aprobar}` : ""}.`);
   });
   CASILLAS.forEach((c) => { if (casillas[c.id]) frases.push(`${c.nombre}: ${c.detalle.toLowerCase()}.`); });
-  if (!frases.length) {
-    return <Note tone="neutral">Este perfil no concede ningún acceso. Solo sirve como base para duplicar.</Note>;
+  if (frases.length <= 1 && MODULOS.every((m) => (matriz[m.id] ?? 0) === 0)) {
+    return <Note tone="neutral">Esta categoría no concede acceso a ningún módulo. Solo sirve como base para duplicar.</Note>;
   }
   return (
     <ul className="space-y-2 text-[12.5px] leading-relaxed text-gris">
@@ -51,6 +56,7 @@ export default function PerfilEditor() {
   const [nombre, setNombre] = useState(nuevo ? (base ? `${base.nombre} (copia)` : "") : base?.nombre ?? "");
   const [descripcion, setDescripcion] = useState(base?.descripcion ?? "");
   const [superadmin, setSuperadmin] = useState(nuevo ? false : base?.esSuperadmin ?? false);
+  const [empresas, setEmpresas] = useState(base?.empresas ?? []);
   const [matriz, setMatriz] = useState(() => Object.fromEntries(MODULOS.map((m) => [m.id, base?.matriz?.[m.id] ?? 0])));
   const [casillas, setCasillas] = useState({
     verRemuneracion: base?.verRemuneracion ?? false,
@@ -93,6 +99,16 @@ export default function PerfilEditor() {
       const antes = base[c.id] ?? false;
       if (antes !== casillas[c.id]) cambios.push(`${casillas[c.id] ? "Gana" : "Pierde"} «${c.nombre}»`);
     });
+    if (!superadmin) {
+      const antes = [...(base.empresas ?? [])].sort().join(",");
+      const ahora = [...empresas].sort().join(",");
+      if (antes !== ahora) {
+        const nombresDe = (ids) => ids.length
+          ? ids.map((eid) => db.empresas.find((e) => e.id === eid)?.corto ?? eid).join(", ")
+          : "ninguna";
+        cambios.push(`Razones sociales: ${nombresDe((base.empresas ?? []))} → ${nombresDe(empresas)}`);
+      }
+    }
   }
 
   // Módulos que quedarían sin ningún perfil activo con nivel de aprobación.
@@ -105,7 +121,7 @@ export default function PerfilEditor() {
       )
     : [];
 
-  const valido = nombre.trim().length > 0 && !nombreRepetido;
+  const valido = nombre.trim().length > 0 && !nombreRepetido && (superadmin || empresas.length > 0);
 
   const persistir = () => {
     guardarPerfil({
@@ -117,6 +133,7 @@ export default function PerfilEditor() {
       verDocumentosTerceros: casillas.verDocumentosTerceros,
       exportarDatosPersonales: casillas.exportarDatosPersonales,
       matriz: superadmin ? {} : matriz,
+      empresas: superadmin ? [] : empresas,
     });
     navigate("/accesos/perfiles");
   };
@@ -144,8 +161,8 @@ export default function PerfilEditor() {
     <>
       <PageHeader
         code="ACC-04"
-        title={nuevo ? "Nuevo perfil" : `Perfil: ${base.nombre}`}
-        subtitle="El perfil responde a qué puede hacer alguien, nunca a sobre quiénes. Es del Grupo: un mismo perfil sirve para todas las razones sociales."
+        title={nuevo ? "Nueva categoría" : `Categoría: ${base.nombre}`}
+        subtitle="La categoría define QUÉ puede hacer alguien y SOBRE QUÉ razones sociales. El usuario la hereda tal cual: para dar un acceso distinto se crea otra categoría."
         actions={
           <>
             {!nuevo && (
@@ -164,8 +181,8 @@ export default function PerfilEditor() {
         <div className="space-y-5">
           <Card>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nombre del perfil" required hint="Único en el sistema.">
-                <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej.: RRHH operativo — solo NEGLIAF" />
+              <Field label="Título de la categoría" required hint="Único en el sistema.">
+                <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej.: Gerente de Recursos Humanos" />
               </Field>
               <Field label="Descripción breve" hint="Para qué sirve y a quién se le da.">
                 <Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej.: Analistas que publican boletas" />
@@ -173,7 +190,7 @@ export default function PerfilEditor() {
             </div>
             {nombreRepetido && (
               <div className="mt-3">
-                <Note tone="alerta">Ya existe otro perfil con ese nombre. El nombre del perfil es único en el sistema.</Note>
+                <Note tone="alerta">Ya existe otra categoría con ese título. El título es único en el sistema.</Note>
               </div>
             )}
             <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-caja border border-borde bg-papel/60 p-3.5">
@@ -240,6 +257,36 @@ export default function PerfilEditor() {
 
           {!superadmin && (
             <Card>
+              <h2 className="mb-1 text-[13px] font-bold text-tinta">Razones sociales</h2>
+              <p className="mb-3 text-[11.5px] text-gris-cl">
+                Sobre qué empresas del grupo opera quien tenga esta categoría. Al ingresar, solo verá estas razones
+                sociales en toda la intranet.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {db.empresas.map((e) => (
+                  <label key={e.id} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-gris">
+                    <input
+                      type="checkbox"
+                      className="accent-petroleo"
+                      checked={empresas.includes(e.id)}
+                      onChange={(ev) =>
+                        setEmpresas((xs) => (ev.target.checked ? [...xs, e.id] : xs.filter((x) => x !== e.id)))
+                      }
+                    />
+                    {e.nombre}
+                  </label>
+                ))}
+              </div>
+              {empresas.length === 0 && (
+                <div className="mt-3">
+                  <Note tone="alerta">Marca al menos una razón social: una categoría sin alcance no puede guardarse.</Note>
+                </div>
+              )}
+            </Card>
+          )}
+
+          {!superadmin && (
+            <Card>
               <h2 className="mb-3 text-[13px] font-bold text-tinta">Casillas especiales</h2>
               <p className="mb-3 text-[11.5px] text-gris-cl">
                 Permisos que atraviesan varios módulos. Ninguno se concede por defecto; su uso se registra en
@@ -279,8 +326,14 @@ export default function PerfilEditor() {
 
         <div className="space-y-5">
           <Card>
-            <h2 className="mb-3 text-[13px] font-bold text-tinta">Qué podrá hacer alguien con este perfil</h2>
-            <ResumenNatural superadmin={superadmin} matriz={matriz} casillas={casillas} />
+            <h2 className="mb-3 text-[13px] font-bold text-tinta">Qué podrá hacer alguien con esta categoría</h2>
+            <ResumenNatural
+              superadmin={superadmin}
+              matriz={matriz}
+              casillas={casillas}
+              empresas={empresas}
+              nombresEmpresas={Object.fromEntries(db.empresas.map((e) => [e.id, e.corto ?? e.nombre]))}
+            />
           </Card>
           {!nuevo && (
             <Card>
@@ -355,11 +408,18 @@ export default function PerfilEditor() {
                   {v.esSuperadmin ? (
                     <div className="mt-1 text-[11.5px] italic text-gris-cl">Superadministrador — sin matriz</div>
                   ) : (
-                    <div className="mt-1 flex flex-wrap gap-1.5">
-                      {MODULOS.filter((m) => (v.matriz?.[m.id] ?? 0) > 0).map((m) => (
-                        <Badge key={m.id} tone="neutral">{m.nombre}: {v.matriz[m.id]}</Badge>
-                      ))}
-                    </div>
+                    <>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {MODULOS.filter((m) => (v.matriz?.[m.id] ?? 0) > 0).map((m) => (
+                          <Badge key={m.id} tone="neutral">{m.nombre}: {v.matriz[m.id]}</Badge>
+                        ))}
+                      </div>
+                      {(v.empresas ?? []).length > 0 && (
+                        <div className="mt-1 text-[11px] text-gris-cl">
+                          Sobre: {v.empresas.map((eid) => db.empresas.find((e) => e.id === eid)?.corto ?? eid).join(" · ")}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

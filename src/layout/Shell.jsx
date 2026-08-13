@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
@@ -5,40 +6,45 @@ import {
   UserCog, ShieldCheck, KeyRound, ScrollText,
 } from "lucide-react";
 import { useApp } from "../state";
+import { nivelDe, MODULOS_RRHH } from "../data/modulos";
 import CambioClave from "../pages/CambioClave";
 
+// Cada item declara su módulo: el menú solo muestra lo que la categoría del
+// usuario concede (enforcement de Accesos v2; el guard de ruta lo respalda).
 const NAV_RRHH = [
-  { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true },
-  { to: "/rrhh/personal", icon: Users, label: "Personal", code: "RRH-02" },
-  { to: "/rrhh/boletas", icon: FileText, label: "Carga de boletas", code: "RRH-06" },
-  { to: "/rrhh/acuses", icon: CheckSquare, label: "Acuses", code: "RRH-11" },
-  { to: "/rrhh/comunicados", icon: Megaphone, label: "Comunicados", code: "RRH-16" },
-  { to: "/rrhh/memorandums", icon: AlertTriangle, label: "Memorándums", code: "RRH-18" },
-  { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14" },
-  { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20" },
+  { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true, modulo: MODULOS_RRHH },
+  { to: "/rrhh/personal", icon: Users, label: "Personal", code: "RRH-02", modulo: "personal" },
+  { to: "/rrhh/boletas", icon: FileText, label: "Carga de boletas", code: "RRH-06", modulo: "boletas" },
+  { to: "/rrhh/acuses", icon: CheckSquare, label: "Acuses", code: "RRH-11", modulo: "acuses" },
+  { to: "/rrhh/comunicados", icon: Megaphone, label: "Comunicados", code: "RRH-16", modulo: "comunicados" },
+  { to: "/rrhh/memorandums", icon: AlertTriangle, label: "Memorándums", code: "RRH-18", modulo: "memorandums" },
+  { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14", modulo: "contratos" },
+  { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas" },
 ];
 
 const NAV_ADMIN = [
-  { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01" },
-  { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05" },
-  { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06" },
-  { to: "/admin/costos", icon: PieChart, label: "Costo por sede", code: "ADQ-07" },
+  { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01", modulo: "activos" },
+  { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05", modulo: "activos" },
+  { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos" },
+  { to: "/admin/costos", icon: PieChart, label: "Costo por sede", code: "ADQ-07", modulo: "activos" },
 ];
 
 const NAV_ACCESOS = [
-  { to: "/accesos/usuarios", icon: UserCog, label: "Usuarios administrativos", code: "ACC-01" },
-  { to: "/accesos/perfiles", icon: ShieldCheck, label: "Perfiles", code: "ACC-03" },
-  { to: "/accesos/politica", icon: KeyRound, label: "Política de acceso", code: "ACC-05" },
-  { to: "/accesos/registro", icon: ScrollText, label: "Registro de accesos", code: "ACC-06" },
+  { to: "/accesos/usuarios", icon: UserCog, label: "Usuarios administrativos", code: "ACC-01", modulo: "accesos" },
+  { to: "/accesos/perfiles", icon: ShieldCheck, label: "Categorías", code: "ACC-03", modulo: "accesos" },
+  { to: "/accesos/politica", icon: KeyRound, label: "Política de acceso", code: "ACC-05", modulo: "accesos" },
+  { to: "/accesos/registro", icon: ScrollText, label: "Registro de accesos", code: "ACC-06", modulo: "auditoria" },
 ];
 
-function NavGroup({ title, items }) {
+function NavGroup({ title, items, acceso }) {
+  const visibles = items.filter((i) => nivelDe(acceso, i.modulo) >= 1);
+  if (!visibles.length) return null;
   return (
     <div>
       <h3 className="mb-2 mt-6 px-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-gris-cl first:mt-0">
         {title}
       </h3>
-      {items.map(({ to, icon: Icon, label, code, end }) => (
+      {visibles.map(({ to, icon: Icon, label, code, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -68,6 +74,17 @@ export default function Shell() {
   const { user, salir, empresaId, setEmpresaId, db, origen } = useApp();
   const navigate = useNavigate();
 
+  // Selector de empresa restringido al alcance de la categoría.
+  const acceso = user?.acceso ?? (user ? { esSuperadmin: user.esSuperadmin, matriz: {}, empresas: [] } : null);
+  const empresasVisibles = acceso?.esSuperadmin
+    ? db.empresas
+    : db.empresas.filter((e) => (acceso?.empresas ?? []).includes(e.id));
+  useEffect(() => {
+    if (user && empresasVisibles.length && !empresasVisibles.some((e) => e.id === empresaId)) {
+      setEmpresaId(empresasVisibles[0].id);
+    }
+  }, [user, empresaId, empresasVisibles.length]);
+
   if (user === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-papel text-[13px] text-gris-cl">
@@ -91,9 +108,9 @@ export default function Shell() {
         </div>
 
         <nav className="flex-1 overflow-y-auto">
-          <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} />
-          <NavGroup title="Recursos Humanos" items={NAV_RRHH} />
-          <NavGroup title="Administración" items={NAV_ADMIN} />
+          <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} acceso={acceso} />
+          <NavGroup title="Recursos Humanos" items={NAV_RRHH} acceso={acceso} />
+          <NavGroup title="Administración" items={NAV_ADMIN} acceso={acceso} />
         </nav>
 
         <div className="mt-4 border-t border-borde px-3 pt-4">
@@ -118,15 +135,19 @@ export default function Shell() {
       <div className="ml-[248px] flex-1">
         <header className="sticky top-0 z-30 flex h-[52px] items-center gap-3 bg-white px-5 shadow-[0_1px_6px_rgba(0,0,0,0.12)]">
           <Building2 size={16} className="text-petroleo" />
-          <select
-            value={empresaId}
-            onChange={(e) => setEmpresaId(e.target.value)}
-            className="rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[13px] font-semibold text-tinta focus:border-petroleo focus:shadow-[0_0_0_3px_rgba(53,105,160,0.14)] focus:outline-none"
-          >
-            {db.empresas.map((e) => (
-              <option key={e.id} value={e.id}>{e.nombre}</option>
-            ))}
-          </select>
+          {empresasVisibles.length === 1 ? (
+            <span className="text-[13px] font-semibold text-tinta">{empresasVisibles[0].nombre}</span>
+          ) : (
+            <select
+              value={empresaId}
+              onChange={(e) => setEmpresaId(e.target.value)}
+              className="rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[13px] font-semibold text-tinta focus:border-petroleo focus:shadow-[0_0_0_3px_rgba(53,105,160,0.14)] focus:outline-none"
+            >
+              {empresasVisibles.map((e) => (
+                <option key={e.id} value={e.id}>{e.nombre}</option>
+              ))}
+            </select>
+          )}
           <span className="ml-auto font-mono text-[10.5px] text-gris-cl">
             {origen === "supabase" ? "Conectado a Supabase" : "Datos locales de demostración"}
           </span>

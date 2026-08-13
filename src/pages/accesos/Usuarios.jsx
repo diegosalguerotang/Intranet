@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, ShieldCheck, Send, Pencil, Ban, RotateCcw, Download, KeyRound } from "lucide-react";
+import { Plus, ShieldCheck, Send, Pencil, Ban, RotateCcw, Download, KeyRound, Trash2 } from "lucide-react";
 import { useApp } from "../../state";
-import { PageHeader, Card, Stat, Table, Td, Badge, Button, Field, Input, Select, Modal, Note, EmptyState, inputCls } from "../../components/ui";
-import { MODULOS, NIVELES } from "../../data/modulos";
+import { PageHeader, Card, Stat, Table, Td, Badge, Button, Field, Input, Select, Modal, Note, EmptyState } from "../../components/ui";
+import { MODULOS, NIVELES, nivelDe } from "../../data/modulos";
 
-const genClave = () => Math.random().toString(36).slice(2, 10).toUpperCase();
-
-// ACC-02 · Alta y edición de usuario administrativo (modal).
+// ACC-02 · Alta y edición de usuario administrativo (modal). Accesos v2: el
+// usuario HEREDA su categoría tal cual (módulos + razones sociales); el
+// código U-000N y la cuenta de ingreso los asignan la BD y el serverless.
 function FormUsuario({ usuario, onClose, onClave, onEditar }) {
   const { db, crearUsuarioAdmin, actualizarUsuarioAdmin } = useApp();
   const edicion = !!usuario;
@@ -17,10 +17,10 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
   const [correo, setCorreo] = useState(usuario?.correo ?? "");
   const [celular, setCelular] = useState(usuario?.celular ?? "");
   const [perfilId, setPerfilId] = useState(usuario?.perfil ?? "");
-  const [empresasSel, setEmpresasSel] = useState(usuario?.empresas ?? []);
-  const [sedesSel, setSedesSel] = useState(usuario?.sedes ?? []);
   const [estado, setEstado] = useState(usuario?.estado ?? "activo");
   const [confirmSuper, setConfirmSuper] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState(null);
 
   const coincidencias = busca.trim().length >= 2
     ? db.personal.filter((p) => p.dni.includes(busca.trim()) || p.nombre.toLowerCase().includes(busca.trim().toLowerCase())).slice(0, 6)
@@ -30,41 +30,40 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
   const perfilObj = db.perfiles.find((p) => p.id === perfilId);
   const esSuper = perfilObj?.esSuperadmin ?? false;
   const cesado = personaSel?.estado === "cesado";
-  const sedesDisponibles = db.sedes.filter((s) => empresasSel.includes(s.empresa));
-  const valido = personaSel && perfilObj && !existente && (esSuper || empresasSel.length > 0);
+  const valido = personaSel && perfilObj && !existente;
 
-  const persistir = (otro = false) => {
+  const persistir = async (otro = false) => {
     if (edicion) {
       actualizarUsuarioAdmin(usuario.id, {
         perfil: perfilId, perfilNombre: perfilObj.nombre, esSuperadmin: esSuper,
-        correo: correo.trim() || null, celular: celular.trim() || null,
-        empresas: esSuper ? [] : empresasSel, sedes: esSuper ? [] : sedesSel, estado,
+        correo: correo.trim() || null, celular: celular.trim() || null, estado,
       });
       onClose();
       return;
     }
-    const clave = genClave();
-    crearUsuarioAdmin({
-      dni: personaSel.dni, nombre: personaSel.nombre,
-      perfil: perfilId, perfilNombre: perfilObj.nombre, esSuperadmin: esSuper,
+    setGuardando(true);
+    setErrorGuardar(null);
+    const r = await crearUsuarioAdmin({
+      dni: personaSel.dni, perfil: perfilId,
       correo: correo.trim() || null, celular: celular.trim() || null,
-      empresas: esSuper ? [] : empresasSel, sedes: esSuper ? [] : sedesSel,
-      clave, cargo: personaSel.cargo, sede: personaSel.sede, empresa: personaSel.empresa,
     });
-    onClave({ nombre: personaSel.nombre, clave, correo: correo.trim() || null });
+    setGuardando(false);
+    if (r.error) { setErrorGuardar(r.error); return; }
+    onClave({
+      nombre: personaSel.nombre, clave: r.clave, correo: correo.trim() || null,
+      codigo: r.codigo, creado: r.creado, errorCuenta: r.errorCuenta,
+    });
     if (otro) {
-      setBusca(""); setPersonaSel(null); setCorreo(""); setCelular("");
-      setPerfilId(""); setEmpresasSel([]); setSedesSel([]);
+      setBusca(""); setPersonaSel(null); setCorreo(""); setCelular(""); setPerfilId("");
     } else {
       onClose();
     }
   };
 
   const guardar = (otro = false) => {
-    if (!valido) return;
+    if (!valido || guardando) return;
     // La concesión de la marca de superadministrador exige confirmación
-    // explícita en una segunda pantalla. (Quitarse la marca a uno mismo se
-    // bloquea en el servidor; el login demo aún no vincula sesión y usuario.)
+    // explícita en una segunda pantalla.
     if (esSuper && !usuario?.esSuperadmin) setConfirmSuper(otro ? "otro" : "cerrar");
     else persistir(otro);
   };
@@ -104,7 +103,16 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
           </Field>
         )}
 
-        {personaSel && personaSel.cargo && (
+        {edicion && (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-caja border border-borde bg-papel/60 px-3.5 py-2.5 text-[12px] text-gris sm:grid-cols-4">
+            <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Código de usuario</span><span className="font-mono font-semibold text-tinta">{usuario.codigo ?? "—"}</span></div>
+            <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Fecha de registro</span>{usuario.creado ?? "—"}</div>
+            <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">DNI</span><span className="font-mono">{usuario.dni}</span></div>
+            <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Último ingreso</span>{usuario.ultimoIngreso ?? "Nunca"}</div>
+          </div>
+        )}
+
+        {personaSel && personaSel.cargo && !edicion && (
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-caja border border-borde bg-papel/60 px-3.5 py-2.5 text-[12px] text-gris sm:grid-cols-4">
             <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Cargo</span>{personaSel.cargo}</div>
             <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Sede</span>{db.sedes.find((s) => s.id === personaSel.sede)?.nombre ?? personaSel.sede}</div>
@@ -129,18 +137,9 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
           </Note>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Correo de contacto" hint="Si queda vacío, la clave provisional se mostrará en pantalla para entrega presencial.">
-            <Input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="usuario@grupoer.pe" />
-          </Field>
-          <Field label="Celular de contacto">
-            <Input value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="9 dígitos" maxLength={9} />
-          </Field>
-        </div>
-
-        <Field label="Perfil" required hint="Asignar un perfil sin ver qué concede es la vía más rápida a un permiso otorgado por error.">
+        <Field label="Categoría" required hint="La categoría define módulos y razones sociales; el usuario la hereda tal cual.">
           <Select value={perfilId} onChange={(e) => setPerfilId(e.target.value)}>
-            <option value="">— Elegir perfil —</option>
+            <option value="">— Elegir categoría —</option>
             {db.perfiles.filter((p) => p.estado === "activo").map((p) => (
               <option key={p.id} value={p.id}>{p.nombre}</option>
             ))}
@@ -149,69 +148,41 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
 
         {perfilObj && (
           <div className="rounded-caja border border-borde bg-papel/60 p-3.5">
-            <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gris-cl">Matriz del perfil (solo lectura)</div>
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gris-cl">Accesos que hereda de la categoría</div>
             {esSuper ? (
               <Badge tone="tinta"><ShieldCheck size={11} /> Superadministrador — todo el grupo, todos los módulos</Badge>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {MODULOS.filter((m) => (perfilObj.matriz?.[m.id] ?? 0) > 0).map((m) => (
-                  <Badge key={m.id} tone="neutral">{m.nombre}: {NIVELES[perfilObj.matriz[m.id]]}</Badge>
-                ))}
-                {MODULOS.every((m) => (perfilObj.matriz?.[m.id] ?? 0) === 0) && (
-                  <span className="text-[11.5px] italic text-gris-cl">Sin acceso a ningún módulo.</span>
-                )}
-              </div>
+              <>
+                <div className="flex flex-wrap gap-1.5">
+                  {MODULOS.filter((m) => (perfilObj.matriz?.[m.id] ?? 0) > 0).map((m) => (
+                    <Badge key={m.id} tone="neutral">{m.nombre}: {NIVELES[perfilObj.matriz[m.id]]}</Badge>
+                  ))}
+                  {MODULOS.every((m) => (perfilObj.matriz?.[m.id] ?? 0) === 0) && (
+                    <span className="text-[11.5px] italic text-gris-cl">Sin acceso a ningún módulo.</span>
+                  )}
+                </div>
+                <div className="mb-1.5 mt-3 text-[11px] font-bold uppercase tracking-wide text-gris-cl">Razones sociales</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(perfilObj.empresas ?? []).map((eid) => (
+                    <Badge key={eid} tone="conf">{db.empresas.find((e) => e.id === eid)?.corto ?? eid}</Badge>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
 
-        <Field
-          label="Alcance — razones sociales"
-          required={!esSuper}
-          hint={esSuper ? "El superadministrador opera sobre todo el grupo: el alcance no aplica." : "El alcance solo restringe: nunca otorga un permiso que el perfil no concede."}
-        >
-          {esSuper ? (
-            <div className={`${inputCls} bg-papel/60 italic text-gris-cl`}>Todo el grupo</div>
-          ) : (
-            <div className="flex flex-wrap gap-3">
-              {db.empresas.map((e) => (
-                <label key={e.id} className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-gris">
-                  <input
-                    type="checkbox"
-                    className="accent-petroleo"
-                    checked={empresasSel.includes(e.id)}
-                    onChange={(ev) => {
-                      setEmpresasSel((xs) => (ev.target.checked ? [...xs, e.id] : xs.filter((x) => x !== e.id)));
-                      if (!ev.target.checked) setSedesSel((xs) => xs.filter((sid) => db.sedes.find((s) => s.id === sid)?.empresa !== e.id));
-                    }}
-                  />
-                  {e.corto}
-                </label>
-              ))}
-            </div>
-          )}
-        </Field>
-
-        {!esSuper && empresasSel.length > 0 && (
-          <Field label="Alcance — sedes" hint="Sin marcar ninguna, el alcance son todas las sedes de esas razones sociales.">
-            <div className="flex flex-wrap gap-3">
-              {sedesDisponibles.map((s) => (
-                <label key={s.id} className="flex cursor-pointer items-center gap-1.5 text-[12.5px] text-gris">
-                  <input
-                    type="checkbox"
-                    className="accent-petroleo"
-                    checked={sedesSel.includes(s.id)}
-                    onChange={(ev) => setSedesSel((xs) => (ev.target.checked ? [...xs, s.id] : xs.filter((x) => x !== s.id)))}
-                  />
-                  {s.nombre}
-                </label>
-              ))}
-            </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Correo de contacto" hint="Con correo se crea su cuenta de ingreso al guardar; sin correo, el usuario queda registrado pero no puede iniciar sesión.">
+            <Input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="usuario@grupoer.pe" />
           </Field>
-        )}
+          <Field label="Celular de contacto">
+            <Input value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="9 dígitos" maxLength={9} />
+          </Field>
+        </div>
 
         {edicion && (
-          <Field label="Estado" hint="Suspender corta el acceso de inmediato e invalida las sesiones abiertas; no borra nada de lo que el usuario hizo.">
+          <Field label="Estado" hint="Suspender corta el acceso de inmediato; no borra nada de lo que el usuario hizo.">
             <Select value={estado} onChange={(e) => setEstado(e.target.value)}>
               <option value="activo">Activo</option>
               <option value="suspendido">Suspendido</option>
@@ -219,20 +190,24 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
           </Field>
         )}
 
+        {errorGuardar && <Note tone="alerta">{errorGuardar}</Note>}
+
         <div className="flex justify-end gap-2 border-t border-borde pt-4">
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           {!edicion && (
-            <Button variant="secondary" disabled={!valido} onClick={() => guardar(true)}>Guardar y crear otro</Button>
+            <Button variant="secondary" disabled={!valido || guardando} onClick={() => guardar(true)}>Guardar y crear otro</Button>
           )}
-          <Button disabled={!valido} onClick={() => guardar(false)}>Guardar</Button>
+          <Button disabled={!valido || guardando} onClick={() => guardar(false)}>
+            {guardando ? "Guardando…" : "Guardar"}
+          </Button>
         </div>
       </div>
 
       <Modal open={!!confirmSuper} onClose={() => setConfirmSuper(false)} title="Confirmar acceso de superadministrador">
         <div className="space-y-4">
           <Note tone="alerta">
-            Estás por dar a <b>{personaSel?.nombre}</b> un perfil con la <b>marca de superadministrador</b>: operará
-            sobre todo el grupo, en todos los módulos, y podrá crear otros superadministradores.
+            Estás por dar a <b>{personaSel?.nombre}</b> una categoría con la <b>marca de superadministrador</b>:
+            operará sobre todo el grupo, en todos los módulos, y podrá crear otros superadministradores.
           </Note>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirmSuper(false)}>Cancelar</Button>
@@ -247,7 +222,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
 }
 
 export default function Usuarios() {
-  const { db, suspenderUsuarioAdmin, reactivarUsuarioAdmin, reenviarClave } = useApp();
+  const { db, user, suspenderUsuarioAdmin, reactivarUsuarioAdmin, reenviarClaveCuenta, eliminarUsuarioAdmin } = useApp();
   const [search] = useSearchParams();
 
   const [fPerfil, setFPerfil] = useState(search.get("perfil") ?? "");
@@ -255,47 +230,59 @@ export default function Usuarios() {
   const [fEstado, setFEstado] = useState("todos");
   const [fAcceso, setFAcceso] = useState("todos");
   const [busca, setBusca] = useState("");
-  const [form, setForm] = useState(null);        // null | { usuario: obj|null }
-  const [claveModal, setClaveModal] = useState(null); // { nombre, clave, correo }
+  const [form, setForm] = useState(null);          // null | { usuario: obj|null }
+  const [claveModal, setClaveModal] = useState(null); // { nombre, clave?, correo?, codigo?, creado?, errorCuenta?, error? }
+  const [eliminar, setEliminar] = useState(null);  // usuario a eliminar
+  const [confirmTexto, setConfirmTexto] = useState("");
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState(null);
 
   const usuarios = db.usuariosAdmin;
   const superadminsActivos = usuarios.filter((u) => u.esSuperadmin && u.estado === "activo");
+  // Eliminar definitivamente exige nivel de aprobación en Accesos (o la marca).
+  const puedeEliminar = nivelDe(user?.acceso ?? { esSuperadmin: user?.esSuperadmin }, "accesos") >= 3;
 
   const filtrados = usuarios.filter((u) => {
     if (fPerfil && u.perfil !== fPerfil) return false;
-    if (fEmpresa && !u.esSuperadmin && !u.empresas.includes(fEmpresa)) return false;
+    if (fEmpresa && !u.esSuperadmin && !(u.empresas ?? []).includes(fEmpresa)) return false;
     if (fEstado !== "todos" && u.estado !== fEstado) return false;
     if (fAcceso === "superadmin" && !u.esSuperadmin) return false;
     if (fAcceso === "estandar" && u.esSuperadmin) return false;
     const q = busca.trim().toLowerCase();
-    if (q && !u.dni.includes(q) && !u.nombre.toLowerCase().includes(q) && !(u.correo ?? "").toLowerCase().includes(q)) return false;
+    if (q && !u.dni.includes(q) && !u.nombre.toLowerCase().includes(q) && !(u.correo ?? "").toLowerCase().includes(q) && !(u.codigo ?? "").toLowerCase().includes(q)) return false;
     return true;
   });
 
   const inconsistente = (u) => u.inconsistencia || (u.estado === "activo" && db.personal.find((p) => p.dni === u.dni)?.estado === "cesado");
 
-  const alcanceTexto = (u) => {
-    if (u.esSuperadmin) return null;
-    const cortos = u.empresas.map((id) => db.empresas.find((e) => e.id === id)?.corto ?? id);
-    const sedes = u.sedes.length
-      ? u.sedes.map((id) => db.sedes.find((s) => s.id === id)?.nombre ?? id).join(", ")
-      : "Todas las sedes";
-    return { cortos, sedes };
+  const alcance = (u) =>
+    u.esSuperadmin ? null : (u.empresas ?? []).map((id) => db.empresas.find((e) => e.id === id)?.corto ?? id);
+
+  const reenviar = async (u) => {
+    const r = await reenviarClaveCuenta(u.id);
+    setClaveModal(r.error
+      ? { nombre: u.nombre, error: r.error }
+      : { nombre: u.nombre, clave: r.clave, correo: u.correo });
   };
 
-  const reenviar = (u) => {
-    const clave = genClave();
-    reenviarClave(u.id, clave);
-    setClaveModal({ nombre: u.nombre, clave, correo: u.correo });
+  const ejecutarEliminar = async () => {
+    if (confirmTexto !== "ELIMINAR" || eliminando) return;
+    setEliminando(true);
+    setErrorEliminar(null);
+    const r = await eliminarUsuarioAdmin(eliminar.id);
+    setEliminando(false);
+    if (r.error) { setErrorEliminar(r.error); return; }
+    setEliminar(null);
+    setConfirmTexto("");
   };
 
   const exportar = () => {
-    const head = ["DNI", "Nombre", "Perfil", "Razones sociales", "Sedes", "Correo", "Último ingreso", "Estado"];
-    const rows = filtrados.map((u) => {
-      const a = alcanceTexto(u);
-      return [u.dni, u.nombre, u.perfilNombre, u.esSuperadmin ? "Todo el grupo" : a.cortos.join(" · "),
-        u.esSuperadmin ? "Todas" : a.sedes, u.correo ?? "", u.ultimoIngreso ?? "Nunca ingresó", u.estado];
-    });
+    const head = ["Código", "DNI", "Nombre", "Categoría", "Razones sociales", "Correo", "Fecha de registro", "Último ingreso", "Estado"];
+    const rows = filtrados.map((u) => [
+      u.codigo ?? "", u.dni, u.nombre, u.perfilNombre,
+      u.esSuperadmin ? "Todo el grupo" : (alcance(u) ?? []).join(" · "),
+      u.correo ?? "", u.creado ?? "", u.ultimoIngreso ?? "Nunca ingresó", u.estado,
+    ]);
     const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
@@ -309,7 +296,7 @@ export default function Usuarios() {
       <PageHeader
         code="ACC-01"
         title="Usuarios administrativos"
-        subtitle="Quién tiene acceso al BackOffice, con qué perfil y sobre qué razones sociales. El Trabajador no se administra aquí: entra al Portal con su DNI y ve solo lo suyo."
+        subtitle="Quién tiene acceso al BackOffice y con qué categoría. Los accesos por módulo y razón social se heredan de la categoría y se aplican desde el ingreso."
         actions={
           <>
             <Button variant="secondary" onClick={exportar}><Download size={14} /> Exportar</Button>
@@ -327,9 +314,9 @@ export default function Usuarios() {
 
       <Card className="mb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <Input placeholder="Buscar por DNI, nombre o correo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <Input placeholder="Buscar por código, DNI, nombre o correo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
           <Select value={fPerfil} onChange={(e) => setFPerfil(e.target.value)}>
-            <option value="">Todos los perfiles</option>
+            <option value="">Todas las categorías</option>
             {db.perfiles.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
           </Select>
           <Select value={fEmpresa} onChange={(e) => setFEmpresa(e.target.value)}>
@@ -353,12 +340,13 @@ export default function Usuarios() {
         {filtrados.length === 0 ? (
           <EmptyState title="Sin resultados" body="Ajusta los filtros o la búsqueda." />
         ) : (
-          <Table head={["Usuario", "Perfil", "Alcance", "Último ingreso", "Estado", "Acciones"]}>
+          <Table head={["Código", "Usuario", "Categoría", "Razones sociales", "Último ingreso", "Estado", "Acciones"]}>
             {filtrados.map((u) => {
-              const a = alcanceTexto(u);
               const esUltimoSuper = u.esSuperadmin && u.estado === "activo" && superadminsActivos.length === 1;
+              const soyYo = user?.id === u.id;
               return (
                 <tr key={u.id} className="hover:bg-papel/60">
+                  <Td><span className="font-mono text-[12px] font-semibold text-tinta">{u.codigo ?? "—"}</span></Td>
                   <Td>
                     <div className="flex items-center gap-2 font-semibold text-tinta">
                       {u.nombre}
@@ -372,10 +360,7 @@ export default function Usuarios() {
                     {u.esSuperadmin ? (
                       <span className="text-[12px] font-semibold text-pend">Todo el grupo</span>
                     ) : (
-                      <>
-                        <div className="flex flex-wrap gap-1">{a.cortos.map((c) => <Badge key={c} tone="neutral">{c}</Badge>)}</div>
-                        <div className="mt-0.5 text-[11px] text-gris-cl">{a.sedes}</div>
-                      </>
+                      <div className="flex flex-wrap gap-1">{(alcance(u) ?? []).map((c) => <Badge key={c} tone="neutral">{c}</Badge>)}</div>
                     )}
                   </Td>
                   <Td>
@@ -396,7 +381,17 @@ export default function Usuarios() {
                       ) : (
                         <Button size="sm" variant="ghost" onClick={() => reactivarUsuarioAdmin(u.id)}><RotateCcw size={12} /> Reactivar</Button>
                       )}
-                      <Button size="sm" variant="ghost" onClick={() => reenviar(u)}><Send size={12} /> Reenviar clave</Button>
+                      <Button size="sm" variant="ghost" onClick={() => reenviar(u)}><Send size={12} /> Restablecer clave</Button>
+                      {puedeEliminar && (
+                        <Button
+                          size="sm" variant="ghost" disabled={esUltimoSuper || soyYo}
+                          className="text-alerta hover:bg-alerta-bg"
+                          title={soyYo ? "No puedes eliminarte a ti mismo." : esUltimoSuper ? "No se puede eliminar al único superadministrador activo." : undefined}
+                          onClick={() => { setEliminar(u); setConfirmTexto(""); setErrorEliminar(null); }}
+                        >
+                          <Trash2 size={12} /> Eliminar
+                        </Button>
+                      )}
                     </div>
                   </Td>
                 </tr>
@@ -422,21 +417,64 @@ export default function Usuarios() {
         )}
       </Modal>
 
-      <Modal open={!!claveModal} onClose={() => setClaveModal(null)} title="Clave provisional generada">
+      <Modal open={!!claveModal} onClose={() => setClaveModal(null)} title="Usuario y cuenta de ingreso">
         {claveModal && (
           <div className="space-y-4">
-            <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
-              <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
-              <div className="font-mono text-[22px] font-bold tracking-[0.2em] text-tinta">{claveModal.clave}</div>
-              <div className="mt-1 text-[11.5px] text-gris-cl">Clave de un solo uso para {claveModal.nombre}. Deberá reemplazarla en el primer ingreso.</div>
-            </div>
-            {claveModal.correo ? (
-              <Note tone="conf">Se envió al correo <b>{claveModal.correo}</b>.</Note>
+            {(claveModal.codigo || claveModal.creado) && (
+              <div className="grid grid-cols-2 gap-4 rounded-caja border border-borde bg-papel/60 px-3.5 py-2.5 text-[12px] text-gris">
+                <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Código de usuario</span><span className="font-mono text-[15px] font-bold text-tinta">{claveModal.codigo ?? "—"}</span></div>
+                <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Fecha de registro</span>{claveModal.creado ?? "—"}</div>
+              </div>
+            )}
+            {claveModal.error && <Note tone="alerta">{claveModal.error}</Note>}
+            {claveModal.errorCuenta && (
+              <Note tone="alerta">El usuario se registró, pero su cuenta de ingreso falló: {claveModal.errorCuenta}. Usa «Restablecer clave» para reintentar.</Note>
+            )}
+            {claveModal.clave ? (
+              <>
+                <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
+                  <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
+                  <div className="font-mono text-[22px] font-bold tracking-[0.15em] text-tinta">{claveModal.clave}</div>
+                  <div className="mt-1 text-[11.5px] text-gris-cl">Clave provisional para {claveModal.nombre}. Deberá reemplazarla en su primer ingreso.</div>
+                </div>
+                {claveModal.correo ? (
+                  <Note tone="conf">Entrégala a <b>{claveModal.correo}</b> (el envío automático por correo llega con el Motor de mensajería).</Note>
+                ) : (
+                  <Note tone="pend">La persona no tiene correo registrado: entrega la clave <b>presencialmente</b>.</Note>
+                )}
+              </>
             ) : (
-              <Note tone="pend">La persona no tiene correo registrado: entrega la clave <b>presencialmente</b>. Queda registrado que se entregó en pantalla.</Note>
+              !claveModal.error && !claveModal.errorCuenta && (
+                <Note tone="pend">
+                  {claveModal.nombre} quedó registrado <b>sin cuenta de ingreso</b> (no tiene correo). Regístrale un
+                  correo con «Editar» y luego usa «Restablecer clave» para crearla.
+                </Note>
+              )
             )}
             <div className="flex justify-end">
               <Button onClick={() => setClaveModal(null)}>Entendido</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!eliminar} onClose={() => { setEliminar(null); setConfirmTexto(""); }} title={`Eliminar definitivamente a ${eliminar?.nombre}`}>
+        {eliminar && (
+          <div className="space-y-4">
+            <Note tone="alerta">
+              Esta acción <b>no se puede deshacer</b>: se elimina el usuario <b>{eliminar.codigo}</b> y su cuenta de
+              ingreso para siempre. Sus ingresos históricos quedan en el Registro de accesos (ACC-06) con su nombre y
+              DNI. Si solo quieres cortarle el acceso, usa <b>Suspender</b>.
+            </Note>
+            <Field label={<>Escribe <b>ELIMINAR</b> para confirmar</>}>
+              <Input value={confirmTexto} onChange={(e) => setConfirmTexto(e.target.value)} placeholder="ELIMINAR" autoFocus />
+            </Field>
+            {errorEliminar && <Note tone="alerta">{errorEliminar}</Note>}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => { setEliminar(null); setConfirmTexto(""); }}>Cancelar</Button>
+              <Button variant="danger" disabled={confirmTexto !== "ELIMINAR" || eliminando} onClick={ejecutarEliminar}>
+                {eliminando ? "Eliminando…" : "Eliminar definitivamente"}
+              </Button>
             </div>
           </div>
         )}

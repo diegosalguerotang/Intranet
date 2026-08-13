@@ -51,6 +51,31 @@ export const MODULOS = [
     aprobar: "editar los parámetros del motor de acuses y la política de retención" },
 ];
 
+// ---- Enforcement en la app (Accesos v2) ------------------------------------
+// Nivel efectivo del usuario en un módulo (o el mayor de una lista de
+// módulos). El superadmin siempre es 3; sin acceso cargado, 0.
+export function nivelDe(acceso, modulo) {
+  if (!acceso) return 0;
+  if (acceso.esSuperadmin) return 3;
+  const mods = Array.isArray(modulo) ? modulo : [modulo];
+  return Math.max(0, ...mods.map((m) => acceso.matriz?.[m] ?? 0));
+}
+
+export const MODULOS_RRHH = ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas"];
+
+// Orden canónico de aterrizaje: la primera ruta con nivel >= 1 es el inicio.
+export const RUTAS_ORDENADAS = [
+  { ruta: "/accesos/usuarios", modulo: "accesos" },
+  { ruta: "/rrhh", modulo: MODULOS_RRHH },
+  { ruta: "/admin/activos", modulo: "activos" },
+  { ruta: "/accesos/registro", modulo: "auditoria" },
+];
+
+export function primeraRuta(acceso) {
+  if (acceso?.esSuperadmin) return "/rrhh";
+  return RUTAS_ORDENADAS.find((r) => nivelDe(acceso, r.modulo) >= 1)?.ruta ?? null;
+}
+
 // Permisos transversales que no encajan en la matriz. Ninguno se concede
 // por defecto; toda consulta de remuneración y toda exportación de datos
 // personales se registra en auditoría, tenga el usuario el permiso o no.

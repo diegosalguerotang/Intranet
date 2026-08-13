@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AppProvider } from "./state";
+import { AppProvider, useApp } from "./state";
+import { nivelDe, primeraRuta, MODULOS_RRHH } from "./data/modulos";
+import { EmptyState } from "./components/ui";
 import Shell from "./layout/Shell";
 import AdminLogin from "./pages/AdminLogin";
 import Tablero from "./pages/rrhh/Tablero";
@@ -21,6 +23,34 @@ import PerfilEditor from "./pages/accesos/PerfilEditor";
 import Politica from "./pages/accesos/Politica";
 import RegistroAccesos from "./pages/accesos/RegistroAccesos";
 
+// Enforcement de ruta (Accesos v2): si la categoría del usuario no concede el
+// módulo, la pantalla no se renderiza y se redirige al inicio permitido. La
+// BD aún confía en la app (RLS = fase siguiente, documentada en la spec).
+function RequiereModulo({ modulo, children }) {
+  const { user } = useApp();
+  if (!user) return children; // la puerta de sesión la maneja Shell
+  const acceso = user.acceso ?? { esSuperadmin: user.esSuperadmin, matriz: {} };
+  if (nivelDe(acceso, modulo) >= 1) return children;
+  const inicio = primeraRuta(acceso);
+  return inicio ? <Navigate to={inicio} replace /> : <SinAccesos />;
+}
+
+function SinAccesos() {
+  return (
+    <EmptyState
+      title="Tu categoría no concede acceso a ningún módulo"
+      body="Pide a un administrador que revise tu categoría en Accesos y Roles."
+    />
+  );
+}
+
+// La raíz aterriza en la primera pantalla que la categoría permite.
+function Inicio() {
+  const { user } = useApp();
+  const inicio = user ? primeraRuta(user.acceso ?? { esSuperadmin: user.esSuperadmin }) : "/rrhh";
+  return inicio ? <Navigate to={inicio} replace /> : <SinAccesos />;
+}
+
 export default function App() {
   return (
     <AppProvider>
@@ -31,26 +61,26 @@ export default function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/login" element={<Navigate to="/admin/login" replace />} />
           <Route element={<Shell />}>
-            <Route path="/" element={<Navigate to="/rrhh" replace />} />
-            <Route path="/rrhh" element={<Tablero />} />
-            <Route path="/rrhh/personal" element={<Personal />} />
-            <Route path="/rrhh/personal/:dni" element={<Legajo />} />
-            <Route path="/rrhh/boletas" element={<Boletas />} />
-            <Route path="/rrhh/acuses" element={<Acuses />} />
-            <Route path="/rrhh/acuses/:dni" element={<Constancia />} />
-            <Route path="/rrhh/comunicados" element={<Comunicados />} />
-            <Route path="/rrhh/memorandums" element={<Memorandums />} />
-            <Route path="/rrhh/contratos" element={<Contratos />} />
-            <Route path="/rrhh/tardanzas" element={<Tardanzas />} />
-            <Route path="/admin/activos" element={<Inventario />} />
-            <Route path="/admin/lineas" element={<Lineas />} />
-            <Route path="/admin/epp" element={<EPP />} />
-            <Route path="/admin/costos" element={<Costos />} />
-            <Route path="/accesos/usuarios" element={<Usuarios />} />
-            <Route path="/accesos/perfiles" element={<Perfiles />} />
-            <Route path="/accesos/perfiles/:id" element={<PerfilEditor />} />
-            <Route path="/accesos/politica" element={<Politica />} />
-            <Route path="/accesos/registro" element={<RegistroAccesos />} />
+            <Route path="/" element={<Inicio />} />
+            <Route path="/rrhh" element={<RequiereModulo modulo={MODULOS_RRHH}><Tablero /></RequiereModulo>} />
+            <Route path="/rrhh/personal" element={<RequiereModulo modulo="personal"><Personal /></RequiereModulo>} />
+            <Route path="/rrhh/personal/:dni" element={<RequiereModulo modulo="personal"><Legajo /></RequiereModulo>} />
+            <Route path="/rrhh/boletas" element={<RequiereModulo modulo="boletas"><Boletas /></RequiereModulo>} />
+            <Route path="/rrhh/acuses" element={<RequiereModulo modulo="acuses"><Acuses /></RequiereModulo>} />
+            <Route path="/rrhh/acuses/:dni" element={<RequiereModulo modulo="acuses"><Constancia /></RequiereModulo>} />
+            <Route path="/rrhh/comunicados" element={<RequiereModulo modulo="comunicados"><Comunicados /></RequiereModulo>} />
+            <Route path="/rrhh/memorandums" element={<RequiereModulo modulo="memorandums"><Memorandums /></RequiereModulo>} />
+            <Route path="/rrhh/contratos" element={<RequiereModulo modulo="contratos"><Contratos /></RequiereModulo>} />
+            <Route path="/rrhh/tardanzas" element={<RequiereModulo modulo="tardanzas"><Tardanzas /></RequiereModulo>} />
+            <Route path="/admin/activos" element={<RequiereModulo modulo="activos"><Inventario /></RequiereModulo>} />
+            <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
+            <Route path="/admin/epp" element={<RequiereModulo modulo="activos"><EPP /></RequiereModulo>} />
+            <Route path="/admin/costos" element={<RequiereModulo modulo="activos"><Costos /></RequiereModulo>} />
+            <Route path="/accesos/usuarios" element={<RequiereModulo modulo="accesos"><Usuarios /></RequiereModulo>} />
+            <Route path="/accesos/perfiles" element={<RequiereModulo modulo="accesos"><Perfiles /></RequiereModulo>} />
+            <Route path="/accesos/perfiles/:id" element={<RequiereModulo modulo="accesos"><PerfilEditor /></RequiereModulo>} />
+            <Route path="/accesos/politica" element={<RequiereModulo modulo="accesos"><Politica /></RequiereModulo>} />
+            <Route path="/accesos/registro" element={<RequiereModulo modulo="auditoria"><RegistroAccesos /></RequiereModulo>} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

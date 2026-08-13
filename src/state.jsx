@@ -57,7 +57,27 @@ const MODO_DEMO = false;
 const USUARIO_DEMO = {
   id: 0, nombre: "Diego Salguero Tang", rol: "Superadministrador · demo",
   correo: "diegosalguerotang@gmail.com", esSuperadmin: true, requiereCambio: false,
+  acceso: { esSuperadmin: true, matriz: {}, empresas: [] },
 };
+
+// Llama a la función serverless de cuentas (api/admin-usuarios) con el JWT
+// de la sesión en x-sesion. Devuelve { ...json } o { error }.
+async function cuentaAdmin(accion, usuarioId) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return { error: "Sin sesión activa." };
+    const r = await fetch("/api/admin-usuarios", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-sesion": token },
+      body: JSON.stringify({ accion, usuario_id: usuarioId }),
+    });
+    const json = await r.json().catch(() => ({}));
+    return r.ok ? json : { error: json.error ?? `Error ${r.status}` };
+  } catch (e) {
+    return { error: e.message ?? "Fallo de red." };
+  }
+}
 
 export function AppProvider({ children }) {
   // undefined = verificando sesión · null = sin sesión · objeto = autenticado
@@ -95,8 +115,10 @@ export function AppProvider({ children }) {
     const resolver = async (session) => {
       const email = session?.user?.email;
       if (!email) { if (activo) setUser(null); return; }
-      const { data, error } = await supabase
-        .from("v_usuarios_admin").select("*").eq("correo", email).maybeSingle();
+      const [{ data, error }, { data: acc }] = await Promise.all([
+        supabase.from("v_usuarios_admin").select("*").eq("correo", email).maybeSingle(),
+        supabase.from("v_mi_acceso").select("*").eq("correo", email).maybeSingle(),
+      ]);
       if (!activo) return;
       if (error || !data || data.estado !== "activo") {
         await supabase.auth.signOut();
@@ -104,8 +126,14 @@ export function AppProvider({ children }) {
         return;
       }
       setUser({
-        id: data.id, nombre: data.nombre, rol: data.perfilNombre, correo: data.correo,
-        esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
+        id: data.id, codigo: data.codigo, nombre: data.nombre, rol: data.perfilNombre,
+        correo: data.correo, esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
+        // La categoría vigente manda: de aquí salen menú, selector y guards.
+        acceso: {
+          esSuperadmin: acc?.esSuperadmin ?? data.esSuperadmin,
+          matriz: acc?.matriz ?? {},
+          empresas: acc?.empresas ?? [],
+        },
       });
     };
     supabase.auth.getSession().then(({ data }) => resolver(data.session));
@@ -219,28 +247,49 @@ export function AppProvider({ children }) {
         p_id: perfil.id, p_nombre: perfil.nombre, p_descripcion: perfil.descripcion,
         p_superadmin: perfil.esSuperadmin, p_ver_remuneracion: perfil.verRemuneracion,
         p_ver_documentos: perfil.verDocumentosTerceros, p_exportar: perfil.exportarDatosPersonales,
-        p_matriz: perfil.matriz, p_por: autor,
+        p_matriz: perfil.matriz, p_empresas: perfil.empresas ?? null, p_por: autor,
       }, "perfiles", "perfilVersiones", "usuariosAdmin");
     },
     desactivarPerfil: (id) => {
       local("perfiles", (xs) => xs.map((p) => (p.id === id ? { ...p, estado: "desactivado" } : p)));
       rpc("desactivar_perfil", { p_id: id }, "perfiles");
     },
-    crearUsuarioAdmin: (u) => {
-      local("usuariosAdmin", (xs) => [{ ...u, id: Math.max(0, ...xs.map((x) => x.id)) + 1, estado: "activo", ultimoIngreso: null, nuncaIngreso: true, inconsistencia: false, creado: new Date().toISOString().slice(0, 10) }, ...xs]);
-      local("perfiles", (xs) => xs.map((p) => (p.id === u.perfil ? { ...p, usuarios: p.usuarios + 1 } : p)));
-      rpc("crear_usuario_admin", {
+    // Alta v2: la fila en BD primero (asigna código), la cuenta de ingreso
+    // después (serverless con service key devuelve la clave provisional).
+    crearUsuarioAdmin: async (u) => {
+      if (!supabaseListo) return { error: "Sin conexión con la base de datos." };
+      const { data: id, error } = await supabase.rpc("crear_usuario_admin", {
         p_dni: u.dni, p_perfil: u.perfil, p_correo: u.correo, p_celular: u.celular,
-        p_empresas: u.empresas, p_sedes: u.sedes, p_clave: u.clave, p_por: user?.nombre ?? "BackOffice",
-      }, "usuariosAdmin", "perfiles");
+        p_clave: null, p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) return { error: error.message };
+      let clave = null, errorCuenta = null;
+      if (u.correo) {
+        const r = await cuentaAdmin("crear", id);
+        if (r.error) errorCuenta = r.error; else clave = r.clave;
+      }
+      const { data: fila } = await supabase
+        .from("v_usuarios_admin").select("codigo, creado").eq("id", id).maybeSingle();
+      await recargar("usuariosAdmin", "perfiles");
+      return { id, clave, errorCuenta, codigo: fila?.codigo, creado: fila?.creado };
     },
     actualizarUsuarioAdmin: (id, cambios) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, ...cambios } : x)));
       rpc("actualizar_usuario_admin", {
         p_id: id, p_perfil: cambios.perfil, p_correo: cambios.correo, p_celular: cambios.celular,
-        p_empresas: cambios.empresas, p_sedes: cambios.sedes, p_estado: cambios.estado,
+        p_estado: cambios.estado,
       }, "usuariosAdmin", "perfiles");
     },
+    // Eliminación definitiva: BD + cuenta de ingreso, vía serverless (los
+    // invariantes -último superadmin, no a uno mismo- se validan allá).
+    eliminarUsuarioAdmin: async (id) => {
+      const r = await cuentaAdmin("eliminar", id);
+      if (!r.error) local("usuariosAdmin", (xs) => xs.filter((x) => x.id !== id));
+      await recargar("usuariosAdmin", "perfiles");
+      return r;
+    },
+    // Restablecer clave v2: cambia la clave REAL de la cuenta y exige cambio.
+    reenviarClaveCuenta: async (id) => cuentaAdmin("reenviar", id),
     suspenderUsuarioAdmin: (id) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
       rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");

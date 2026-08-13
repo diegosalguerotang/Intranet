@@ -33,12 +33,12 @@ export default function Perfiles() {
     <>
       <PageHeader
         code="ACC-03"
-        title="Catálogo de perfiles"
-        subtitle="Qué concede cada perfil y cuántas personas lo usan. Los perfiles son del Grupo: el alcance por razón social se define al asignarlos, no aquí."
-        actions={<Button onClick={() => navigate("/accesos/perfiles/nuevo")}><Plus size={14} /> Nuevo perfil</Button>}
+        title="Catálogo de categorías"
+        subtitle="Qué concede cada categoría, sobre qué razones sociales opera y cuántas personas la usan. El usuario hereda su categoría tal cual."
+        actions={<Button onClick={() => navigate("/accesos/perfiles/nuevo")}><Plus size={14} /> Nueva categoría</Button>}
       />
       <Card pad={false}>
-        <Table head={["Perfil", "Matriz", "Usuarios", "Estado", "Última modificación", "Acciones"]}>
+        <Table head={["Categoría", "Matriz", "Razones sociales", "Usuarios", "Estado", "Última modificación", "Acciones"]}>
           {db.perfiles.map((p) => (
             <tr key={p.id} className="hover:bg-papel/60">
               <Td className="max-w-[260px]">
@@ -54,6 +54,17 @@ export default function Perfiles() {
                   : <ResumenMatriz matriz={p.matriz} />}
               </Td>
               <Td>
+                {p.esSuperadmin ? (
+                  <span className="text-[12px] font-semibold text-pend">Todo el grupo</span>
+                ) : (
+                  <div className="flex flex-wrap gap-1">
+                    {(p.empresas ?? []).map((eid) => (
+                      <Badge key={eid} tone="neutral">{db.empresas.find((e) => e.id === eid)?.corto ?? eid}</Badge>
+                    ))}
+                  </div>
+                )}
+              </Td>
+              <Td>
                 <button
                   className="inline-flex items-center gap-1 text-petroleo hover:underline"
                   onClick={() => navigate(`/accesos/usuarios?perfil=${p.id}`)}
@@ -62,7 +73,7 @@ export default function Perfiles() {
                   <UsersIcon size={12} /> {p.usuarios}
                 </button>
               </Td>
-              <Td>{p.estado === "activo" ? <Badge tone="conf">Activo</Badge> : <Badge tone="neutral">Desactivado</Badge>}</Td>
+              <Td>{p.estado === "activo" ? <Badge tone="conf">Activa</Badge> : <Badge tone="neutral">Archivada</Badge>}</Td>
               <Td>
                 <div className="text-[12px]">{p.modificado}</div>
                 <div className="font-mono text-[10.5px] text-gris-cl">v{p.version} · {p.modificadoPor}</div>
@@ -72,7 +83,7 @@ export default function Perfiles() {
                   <Button size="sm" variant="ghost" onClick={() => navigate(`/accesos/perfiles/${p.id}`)}><Pencil size={12} /> Editar</Button>
                   <Button size="sm" variant="ghost" onClick={() => navigate(`/accesos/perfiles/nuevo?desde=${p.id}`)}><Copy size={12} /> Duplicar</Button>
                   {p.estado === "activo" && !p.esSuperadmin && (
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmar(p)}><Ban size={12} /> Desactivar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmar(p)}><Ban size={12} /> Archivar</Button>
                   )}
                 </div>
               </Td>
@@ -83,24 +94,24 @@ export default function Perfiles() {
 
       <div className="mt-4">
         <Note tone="neutral">
-          <b>Duplicar es la vía recomendada para crear variantes.</b> Crear desde cero un perfil casi idéntico a otro
-          es cómo se acumulan permisos que nadie recuerda haber otorgado. Un perfil con usuarios asignados no se
-          elimina: se desactiva.
+          <b>Duplicar es la vía recomendada para crear variantes.</b> Crear desde cero una categoría casi idéntica a
+          otra es cómo se acumulan permisos que nadie recuerda haber otorgado. Una categoría con usuarios asignados
+          no se elimina: se archiva.
         </Note>
       </div>
 
-      <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title={`Desactivar «${confirmar?.nombre}»`}>
+      <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title={`Archivar «${confirmar?.nombre}»`}>
         {confirmar && (
           <div className="space-y-4">
             {confirmar.usuarios > 0 ? (
               <Note tone="alerta">
-                <b>{confirmar.usuarios}</b> usuario(s) tienen asignado este perfil. Desactivarlo impide asignarlo a
-                usuarios nuevos y <b>no altera</b> a los que ya lo tienen. Para retirarlo por completo, primero
+                <b>{confirmar.usuarios}</b> usuario(s) tienen asignada esta categoría. Archivarla impide asignarla a
+                usuarios nuevos y <b>no altera</b> a los que ya la tienen. Para retirarla por completo, primero
                 reasigna a sus usuarios.
               </Note>
             ) : (
               <Note tone="neutral">
-                El perfil no tiene usuarios asignados. Si más adelante hace falta, puede recuperarse guardando una
+                La categoría no tiene usuarios asignados. Si más adelante hace falta, puede recuperarse guardando una
                 versión nueva desde el constructor.
               </Note>
             )}
@@ -111,7 +122,7 @@ export default function Perfiles() {
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setConfirmar(null)}>Cancelar</Button>
-              <Button variant="danger" onClick={() => { desactivarPerfil(confirmar.id); setConfirmar(null); }}>Desactivar</Button>
+              <Button variant="danger" onClick={() => { desactivarPerfil(confirmar.id); setConfirmar(null); }}>Archivar</Button>
             </div>
           </div>
         )}

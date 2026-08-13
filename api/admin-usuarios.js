@@ -84,6 +84,28 @@ export default async function handler(req, res) {
     return res.status(200).json({ clave });
   }
 
+  if (accion === "reenviar") {
+    if (nivelAccesos < 2) return res.status(403).json({ error: "Necesitas nivel de acción en el módulo Accesos." });
+    if (!objetivo.correo) return res.status(400).json({ error: "El usuario no tiene correo." });
+    const lista = await rest(`/auth/v1/admin/users?per_page=1000`, { method: "GET" });
+    const cuenta = (lista.json?.users ?? []).find(
+      (u) => (u.email ?? "").toLowerCase() === objetivo.correo.toLowerCase()
+    );
+    if (!cuenta) return res.status(404).json({ error: "El usuario aún no tiene cuenta de ingreso: usa Crear cuenta." });
+    const clave = generarClave();
+    const cambio = await rest(`/auth/v1/admin/users/${cuenta.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ password: clave }),
+    });
+    if (!cambio.ok) return res.status(cambio.status).json({ error: "No se pudo restablecer la clave." });
+    await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}`, {
+      method: "PATCH",
+      headers: { prefer: "return=minimal" },
+      body: JSON.stringify({ requiere_cambio_clave: true, clave_provisional: null }),
+    });
+    return res.status(200).json({ clave });
+  }
+
   if (accion === "eliminar") {
     if (nivelAccesos < 3) return res.status(403).json({ error: "Eliminar exige nivel de aprobación en el módulo Accesos." });
     if (objetivo.correo && objetivo.correo.toLowerCase() === correoLlamador.toLowerCase()) {
