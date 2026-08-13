@@ -44,18 +44,18 @@ function NavGroup({ title, items }) {
           to={to}
           end={end}
           className={({ isActive }) =>
-            `mb-0.5 flex items-center gap-2.5 rounded-caja border-l-[3px] px-3 py-2 text-[13px] font-medium transition-colors ${
+            `mb-1 flex items-center gap-2.5 rounded-caja px-3 py-2 text-[13px] font-medium ${
               isActive
-                ? "border-pend bg-pend-bg font-semibold text-pend"
-                : "border-transparent text-gris hover:bg-papel hover:text-tinta"
+                ? "bg-petroleo font-semibold text-white shadow-[0_2px_8px_rgba(53,105,160,0.35)]"
+                : "text-gris hover:translate-x-0.5 hover:bg-papel hover:text-tinta"
             }`
           }
         >
           {({ isActive }) => (
             <>
-              <Icon size={15} className={`shrink-0 ${isActive ? "text-pend" : "text-petroleo"}`} />
+              <Icon size={15} className={`shrink-0 ${isActive ? "text-white" : "text-petroleo"}`} />
               <span className="flex-1">{label}</span>
-              <span className="font-mono text-[9px] text-gris-cl">{code}</span>
+              <span className={`font-mono text-[9px] ${isActive ? "text-white/70" : "text-gris-cl"}`}>{code}</span>
             </>
           )}
         </NavLink>
@@ -82,7 +82,7 @@ export default function Shell() {
     <div className="flex min-h-screen">
       <aside className="fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-borde bg-white px-3.5 py-5 shadow-[2px_0_6px_rgba(0,0,0,0.05)]">
         <div className="mb-6 px-3">
-          <div className="text-[16px] font-bold tracking-tight text-tinta">
+          <div className="font-display text-[16px] font-bold tracking-tight text-tinta">
             Grupo<span className="text-petroleo">ER</span>
           </div>
           <div className="text-[9.5px] font-medium uppercase tracking-[0.18em] text-acero">
@@ -121,7 +121,7 @@ export default function Shell() {
           <select
             value={empresaId}
             onChange={(e) => setEmpresaId(e.target.value)}
-            className="rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[13px] font-semibold text-tinta focus:border-petroleo focus:outline-none"
+            className="rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[13px] font-semibold text-tinta focus:border-petroleo focus:shadow-[0_0_0_3px_rgba(53,105,160,0.14)] focus:outline-none"
           >
             {db.empresas.map((e) => (
               <option key={e.id} value={e.id}>{e.nombre}</option>
