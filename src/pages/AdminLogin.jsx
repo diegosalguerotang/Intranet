@@ -12,6 +12,12 @@ import { Note } from "../components/ui";
 // verificador de qué personas están en el sistema.
 const MENSAJE_UNICO = "Usuario o clave incorrectos.";
 
+// Resumen técnico de un error de supabase-js para el modo prueba (?probar=1):
+// sin el status real es imposible distinguir una clave mal escrita (400) de
+// una cabecera apikey eliminada por un interceptor (401).
+const detalle = (e) =>
+  e ? `${e.name ?? "Error"}·${e.status ?? "sin-status"}${e.code ? `·${e.code}` : ""}: ${(e.message ?? "?").slice(0, 80)}` : "ok";
+
 export default function AdminLogin() {
   const { user, db } = useApp();
   const [correo, setCorreo] = useState("");
@@ -35,7 +41,7 @@ export default function AdminLogin() {
     const dispositivo = navigator.userAgent.slice(0, 150);
     const email = correo.trim().toLowerCase();
     try {
-      const { data: bloqueado } = await supabase.rpc("verificar_bloqueo", { p_correo: email });
+      const { data: bloqueado, error: errBloqueo } = await supabase.rpc("verificar_bloqueo", { p_correo: email });
       if (bloqueado) {
         await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "bloqueado", p_dispositivo: dispositivo });
         setError("Demasiados intentos fallidos. Vuelve a intentarlo en unos minutos.");
@@ -72,18 +78,28 @@ export default function AdminLogin() {
           setError(`No hay conexión con el servidor de autenticación. ${errAuth.name ?? "?"}: ${errAuth.message ?? "?"} · Diagnóstico: ${diag.join(" · ")}`);
           return;
         }
-        await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
-        setError(MENSAJE_UNICO);
+        const { error: errReg } = await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
+        setError(
+          MENSAJE_UNICO +
+            (modoPrueba
+              ? ` · [prueba] auth: ${detalle(errAuth)} · registro: ${detalle(errReg)} · bloqueo: ${detalle(errBloqueo)}`
+              : "")
+        );
         return;
       }
       // Tener cuenta en el proveedor no basta: hay que estar en el padrón
       // de usuarios administrativos y activo.
-      const { data: fila } = await supabase
+      const { data: fila, error: errPadron } = await supabase
         .from("v_usuarios_admin").select("id, estado").eq("correo", email).maybeSingle();
       if (!fila || fila.estado !== "activo") {
         await supabase.auth.signOut();
         await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "fallido", p_dispositivo: dispositivo });
-        setError(MENSAJE_UNICO);
+        setError(
+          MENSAJE_UNICO +
+            (modoPrueba
+              ? ` · [prueba] auth: ok · padrón: ${detalle(errPadron)} · fila: ${fila ? fila.estado : "sin fila"}`
+              : "")
+        );
         return;
       }
       await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "exitoso", p_dispositivo: dispositivo });
@@ -168,7 +184,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v7.1-probar
+              Todo intento de ingreso queda registrado. · v7.2-apikey-url
             </p>
           </form>
         </div>

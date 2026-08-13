@@ -78,8 +78,20 @@ const esFetchRoto = (e) =>
   /ISO-8859-1|Failed to read the 'headers'|Failed to execute 'fetch'|Failed to fetch|NetworkError|Load failed/i
     .test(e?.message ?? "");
 
+// La clave API viaja SIEMPRE también por URL, en todos los canales: hay
+// interceptores (antivirus) que dejan pasar la petición pero eliminan sus
+// cabeceras, y el gateway responde 401 "falta apikey" — que aguas arriba se
+// confunde con credenciales incorrectas. El gateway acepta la clave como
+// parámetro (verificado con curl contra /auth y /rest vía el proxy).
+function conApikeyEnUrl(input) {
+  const destino = typeof input === "string" ? input : input.url;
+  if (!destino || destino.includes("apikey=")) return input;
+  return destino + (destino.includes("?") ? "&" : "?") + "apikey=" + encodeURIComponent(anonKey);
+}
+
 let usarXhr = false;
-async function fetchRobusto(input, init) {
+async function fetchRobusto(entrada, init) {
+  const input = conApikeyEnUrl(entrada);
   if (usarXhr) return fetchXhr(input, init);
   try {
     return await fetchNativo(input, init);
