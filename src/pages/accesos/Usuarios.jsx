@@ -75,7 +75,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
         {!edicion && (
           <Field label="Persona" required hint="Debe existir en el maestro de Personal. Desde aquí no se crean personas: rompería la trazabilidad.">
             {personaSel ? (
-              <div className="flex items-center justify-between rounded-[4px] border border-borde bg-papel/60 px-3 py-2">
+              <div className="flex items-center justify-between rounded-caja border border-borde bg-papel/60 px-3 py-2">
                 <div>
                   <span className="text-[13px] font-semibold text-tinta">{personaSel.nombre}</span>
                   <span className="ml-2 font-mono text-[11.5px] text-gris-cl">DNI {personaSel.dni}</span>
@@ -86,7 +86,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
               <div>
                 <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por DNI o nombre…" autoFocus />
                 {coincidencias.length > 0 && (
-                  <div className="mt-1 divide-y divide-borde rounded-[4px] border border-borde bg-white">
+                  <div className="mt-1 divide-y divide-borde rounded-caja border border-borde bg-white">
                     {coincidencias.map((p) => (
                       <button
                         key={p.dni}
@@ -105,7 +105,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
         )}
 
         {personaSel && personaSel.cargo && (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-[4px] border border-borde bg-papel/60 px-3.5 py-2.5 text-[12px] text-gris sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-caja border border-borde bg-papel/60 px-3.5 py-2.5 text-[12px] text-gris sm:grid-cols-4">
             <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Cargo</span>{personaSel.cargo}</div>
             <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Sede</span>{db.sedes.find((s) => s.id === personaSel.sede)?.nombre ?? personaSel.sede}</div>
             <div><span className="block text-[10px] font-semibold uppercase tracking-wide text-gris-cl">Empresa</span>{db.empresas.find((e) => e.id === personaSel.empresa)?.corto ?? personaSel.empresa}</div>
@@ -148,7 +148,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
         </Field>
 
         {perfilObj && (
-          <div className="rounded-[4px] border border-borde bg-papel/60 p-3.5">
+          <div className="rounded-caja border border-borde bg-papel/60 p-3.5">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-gris-cl">Matriz del perfil (solo lectura)</div>
             {esSuper ? (
               <Badge tone="tinta"><ShieldCheck size={11} /> Superadministrador — todo el grupo, todos los módulos</Badge>
@@ -425,7 +425,7 @@ export default function Usuarios() {
       <Modal open={!!claveModal} onClose={() => setClaveModal(null)} title="Clave provisional generada">
         {claveModal && (
           <div className="space-y-4">
-            <div className="rounded-[4px] border border-borde bg-papel px-4 py-5 text-center">
+            <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
               <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
               <div className="font-mono text-[22px] font-bold tracking-[0.2em] text-tinta">{claveModal.clave}</div>
               <div className="mt-1 text-[11.5px] text-gris-cl">Clave de un solo uso para {claveModal.nombre}. Deberá reemplazarla en el primer ingreso.</div>

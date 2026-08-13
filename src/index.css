@@ -1,14 +1,18 @@
 @import "tailwindcss";
 
 /*
-  Design system adaptado del estilo corporativo de intranets tipo ManpowerGroup:
-  azul primario #3569a0, azul acero #5481ab (cabeceras), acento naranja #dc6e00,
-  texto #4c4b4b sobre fondo #f0f0f0, tipografía Helvetica Neue.
-  Los nombres de token se conservan para no tocar cada página.
+  Design system GrupoER v2 (2026-08-13) — estilo adaptado del template
+  Colorlib "Login 100" (referencia: intranet jedu.pe) con la paleta
+  corporativa propia: azul #3569a0 y naranja #dc6e00 sobre grises suaves,
+  tipografía Poppins (texto) y Montserrat (titulares), radios de 10px y
+  transiciones de 0.2–0.4s. Los nombres de token se conservan.
 */
 @theme {
-  --font-sans: "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
+  --font-sans: "Poppins", "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-display: "Montserrat", "Poppins", "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --radius-caja: 10px;         /* radio maestro del template */
 
   --color-tinta: #1d3f72;      /* azul marino — titulares y marca */
   --color-tinta-2: #28507a;    /* azul marino claro */
@@ -16,11 +20,11 @@
   --color-petroleo: #3569a0;   /* azul primario — botones, enlaces, iconos */
   --color-petroleo-cl: #3b76b3;/* hover del primario */
   --color-acero: #5481ab;      /* cabeceras de tablas y modales */
-  --color-papel: #f0f0f0;      /* fondo de la aplicación */
-  --color-borde: #dee2e6;
-  --color-borde-f: #c9cdd2;
-  --color-gris: #4c4b4b;       /* texto base */
-  --color-gris-cl: #a8a8a8;    /* texto atenuado / placeholders */
+  --color-papel: #f2f3f5;      /* fondo de la aplicación (gris más suave) */
+  --color-borde: #e6e8eb;
+  --color-borde-f: #d4d8dd;
+  --color-gris: #555555;       /* texto base (gris del template) */
+  --color-gris-cl: #999999;    /* texto atenuado / placeholders */
   --color-pend: #dc6e00;       /* acento naranja — pendientes, activo */
   --color-pend-bg: #fdf0e0;
   --color-conf: #47775f;       /* confirmado */
@@ -36,6 +40,20 @@ body {
   -webkit-font-smoothing: antialiased;
   font-size: 14px;
 }
+
+/* Transición base del template: todo control responde suave al interactuar. */
+@layer base {
+  button, a, input, select, textarea, [role="button"] {
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.2s, opacity 0.2s;
+  }
+}
+
+/* Aparición de modales y notas (animate.css del template, versión mínima). */
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animar-aparicion { animation: aparecer 0.25s ease-out both; }
 
 :focus-visible {
   outline: 2px solid var(--color-petroleo);

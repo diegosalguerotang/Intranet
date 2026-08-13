@@ -218,7 +218,7 @@ export default function AdminLogin() {
               <button
                 type="submit"
                 disabled={cargando || !correo.trim() || !clave}
-                className="rounded-[4px] bg-petroleo px-10 py-3 text-[20px] font-semibold text-white transition-colors hover:bg-petroleo-cl disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-caja bg-petroleo px-10 py-3 text-[20px] font-semibold text-white transition-colors hover:bg-petroleo-cl disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {cargando ? "Verificando…" : "Ingresar"}
               </button>
@@ -237,7 +237,7 @@ export default function AdminLogin() {
         <ul className="flex list-none items-center justify-center gap-8">
           {logos.map((e) => (
             <li key={e.id}>
-              <div className="flex h-16 w-36 items-center justify-center rounded-[4px] bg-white p-2 shadow-[0_0_3px_rgba(0,0,0,0.15)]">
+              <div className="flex h-16 w-36 items-center justify-center rounded-caja bg-white p-2 shadow-[0_0_3px_rgba(0,0,0,0.15)]">
                 <img src={e.logo} alt={e.nombre} className="max-h-full max-w-full object-contain" />
               </div>
             </li>

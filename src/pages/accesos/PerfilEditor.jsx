@@ -176,7 +176,7 @@ export default function PerfilEditor() {
                 <Note tone="alerta">Ya existe otro perfil con ese nombre. El nombre del perfil es único en el sistema.</Note>
               </div>
             )}
-            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-[4px] border border-borde bg-papel/60 p-3.5">
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-caja border border-borde bg-papel/60 p-3.5">
               <input
                 type="checkbox"
                 checked={superadmin}
@@ -207,7 +207,7 @@ export default function PerfilEditor() {
                 <div className="flex items-center gap-2 text-[12px] text-gris-cl">
                   Aplicar a todos:
                   <select
-                    className="rounded-[4px] border border-borde-f bg-white px-2 py-1 text-[12px] text-gris focus:border-petroleo focus:outline-none"
+                    className="rounded-caja border border-borde-f bg-white px-2 py-1 text-[12px] text-gris focus:border-petroleo focus:outline-none"
                     value=""
                     onChange={(e) => { if (e.target.value !== "") aplicarTodos(Number(e.target.value)); }}
                   >
@@ -224,7 +224,7 @@ export default function PerfilEditor() {
                       <div className="text-[11px] leading-snug text-gris-cl">Solo ver: {m.ver}</div>
                     </div>
                     <select
-                      className="w-[210px] rounded-[4px] border border-borde-f bg-white px-2.5 py-1.5 text-[12.5px] text-gris focus:border-petroleo focus:outline-none"
+                      className="w-[210px] rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[12.5px] text-gris focus:border-petroleo focus:outline-none"
                       value={matriz[m.id]}
                       onChange={(e) => setMatriz((mx) => ({ ...mx, [m.id]: Number(e.target.value) }))}
                     >
