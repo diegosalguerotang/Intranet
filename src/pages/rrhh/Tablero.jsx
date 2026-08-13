@@ -69,7 +69,7 @@ export default function Tablero() {
                 <Link
                   key={i}
                   to={a.to}
-                  className={`flex items-center justify-between gap-3 rounded-[5px] border px-3.5 py-2.5 text-[12.5px] font-medium transition-colors ${
+                  className={`flex items-center justify-between gap-3 rounded-caja border px-3.5 py-2.5 text-[12.5px] font-medium transition-colors ${
                     a.tone === "alerta"
                       ? "border-alerta/25 bg-alerta-bg text-alerta hover:border-alerta/50"
                       : "border-pend/25 bg-pend-bg text-pend hover:border-pend/50"

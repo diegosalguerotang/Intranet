@@ -164,7 +164,7 @@ function AcuseAsistido({ acuse, onClose, onRegistrar }) {
             <button
               type="button"
               onClick={() => setFoto(true)}
-              className={`flex w-full items-center justify-center gap-2 rounded-[5px] border-2 border-dashed px-4 py-6 text-[13px] font-semibold transition-colors ${
+              className={`flex w-full items-center justify-center gap-2 rounded-caja border-2 border-dashed px-4 py-6 text-[13px] font-semibold transition-colors ${
                 foto ? "border-conf bg-conf-bg text-conf" : "border-borde-f text-gris hover:border-petroleo-cl"
               }`}
             >
