@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Mail, KeyRound } from "lucide-react";
+import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
-import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas } from "../lib/supabase";
+import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas, estadoHeaders } from "../lib/supabase";
 import { Note } from "../components/ui";
 
 // Puerta del BackOffice (/admin/login): correo + clave contra Supabase Auth.
@@ -18,6 +18,34 @@ const MENSAJE_UNICO = "Usuario o clave incorrectos.";
 const detalle = (e) =>
   e ? `${e.name ?? "Error"}·${e.status ?? "sin-status"}${e.code ? `·${e.code}` : ""}: ${(e.message ?? "?").slice(0, 80)}` : "ok";
 
+// Prueba cada canal contra /api/eco: qué cabeceras SOBREVIVEN el viaje real
+// hasta el servidor. Un interceptor puede corromperlas en tránsito sin que
+// el navegador lo muestre; el espejo del servidor es la única evidencia.
+async function ecoCanales() {
+  const canales = [
+    ["fetchGlobal", (...a) => window.fetch(...a)],
+    ["fetchIframe", fetchNativo],
+    ["xhr", fetchXhr],
+  ];
+  const estado = (v, esperado) =>
+    v == null ? "ausente" : v === esperado ? "intacta" : `alterada(${String(v).length})`;
+  const partes = [];
+  for (const [nombre, fn] of canales) {
+    try {
+      const r = await fn(`/api/eco?canal=${nombre}`, {
+        headers: { apikey: supabaseAnonKey, authorization: `Bearer ${supabaseAnonKey}`, "x-prueba": "GrupoER" },
+      });
+      const cab = (await r.json()).cabeceras ?? {};
+      partes.push(
+        `${nombre}[apikey:${estado(cab.apikey, supabaseAnonKey)} auth:${estado(cab.authorization, `Bearer ${supabaseAnonKey}`)} x-prueba:${estado(cab["x-prueba"], "GrupoER")}]`
+      );
+    } catch (e) {
+      partes.push(`${nombre}[ERR:${(e.message ?? "?").slice(0, 35)}]`);
+    }
+  }
+  return partes.join(" · ");
+}
+
 export default function AdminLogin() {
   const { user, db } = useApp();
   const [correo, setCorreo] = useState("");
@@ -25,6 +53,7 @@ export default function AdminLogin() {
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
+  const [verClave, setVerClave] = useState(false);
 
   // ?probar=1 deja ver el formulario aunque el MODO DEMO ya haya puesto un
   // usuario: sin esta puerta no hay forma de diagnosticar el login real
@@ -75,6 +104,8 @@ export default function AdminLogin() {
             diag.push(`xhrUrl:ERR(${(e.message ?? "?").slice(0, 40)})`);
           }
           if (cabecerasFallidas.size) diag.push(`cabecerasBloqueadas:[${[...cabecerasFallidas].join(",")}]`);
+          diag.push(`headers:${estadoHeaders}`);
+          if (modoPrueba) diag.push(`eco: ${await ecoCanales()}`);
           setError(`No hay conexión con el servidor de autenticación. ${errAuth.name ?? "?"}: ${errAuth.message ?? "?"} · Diagnóstico: ${diag.join(" · ")}`);
           return;
         }
@@ -82,7 +113,7 @@ export default function AdminLogin() {
         setError(
           MENSAJE_UNICO +
             (modoPrueba
-              ? ` · [prueba] auth: ${detalle(errAuth)} · registro: ${detalle(errReg)} · bloqueo: ${detalle(errBloqueo)}`
+              ? ` · [prueba] auth: ${detalle(errAuth)} · registro: ${detalle(errReg)} · bloqueo: ${detalle(errBloqueo)} · headers:${estadoHeaders} · eco: ${await ecoCanales()}`
               : "")
         );
         return;
@@ -151,13 +182,21 @@ export default function AdminLogin() {
                 <KeyRound size={20} />
               </div>
               <input
-                type="password"
+                type={verClave ? "text" : "password"}
                 placeholder="Clave"
                 autoComplete="current-password"
                 value={clave}
                 onChange={(e) => setClave(e.target.value)}
-                className="w-full border-2 border-petroleo bg-transparent px-3 py-2.5 text-[17px] text-petroleo placeholder:text-petroleo/70 focus:outline-none"
+                className="w-full border-2 border-r-0 border-petroleo bg-transparent px-3 py-2.5 text-[17px] text-petroleo placeholder:text-petroleo/70 focus:outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setVerClave((v) => !v)}
+                aria-label={verClave ? "Ocultar clave" : "Mostrar clave"}
+                className="flex items-center border-2 border-l-0 border-petroleo px-3 text-petroleo hover:text-petroleo-cl"
+              >
+                {verClave ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             <p className="mb-6 text-right text-[12.5px] text-gris-cl">
@@ -184,7 +223,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v7.2-apikey-url
+              Todo intento de ingreso queda registrado. · v7.3-eco
             </p>
           </form>
         </div>

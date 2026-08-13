@@ -17,6 +17,7 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "sb_publishable_qgPwZ8
 // campo: "Failed to read the 'headers' property… non ISO-8859-1 code point").
 // Tomamos el fetch nativo de un iframe recién creado, fuera del alcance del
 // parche. El iframe queda en el DOM: si se retira, su realm (y su fetch) muere.
+let marcoWin = null; // realm del iframe, fuente de clases nativas sin parchear
 function obtenerFetchNativo() {
   if (typeof document === "undefined") return (...args) => fetch(...args);
   try {
@@ -26,6 +27,7 @@ function obtenerFetchNativo() {
     document.documentElement.appendChild(marco);
     const nativo = marco.contentWindow?.fetch;
     if (typeof nativo === "function") {
+      marcoWin = marco.contentWindow;
       return (...args) => nativo.apply(marco.contentWindow, args);
     }
     marco.remove();
@@ -50,6 +52,7 @@ export function fetchXhr(input, init = {}) {
     const x = new XMLHttpRequest();
     x.open(init.method ?? "GET", destino);
     for (const [k, v] of pares) {
+      if (k.toLowerCase() === "apikey") continue; // ya viaja por URL; la cabecera solo da al interceptor algo que corromper
       try { x.setRequestHeader(k, v); } catch { cabecerasFallidas.add(k); }
     }
     x.onload = () => {
@@ -71,6 +74,31 @@ export const fetchNativo = obtenerFetchNativo();
 // Registro de cabeceras que un interceptor impidió establecer (diagnóstico).
 export const cabecerasFallidas = new Set();
 
+// Reparación del realm principal. Visto en campo: el interceptor parchea la
+// clase Headers y su set() revienta con "String contains non ISO-8859-1", lo
+// que mata TODA petición REST de supabase-js ANTES de llegar a nuestro fetch
+// (supabase-js construye `new Headers()` internamente). Los métodos WebIDL
+// funcionan entre realms, así que se restauran desde el iframe limpio.
+export let estadoHeaders = "sanas";
+(function repararHeaders() {
+  const rotas = (() => {
+    try { new Headers().set("x-prueba", "ok"); return false; } catch { return true; }
+  })();
+  if (!rotas) return;
+  estadoHeaders = "rotas-sin-reparar";
+  if (!marcoWin?.Headers) return;
+  try {
+    new marcoWin.Headers().set("x-prueba", "ok"); // ¿el iframe también está parcheado?
+    const limpio = marcoWin.Headers.prototype;
+    for (const m of ["set", "append", "delete", "get", "has", "forEach", "entries", "keys", "values"]) {
+      if (typeof limpio[m] === "function") { try { Headers.prototype[m] = limpio[m]; } catch { /* seguir */ } }
+    }
+    window.Headers = marcoWin.Headers;
+    new Headers().set("x-prueba", "ok"); // verificación final
+    estadoHeaders = "reparadas";
+  } catch { /* iframe también comprometido: queda rotas-sin-reparar */ }
+})();
+
 // Autorreparación: si el canal fetch está roto por un interceptor, se conmuta
 // a XHR de forma permanente. OJO: el error puede venir de otro realm (iframe
 // o content script), así que se decide por el MENSAJE, nunca por instanceof.
@@ -89,9 +117,34 @@ function conApikeyEnUrl(input) {
   return destino + (destino.includes("?") ? "&" : "?") + "apikey=" + encodeURIComponent(anonKey);
 }
 
+// Las cabeceras que el interceptor corrompe en tránsito NO deben viajar:
+// visto en campo un 401 Invalid API key con la clave correcta, porque el
+// gateway prefiere la cabecera (corrupta) sobre el parámetro de URL. La
+// apikey se retira siempre (ya va por URL) y el Authorization anónimo
+// también: para el gateway equivale a la apikey (verificado con curl:
+// /auth y /rest responden bien sin ninguna cabecera de credencial).
+function sinCabecerasFragiles(init) {
+  if (!init?.headers) return init;
+  try {
+    const h = init.headers;
+    const pares =
+      Array.isArray(h) ? h : typeof h.entries === "function" ? [...h.entries()] : Object.entries(h);
+    const limpias = pares.filter(([k, v]) => {
+      const kl = String(k).toLowerCase();
+      if (kl === "apikey") return false;
+      if (kl === "authorization" && String(v).includes(anonKey)) return false;
+      return true;
+    });
+    return { ...init, headers: limpias };
+  } catch {
+    return init; // cabeceras ilegibles: mejor enviarlas tal cual que reventar
+  }
+}
+
 let usarXhr = false;
-async function fetchRobusto(entrada, init) {
+async function fetchRobusto(entrada, initEntrada) {
   const input = conApikeyEnUrl(entrada);
+  const init = sinCabecerasFragiles(initEntrada);
   if (usarXhr) return fetchXhr(input, init);
   try {
     return await fetchNativo(input, init);
