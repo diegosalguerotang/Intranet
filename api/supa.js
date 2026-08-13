@@ -1,12 +1,14 @@
-// Proxy blindado hacia Supabase. El navegador de algunos usuarios tiene un
-// interceptor (antivirus con DLP) que caza credenciales en cabeceras y hasta
-// dentro de la URL, así que desde el cliente NO viaja ninguna: aquí, del lado
-// del servidor —donde el interceptor no llega—, se inyecta la apikey y se
-// convierte la cabecera camuflada x-sesion en el Authorization real.
-// La apikey es la publishable (pública por diseño); el acceso real lo
-// controlan RLS y los triggers, igual que con el rewrite /supa anterior.
+// Proxy blindado hacia Supabase: el cliente no envía credenciales — aquí se
+// inyecta la apikey y la cabecera x-sesion se convierte en el Authorization
+// real. Mantiene el mismo-origen (hay redes que bloquean *.supabase.co) y
+// tolera proxys corporativos que alteren cabeceras. La apikey es la
+// publishable (pública por diseño); el acceso real lo controlan RLS y los
+// triggers, igual que con el rewrite /supa anterior.
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const APIKEY = process.env.VITE_SUPABASE_ANON_KEY ?? "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+// La env var en Vercel llegó a guardarse con un BOM invisible que hacía
+// reventar fetch al ponerla como cabecera: sanear siempre lo que venga de env.
+const limpiar = (v) => (typeof v === "string" ? v.replace(/^[\uFEFF\u200B\s]+|[\uFEFF\u200B\s]+$/g, "") : v);
+const APIKEY = limpiar(process.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
 
 // Solo cabeceras operativas: cualquier credencial que llegue del cliente se
 // descarta (puede venir corrupta por el interceptor) y se regenera aquí.

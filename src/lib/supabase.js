@@ -1,21 +1,29 @@
 import { createClient } from "@supabase/supabase-js";
 
 // ARQUITECTURA DEL CANAL (v8): en el despliegue, el navegador habla SOLO con
-// su propio dominio y SIN credenciales a la vista. Un antivirus con DLP
-// (visto en campo) caza credenciales en TODAS partes: se come las cabeceras
-// apikey/authorization, scrubbea la apikey dentro de la URL y su parche de
-// fetch/Headers revienta al tocar esas claves. Por eso la apikey NO viaja
-// desde el navegador: la inyecta el proxy propio (api/supa) del lado del
-// servidor, donde el interceptor no llega. La sesión del usuario viaja en la
-// cabecera camuflada x-sesion (los nombres no-credencial llegan intactos,
-// verificado con el espejo api/eco). En desarrollo local se va directo.
+// su propio dominio y sin credenciales a la vista: la apikey la inyecta el
+// proxy propio (api/supa) del lado del servidor y la sesión del usuario
+// viaja en la cabecera x-sesion, que el proxy convierte en Authorization.
+// Nació persiguiendo un falso "interceptor" (ver CAUSA RAÍZ abajo), pero se
+// conserva como defensa: mantiene el mismo-origen (hay redes que bloquean
+// *.supabase.co) y tolera proxys corporativos que alteren cabeceras.
+// En desarrollo local se va directo a Supabase.
 const mismoOrigen = typeof window !== "undefined" && window.location.hostname.endsWith("vercel.app");
+
+// CAUSA RAÍZ DEL LOGIN ROTO (2026-08-13): la env var en Vercel se guardó con
+// un BOM (U+FEFF) invisible al inicio — clásico de PowerShell 5.1, que
+// escribe UTF-8 con BOM. Vite la incrusta tal cual en el bundle y ese único
+// carácter hacía reventar Headers.set y fetch ("non ISO-8859-1"), el XHR no
+// podía poner la cabecera (llegaba "ausente" al servidor) y por URL viajaba
+// %EF%BB%BF… → "Invalid API key". Se sanea TODO valor que venga de env.
+const limpiar = (v) => (typeof v === "string" ? v.replace(/^[\uFEFF\u200B\s]+|[\uFEFF\u200B\s]+$/g, "") : v);
+
 const url = mismoOrigen
   ? `${window.location.origin}/api/supa`
-  : import.meta.env.VITE_SUPABASE_URL ?? "https://mzpbdkrmokfxrrsotfgs.supabase.co";
+  : limpiar(import.meta.env.VITE_SUPABASE_URL) || "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 
 // Clave publishable: pública por diseño; el acceso real lo controlan RLS y los triggers.
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+const anonKey = limpiar(import.meta.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
 
 // El fetch nativo de un iframe recién creado, fuera del alcance del parche
 // del interceptor (a veces; en campo se vio el parche llegar también a los

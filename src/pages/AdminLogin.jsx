@@ -227,7 +227,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v8-proxy
+              Todo intento de ingreso queda registrado. · v8.1-sin-bom
             </p>
           </form>
         </div>
