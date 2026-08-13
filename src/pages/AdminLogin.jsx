@@ -17,14 +17,20 @@ export default function AdminLogin() {
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
   const [error, setError] = useState(null);
+  const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  // ?probar=1 deja ver el formulario aunque el MODO DEMO ya haya puesto un
+  // usuario: sin esta puerta no hay forma de diagnosticar el login real
+  // mientras la app entra directa como demo.
+  const modoPrueba = new URLSearchParams(window.location.search).has("probar");
+  if (user && !modoPrueba) return <Navigate to="/" replace />;
 
   const entrar = async (e) => {
     e.preventDefault();
     if (!supabaseListo) return setError("El servicio de autenticación no está disponible.");
     setError(null);
+    setExito(false);
     setCargando(true);
     const dispositivo = navigator.userAgent.slice(0, 150);
     const email = correo.trim().toLowerCase();
@@ -82,6 +88,9 @@ export default function AdminLogin() {
       }
       await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "exitoso", p_dispositivo: dispositivo });
       // El listener de sesión en state.jsx carga el usuario y el guard redirige.
+      // En MODO DEMO ese listener está apagado y nada redirige: sin esta señal
+      // un login correcto sería indistinguible de un botón muerto.
+      setExito(true);
     } finally {
       setCargando(false);
     }
@@ -140,6 +149,11 @@ export default function AdminLogin() {
             </p>
 
             {error && <div className="mb-4"><Note tone="alerta">{error}</Note></div>}
+            {exito && (
+              <div className="mb-4">
+                <Note tone="conf">Conexión y credenciales verificadas. El ingreso quedó registrado en ACC-06.</Note>
+              </div>
+            )}
 
             <p className="text-center">
               <button
@@ -154,7 +168,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v7-autocurable
+              Todo intento de ingreso queda registrado. · v7.1-probar
             </p>
           </form>
         </div>
