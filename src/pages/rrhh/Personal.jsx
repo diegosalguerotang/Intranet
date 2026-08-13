@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { UserPlus, Upload, Download, Send, Trash2 } from "lucide-react";
+import { UserPlus, Upload, Download, Trash2, Smartphone, KeyRound } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Table, Td, Badge, Button, Input, Select, Field, Modal, Note, EmptyState,
@@ -14,7 +14,7 @@ const PORTAL_BADGE = {
 };
 
 export default function Personal() {
-  const { empresaId, db, sede, addPersonal, deletePersonal } = useApp();
+  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal } = useApp();
   const [q, setQ] = useState("");
   const [fSede, setFSede] = useState("");
   const [fPortal, setFPortal] = useState("");
@@ -23,6 +23,18 @@ export default function Personal() {
   const [importar, setImportar] = useState(false);
   const [eliminar, setEliminar] = useState(null); // persona a eliminar
   const [aviso, setAviso] = useState(null);
+  const [cuenta, setCuenta] = useState(null);      // persona → modal cuenta portal
+  const [cuentaOcupado, setCuentaOcupado] = useState(false);
+  const [cuentaResultado, setCuentaResultado] = useState(null); // { clave } | { error }
+
+  const accionCuenta = async (accion) => {
+    if (cuentaOcupado) return;
+    setCuentaOcupado(true);
+    setCuentaResultado(null);
+    const r = await cuentaPortal(accion, cuenta.dni);
+    setCuentaOcupado(false);
+    setCuentaResultado(r);
+  };
 
   const sedesEmpresa = db.sedes.filter((s) => s.empresa === empresaId);
 
@@ -119,11 +131,9 @@ export default function Personal() {
                   <Td><Badge tone={pb.tone}>{pb.label}</Badge></Td>
                   <Td>
                     <div className="flex items-center justify-end gap-1">
-                      {p.portal === "nunca_ingreso" && (
-                        <Button variant="ghost" size="sm" onClick={() => setAviso(`Clave provisional reenviada a ${p.nombre}.`)}>
-                          <Send size={12} /> Reenviar clave
-                        </Button>
-                      )}
+                      <Button variant="ghost" size="sm" onClick={() => { setCuenta(p); setCuentaResultado(null); }}>
+                        <Smartphone size={12} /> Portal
+                      </Button>
                       <button
                         onClick={() => setEliminar(p)}
                         className="rounded p-1.5 text-gris-cl transition-colors hover:bg-alerta-bg hover:text-alerta"
@@ -139,6 +149,37 @@ export default function Personal() {
           </Table>
         )}
       </Card>
+
+      <Modal open={!!cuenta} onClose={() => setCuenta(null)} title={`Cuenta del portal — ${cuenta?.nombre}`}>
+        {cuenta && (
+          <div className="space-y-4">
+            <p className="text-[13px] leading-relaxed text-gris">
+              El trabajador entra al portal con su <b>DNI {cuenta.dni}</b> y una clave numérica de 8 dígitos.
+              La clave se muestra una sola vez: entrégala en persona (el envío automático llega con el motor de
+              mensajería).
+            </p>
+            {cuentaResultado?.clave && (
+              <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
+                <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
+                <div className="font-mono text-[26px] font-bold tracking-[0.25em] text-tinta">{cuentaResultado.clave}</div>
+                <div className="mt-1 text-[11.5px] text-gris-cl">
+                  Clave de un solo uso para {cuenta.nombre}. Deberá crear la suya en su primer ingreso.
+                </div>
+              </div>
+            )}
+            {cuentaResultado?.error && <Note tone="alerta">{cuentaResultado.error}</Note>}
+            <div className="flex justify-end gap-2 border-t border-borde pt-4">
+              <Button variant="secondary" onClick={() => setCuenta(null)}>Cerrar</Button>
+              <Button variant="secondary" disabled={cuentaOcupado} onClick={() => accionCuenta("restablecer")}>
+                {cuentaOcupado ? "Procesando…" : "Restablecer clave"}
+              </Button>
+              <Button disabled={cuentaOcupado} onClick={() => accionCuenta("crear")}>
+                {cuentaOcupado ? "Procesando…" : "Crear cuenta"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <AltaTrabajador open={alta} onClose={() => setAlta(false)} onGuardar={guardarAlta} sedes={sedesEmpresa} personal={db.personal} />
       <ImportarPlanilla open={importar} onClose={() => setImportar(false)} />

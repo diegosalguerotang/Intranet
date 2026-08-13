@@ -60,17 +60,17 @@ const USUARIO_DEMO = {
   acceso: { esSuperadmin: true, matriz: {}, empresas: [] },
 };
 
-// Llama a la función serverless de cuentas (api/admin-usuarios) con el JWT
-// de la sesión en x-sesion. Devuelve { ...json } o { error }.
-async function cuentaAdmin(accion, usuarioId) {
+// Llama a una función serverless propia con el JWT de la sesión en x-sesion.
+// Devuelve { ...json } o { error }.
+async function llamarServerless(ruta, cuerpo) {
   try {
     const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token;
     if (!token) return { error: "Sin sesión activa." };
-    const r = await fetch("/api/admin-usuarios", {
+    const r = await fetch(ruta, {
       method: "POST",
       headers: { "content-type": "application/json", "x-sesion": token },
-      body: JSON.stringify({ accion, usuario_id: usuarioId }),
+      body: JSON.stringify(cuerpo),
     });
     const json = await r.json().catch(() => ({}));
     return r.ok ? json : { error: json.error ?? `Error ${r.status}` };
@@ -78,6 +78,7 @@ async function cuentaAdmin(accion, usuarioId) {
     return { error: e.message ?? "Fallo de red." };
   }
 }
+const cuentaAdmin = (accion, usuarioId) => llamarServerless("/api/admin-usuarios", { accion, usuario_id: usuarioId });
 
 export function AppProvider({ children }) {
   // undefined = verificando sesión · null = sin sesión · objeto = autenticado
@@ -290,6 +291,12 @@ export function AppProvider({ children }) {
     },
     // Restablecer clave v2: cambia la clave REAL de la cuenta y exige cambio.
     reenviarClaveCuenta: async (id) => cuentaAdmin("reenviar", id),
+    // Cuentas del Portal del Trabajador (RRH-02): crear / restablecer.
+    cuentaPortal: async (accion, dni) => {
+      const r = await llamarServerless("/api/portal-cuentas", { accion, dni });
+      if (!r.error) await recargar("personal");
+      return r;
+    },
     suspenderUsuarioAdmin: (id) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
       rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");
