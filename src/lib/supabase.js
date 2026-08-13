@@ -1,23 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 
-// En el despliegue, la app habla SOLO con su propio dominio: Vercel reenvía
-// /supa/* a Supabase (rewrite en vercel.json). Así el navegador nunca contacta
-// a un tercero y los proxys/antivirus corporativos que bloquean *.supabase.co
-// no rompen ni el login ni los datos. En desarrollo local se va directo.
+// ARQUITECTURA DEL CANAL (v8): en el despliegue, el navegador habla SOLO con
+// su propio dominio y SIN credenciales a la vista. Un antivirus con DLP
+// (visto en campo) caza credenciales en TODAS partes: se come las cabeceras
+// apikey/authorization, scrubbea la apikey dentro de la URL y su parche de
+// fetch/Headers revienta al tocar esas claves. Por eso la apikey NO viaja
+// desde el navegador: la inyecta el proxy propio (api/supa) del lado del
+// servidor, donde el interceptor no llega. La sesión del usuario viaja en la
+// cabecera camuflada x-sesion (los nombres no-credencial llegan intactos,
+// verificado con el espejo api/eco). En desarrollo local se va directo.
 const mismoOrigen = typeof window !== "undefined" && window.location.hostname.endsWith("vercel.app");
 const url = mismoOrigen
-  ? `${window.location.origin}/supa`
+  ? `${window.location.origin}/api/supa`
   : import.meta.env.VITE_SUPABASE_URL ?? "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 
 // Clave publishable: pública por diseño; el acceso real lo controlan RLS y los triggers.
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
 
-// Algunos antivirus y extensiones parchean window.fetch e inyectan cabeceras
-// con caracteres no ISO-8859-1 que rompen TODA petición de la app (visto en
-// campo: "Failed to read the 'headers' property… non ISO-8859-1 code point").
-// Tomamos el fetch nativo de un iframe recién creado, fuera del alcance del
-// parche. El iframe queda en el DOM: si se retira, su realm (y su fetch) muere.
-let marcoWin = null; // realm del iframe, fuente de clases nativas sin parchear
+// El fetch nativo de un iframe recién creado, fuera del alcance del parche
+// del interceptor (a veces; en campo se vio el parche llegar también a los
+// iframes). El iframe queda en el DOM: si se retira, su realm muere.
 function obtenerFetchNativo() {
   if (typeof document === "undefined") return (...args) => fetch(...args);
   try {
@@ -27,7 +29,6 @@ function obtenerFetchNativo() {
     document.documentElement.appendChild(marco);
     const nativo = marco.contentWindow?.fetch;
     if (typeof nativo === "function") {
-      marcoWin = marco.contentWindow;
       return (...args) => nativo.apply(marco.contentWindow, args);
     }
     marco.remove();
@@ -35,24 +36,16 @@ function obtenerFetchNativo() {
   return (...args) => fetch(...args);
 }
 
-// Canal alternativo sobre XMLHttpRequest: los interceptores que parchean
-// fetch (incluso dentro de iframes) casi nunca tocan XHR. Implementa lo
-// mínimo que supabase-js necesita de la interfaz fetch.
+// Canal alternativo sobre XMLHttpRequest: implementa lo mínimo que
+// supabase-js necesita de la interfaz fetch.
 export function fetchXhr(input, init = {}) {
   return new Promise((resolve, reject) => {
-    let destino = typeof input === "string" ? input : input.url;
+    const destino = typeof input === "string" ? input : input.url;
     const h = init.headers ?? {};
-    const pares = h instanceof Headers ? [...h.entries()] : Array.isArray(h) ? h : Object.entries(h);
-    // La clave API viaja TAMBIÉN por URL: Supabase la acepta ahí, y así
-    // sobrevive a interceptores que eliminan o corrompen cabeceras.
-    const apikey = pares.find(([k]) => k.toLowerCase() === "apikey")?.[1];
-    if (apikey && !destino.includes("apikey=")) {
-      destino += (destino.includes("?") ? "&" : "?") + "apikey=" + encodeURIComponent(apikey);
-    }
+    const pares = Array.isArray(h) ? h : typeof h.entries === "function" ? [...h.entries()] : Object.entries(h);
     const x = new XMLHttpRequest();
     x.open(init.method ?? "GET", destino);
     for (const [k, v] of pares) {
-      if (k.toLowerCase() === "apikey") continue; // ya viaja por URL; la cabecera solo da al interceptor algo que corromper
       try { x.setRequestHeader(k, v); } catch { cabecerasFallidas.add(k); }
     }
     x.onload = () => {
@@ -74,30 +67,33 @@ export const fetchNativo = obtenerFetchNativo();
 // Registro de cabeceras que un interceptor impidió establecer (diagnóstico).
 export const cabecerasFallidas = new Set();
 
-// Reparación del realm principal. Visto en campo: el interceptor parchea la
-// clase Headers y su set() revienta con "String contains non ISO-8859-1", lo
-// que mata TODA petición REST de supabase-js ANTES de llegar a nuestro fetch
-// (supabase-js construye `new Headers()` internamente). Los métodos WebIDL
-// funcionan entre realms, así que se restauran desde el iframe limpio.
-export let estadoHeaders = "sanas";
-(function repararHeaders() {
-  const rotas = (() => {
-    try { new Headers().set("x-prueba", "ok"); return false; } catch { return true; }
-  })();
-  if (!rotas) return;
-  estadoHeaders = "rotas-sin-reparar";
-  if (!marcoWin?.Headers) return;
+// Blindaje de Headers. El parche del interceptor hace que set()/append()
+// revienten SOLO con claves tipo credencial (apikey, authorization) — con
+// otras claves pasa la prueba, por eso un chequeo al arrancar dice "sanas" y
+// aún así supabase-js muere al construir sus cabeceras internas. El blindaje
+// envuelve los métodos vigentes y TRAGA el fallo: la cabecera simplemente no
+// se establece, y no hace falta — la apikey la re-inyecta el proxy y la
+// sesión viaja por x-sesion. Se re-aplica en caliente (p. ej. al enviar el
+// login) porque el parche puede aterrizar DESPUÉS de cargar la app.
+export let estadoHeaders = "sin-blindar";
+let setBlindado = null;
+export function blindarHeaders() {
   try {
-    new marcoWin.Headers().set("x-prueba", "ok"); // ¿el iframe también está parcheado?
-    const limpio = marcoWin.Headers.prototype;
-    for (const m of ["set", "append", "delete", "get", "has", "forEach", "entries", "keys", "values"]) {
-      if (typeof limpio[m] === "function") { try { Headers.prototype[m] = limpio[m]; } catch { /* seguir */ } }
-    }
-    window.Headers = marcoWin.Headers;
-    new Headers().set("x-prueba", "ok"); // verificación final
-    estadoHeaders = "reparadas";
-  } catch { /* iframe también comprometido: queda rotas-sin-reparar */ }
-})();
+    const proto = typeof Headers !== "undefined" ? Headers.prototype : null;
+    if (!proto || proto.set === setBlindado) return; // vigente, nadie lo pisó
+    const setActual = proto.set;
+    const appendActual = proto.append;
+    proto.set = function (k, v) {
+      try { return setActual.call(this, k, v); } catch { cabecerasFallidas.add(String(k)); }
+    };
+    proto.append = function (k, v) {
+      try { return appendActual.call(this, k, v); } catch { cabecerasFallidas.add(String(k)); }
+    };
+    setBlindado = proto.set;
+    estadoHeaders = "blindadas";
+  } catch { /* entorno sin Headers */ }
+}
+blindarHeaders();
 
 // Autorreparación: si el canal fetch está roto por un interceptor, se conmuta
 // a XHR de forma permanente. OJO: el error puede venir de otro realm (iframe
@@ -106,45 +102,44 @@ const esFetchRoto = (e) =>
   /ISO-8859-1|Failed to read the 'headers'|Failed to execute 'fetch'|Failed to fetch|NetworkError|Load failed/i
     .test(e?.message ?? "");
 
-// La clave API viaja SIEMPRE también por URL, en todos los canales: hay
-// interceptores (antivirus) que dejan pasar la petición pero eliminan sus
-// cabeceras, y el gateway responde 401 "falta apikey" — que aguas arriba se
-// confunde con credenciales incorrectas. El gateway acepta la clave como
-// parámetro (verificado con curl contra /auth y /rest vía el proxy).
-function conApikeyEnUrl(input) {
-  const destino = typeof input === "string" ? input : input.url;
-  if (!destino || destino.includes("apikey=")) return input;
-  return destino + (destino.includes("?") ? "&" : "?") + "apikey=" + encodeURIComponent(anonKey);
-}
+// Última sesión conocida: fetchRobusto la manda como x-sesion al proxy.
+let tokenActual = null;
 
-// Las cabeceras que el interceptor corrompe en tránsito NO deben viajar:
-// visto en campo un 401 Invalid API key con la clave correcta, porque el
-// gateway prefiere la cabecera (corrupta) sobre el parámetro de URL. La
-// apikey se retira siempre (ya va por URL) y el Authorization anónimo
-// también: para el gateway equivale a la apikey (verificado con curl:
-// /auth y /rest responden bien sin ninguna cabecera de credencial).
-function sinCabecerasFragiles(init) {
-  if (!init?.headers) return init;
+// Ninguna credencial sale del navegador (el DLP del interceptor las caza en
+// cabeceras y hasta en la URL): la apikey se retira siempre (el proxy la
+// inyecta), el Authorization anónimo también (equivale a la apikey), y el
+// Authorization con sesión real se camufla como x-sesion, que el proxy
+// vuelve a convertir en Authorization del lado del servidor.
+function camuflarCredenciales(init) {
+  if (!mismoOrigen) return init; // conexión directa (desarrollo): tal cual
+  let pares = [];
   try {
-    const h = init.headers;
-    const pares =
-      Array.isArray(h) ? h : typeof h.entries === "function" ? [...h.entries()] : Object.entries(h);
-    const limpias = pares.filter(([k, v]) => {
-      const kl = String(k).toLowerCase();
-      if (kl === "apikey") return false;
-      if (kl === "authorization" && String(v).includes(anonKey)) return false;
-      return true;
-    });
-    return { ...init, headers: limpias };
+    const h = init?.headers ?? {};
+    pares = Array.isArray(h) ? [...h] : typeof h.entries === "function" ? [...h.entries()] : Object.entries(h);
   } catch {
     return init; // cabeceras ilegibles: mejor enviarlas tal cual que reventar
   }
+  const limpias = [];
+  let sesion = null;
+  for (const [k, v] of pares) {
+    const kl = String(k).toLowerCase();
+    if (kl === "apikey") continue;
+    if (kl === "authorization") {
+      const valor = String(v);
+      if (!valor.includes(anonKey)) sesion = valor.replace(/^Bearer\s+/i, "");
+      continue;
+    }
+    if (kl === "x-sesion") { sesion = String(v); continue; }
+    limpias.push([k, v]);
+  }
+  if (!sesion && tokenActual) sesion = tokenActual;
+  if (sesion) limpias.push(["x-sesion", sesion]);
+  return { ...init, headers: limpias };
 }
 
 let usarXhr = false;
-async function fetchRobusto(entrada, initEntrada) {
-  const input = conApikeyEnUrl(entrada);
-  const init = sinCabecerasFragiles(initEntrada);
+async function fetchRobusto(input, initEntrada) {
+  const init = camuflarCredenciales(initEntrada);
   if (usarXhr) return fetchXhr(input, init);
   try {
     return await fetchNativo(input, init);
@@ -162,5 +157,10 @@ export const supabaseListo = anonKey !== "__ANON_KEY__";
 export const supabase = supabaseListo
   ? createClient(url, anonKey, { global: { fetch: fetchRobusto } })
   : null;
+if (supabase) {
+  supabase.auth.onAuthStateChange((_evento, sesion) => {
+    tokenActual = sesion?.access_token ?? null;
+  });
+}
 export const supabaseUrl = url;
 export const supabaseAnonKey = anonKey;

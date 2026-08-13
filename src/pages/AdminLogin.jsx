@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
-import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas, estadoHeaders } from "../lib/supabase";
+import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas, estadoHeaders, blindarHeaders } from "../lib/supabase";
 import { Note } from "../components/ui";
 
 // Puerta del BackOffice (/admin/login): correo + clave contra Supabase Auth.
@@ -32,12 +32,13 @@ async function ecoCanales() {
   const partes = [];
   for (const [nombre, fn] of canales) {
     try {
-      const r = await fn(`/api/eco?canal=${nombre}`, {
+      const r = await fn(`/api/eco?canal=${nombre}&apikey=${encodeURIComponent(supabaseAnonKey)}`, {
         headers: { apikey: supabaseAnonKey, authorization: `Bearer ${supabaseAnonKey}`, "x-prueba": "GrupoER" },
       });
-      const cab = (await r.json()).cabeceras ?? {};
+      const j = await r.json();
+      const cab = j.cabeceras ?? {};
       partes.push(
-        `${nombre}[apikey:${estado(cab.apikey, supabaseAnonKey)} auth:${estado(cab.authorization, `Bearer ${supabaseAnonKey}`)} x-prueba:${estado(cab["x-prueba"], "GrupoER")}]`
+        `${nombre}[apikey:${estado(cab.apikey, supabaseAnonKey)} auth:${estado(cab.authorization, `Bearer ${supabaseAnonKey}`)} x-prueba:${estado(cab["x-prueba"], "GrupoER")} urlApikey:${estado(j.query?.apikey, supabaseAnonKey)}]`
       );
     } catch (e) {
       partes.push(`${nombre}[ERR:${(e.message ?? "?").slice(0, 35)}]`);
@@ -64,6 +65,9 @@ export default function AdminLogin() {
   const entrar = async (e) => {
     e.preventDefault();
     if (!supabaseListo) return setError("El servicio de autenticación no está disponible.");
+    // El parche del interceptor puede aterrizar DESPUÉS de cargar la app:
+    // re-blindar Headers justo antes de usar supabase-js.
+    blindarHeaders();
     setError(null);
     setExito(false);
     setCargando(true);
@@ -223,7 +227,7 @@ export default function AdminLogin() {
             <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v7.3-eco
+              Todo intento de ingreso queda registrado. · v8-proxy
             </p>
           </form>
         </div>
