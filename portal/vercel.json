@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://intranet-general.vercel.app/api/:path*" },
+    { "source": "/portal", "destination": "/index.html" },
+    { "source": "/portal/assets/:archivo*", "destination": "/assets/:archivo*" },
+    { "source": "/portal/:path*", "destination": "/index.html" },
+    { "source": "/", "destination": "/index.html" }
+  ]
+}

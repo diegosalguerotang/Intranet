@@ -2,6 +2,8 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/supa/:path*", "destination": "https://mzpbdkrmokfxrrsotfgs.supabase.co/:path*" },
+    { "source": "/portal", "destination": "https://intranet-portal-two.vercel.app/portal" },
+    { "source": "/portal/:path*", "destination": "https://intranet-portal-two.vercel.app/portal/:path*" },
     { "source": "/api/supa/:ruta*", "destination": "/api/supa?ruta=:ruta*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

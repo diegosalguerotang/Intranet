@@ -2,3 +2,8 @@
 .env*
 node_modules
 dist
+
+portal/node_modules
+portal/dist
+portal/.vercel
+portal/.env.local

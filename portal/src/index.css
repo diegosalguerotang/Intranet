@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/*
+  Portal del Trabajador — tokens del design system GrupoER v2 en versión
+  ligera para celular de gama baja: fuente del sistema para el texto (cero
+  descarga), Montserrat solo en la marca, mismos colores corporativos.
+*/
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Montserrat", system-ui, sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --radius-caja: 10px;
+
+  --color-tinta: #1d3f72;
+  --color-petroleo: #3569a0;
+  --color-petroleo-cl: #3b76b3;
+  --color-acero: #5481ab;
+  --color-papel: #f2f3f5;
+  --color-borde: #e6e8eb;
+  --color-borde-f: #d4d8dd;
+  --color-gris: #555555;
+  --color-gris-cl: #999999;
+  --color-pend: #dc6e00;
+  --color-pend-bg: #fdf0e0;
+  --color-conf: #47775f;
+  --color-conf-bg: #eaf1ed;
+  --color-alerta: #c43f49;
+  --color-alerta-bg: #fae9ea;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-papel);
+  color: var(--color-gris);
+  -webkit-font-smoothing: antialiased;
+  font-size: 15px; /* móvil: un punto más que el BackOffice */
+}
+
+@layer base {
+  button, a, input, select, textarea {
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+  }
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animar-aparicion { animation: aparecer 0.25s ease-out both; }
+
+:focus-visible {
+  outline: 2px solid var(--color-petroleo);
+  outline-offset: 2px;
+}
