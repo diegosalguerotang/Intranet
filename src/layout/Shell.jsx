@@ -91,9 +91,9 @@ export default function Shell() {
         </div>
 
         <nav className="flex-1 overflow-y-auto">
+          <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} />
           <NavGroup title="Recursos Humanos" items={NAV_RRHH} />
           <NavGroup title="Administración" items={NAV_ADMIN} />
-          <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} />
         </nav>
 
         <div className="mt-4 border-t border-borde px-3 pt-4">
