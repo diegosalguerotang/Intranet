@@ -1,8 +1,9 @@
 -- ============================================================================
 -- MÓDULO DE ACCESOS Y ROLES (ACC-01…ACC-06) — complemento del esquema v2
--- · El Perfil dice QUÉ puede hacer alguien; el Alcance (en el usuario) dice
---   SOBRE QUIÉNES. El alcance solo restringe, nunca amplía.
--- · El perfil se VERSIONA: cada guardado inserta una versión nueva; la
+-- (Accesos v2 "Categorías", 2026-08-13 — spec docs/superpowers/specs/)
+-- · La Categoría (perfil versionado) dice QUÉ puede hacer alguien y SOBRE QUÉ
+--   razones sociales. El usuario hereda tal cual; no hay alcance por usuario.
+-- · La categoría se VERSIONA: cada guardado inserta una versión nueva; la
 --   auditoría referencia la versión vigente al momento de cada acción.
 -- · Superadministrador es una MARCA, no un nivel: sin matriz, sin alcance.
 -- · Invariantes garantizados por el esquema, no por la interfaz.
@@ -10,16 +11,16 @@
 -- ============================================================================
 
 drop view if exists v_perfiles, v_perfil_versiones, v_usuarios_admin,
-  v_politica_acceso, v_registro_accesos cascade;
-drop table if exists registro_accesos, usuario_alcance_sede,
-  usuario_alcance_empresa, usuarios_admin, politica_acceso,
-  perfil_permisos, perfiles cascade;
+  v_politica_acceso, v_registro_accesos, v_mi_acceso cascade;
+drop table if exists registro_accesos, usuarios_admin, politica_acceso,
+  perfil_empresas, perfil_permisos, perfiles cascade;
+drop sequence if exists seq_usuario_codigo;
 drop function if exists guardar_perfil, desactivar_perfil, crear_usuario_admin,
   actualizar_usuario_admin, suspender_usuario_admin, reactivar_usuario_admin,
-  reenviar_clave, guardar_politica, puede,
+  eliminar_usuario_admin, reenviar_clave, guardar_politica, puede,
   verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
   fn_perfil_nombre_unico, fn_superadmin_sin_matriz,
-  fn_proteger_ultimo_superadmin cascade;
+  fn_proteger_ultimo_superadmin, fn_registro_solo_desvincular cascade;
 
 -- ---------------------------------------------------------------------------
 -- PERFILES (versionados: PK id+version; cada guardado inserta, nunca modifica)
@@ -79,11 +80,22 @@ end $$;
 create trigger trg_superadmin_sin_matriz before insert on perfil_permisos
   for each row execute function fn_superadmin_sin_matriz();
 
+-- Alcance por razón social de la categoría, versionado igual que la matriz.
+create table perfil_empresas (
+  perfil_id  text not null,
+  version    integer not null,
+  empresa_id text not null references empresas(id),
+  primary key (perfil_id, version, empresa_id),
+  foreign key (perfil_id, version) references perfiles(id, version) on delete cascade
+);
+
 -- ---------------------------------------------------------------------------
 -- USUARIOS ADMINISTRATIVOS (toda acción lleva el nombre de una Persona)
 -- ---------------------------------------------------------------------------
+create sequence seq_usuario_codigo;
 create table usuarios_admin (
   id             bigint generated always as identity primary key,
+  codigo         text unique, -- U-0001, U-0002… (lo asigna crear_usuario_admin)
   persona_dni    text not null unique references personas(dni),
   perfil_id      text not null,
   perfil_version integer not null,
@@ -97,19 +109,6 @@ create table usuarios_admin (
   creado_por     text not null,
   creado_en      timestamptz not null default now(),
   foreign key (perfil_id, perfil_version) references perfiles (id, version)
-);
-
-create table usuario_alcance_empresa (
-  usuario_id bigint not null references usuarios_admin(id) on delete cascade,
-  empresa_id text not null references empresas(id),
-  primary key (usuario_id, empresa_id)
-);
-
--- Sin filas aquí = todas las sedes de las empresas del alcance.
-create table usuario_alcance_sede (
-  usuario_id bigint not null references usuarios_admin(id) on delete cascade,
-  sede_id    text not null references sedes(id),
-  primary key (usuario_id, sede_id)
 );
 
 -- Invariante: siempre queda al menos un superadministrador activo.
@@ -167,7 +166,9 @@ insert into politica_acceso (id) values (1);
 -- ---------------------------------------------------------------------------
 create table registro_accesos (
   id             bigint generated always as identity primary key,
-  usuario_id     bigint references usuarios_admin(id),
+  -- set null: al eliminar definitivamente un usuario, su rastro queda (dni y
+  -- correo ya están denormalizados en cada fila).
+  usuario_id     bigint references usuarios_admin(id) on delete set null,
   dni            text,                                -- ingreso por Portal (trabajador)
   correo         text,                                -- intento por BackOffice (aun inexistente)
   perfil_id      text,
@@ -178,9 +179,29 @@ create table registro_accesos (
   ip             text,
   dispositivo    text
 );
+-- Inmutable, con UNA excepción: la desvinculación (usuario_id → null) que
+-- dispara la eliminación definitiva del usuario. Nada más puede cambiar.
+create function fn_registro_solo_desvincular() returns trigger
+language plpgsql as $$
+begin
+  if tg_op = 'UPDATE'
+     and old.usuario_id is not null and new.usuario_id is null
+     and new.dni            is not distinct from old.dni
+     and new.correo         is not distinct from old.correo
+     and new.perfil_id      is not distinct from old.perfil_id
+     and new.perfil_version is not distinct from old.perfil_version
+     and new.superficie     is not distinct from old.superficie
+     and new.resultado      is not distinct from old.resultado
+     and new.fecha          is not distinct from old.fecha
+     and new.ip             is not distinct from old.ip
+     and new.dispositivo    is not distinct from old.dispositivo then
+    return new;
+  end if;
+  raise exception 'El registro de accesos es inmutable.';
+end $$;
 create trigger trg_registro_accesos_inmutable
   before update or delete on registro_accesos
-  for each row execute function fn_bloquear_cambios();
+  for each row execute function fn_registro_solo_desvincular();
 
 -- ---------------------------------------------------------------------------
 -- FUNCIONES RPC
@@ -192,9 +213,9 @@ create trigger trg_registro_accesos_inmutable
 create function guardar_perfil(
   p_id text, p_nombre text, p_descripcion text, p_superadmin boolean,
   p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean,
-  p_matriz jsonb, p_por text
+  p_matriz jsonb, p_empresas text[] default null, p_por text default 'BackOffice'
 ) returns integer language plpgsql security definer as $$
-declare v_version int; v_mod text; v_nivel text;
+declare v_version int; v_mod text; v_nivel text; v_empresas text[]; e text;
 begin
   select coalesce(max(version), 0) + 1 into v_version from perfiles where id = p_id;
   insert into perfiles (id, version, nombre, descripcion, es_superadmin,
@@ -207,6 +228,18 @@ begin
     loop
       insert into perfil_permisos (perfil_id, perfil_version, modulo, nivel)
       values (p_id, v_version, v_mod, v_nivel::int);
+    end loop;
+    -- Alcance: explícito > heredado de la versión previa > todas las empresas.
+    v_empresas := p_empresas;
+    if v_empresas is null then
+      select array_agg(empresa_id) into v_empresas
+      from perfil_empresas where perfil_id = p_id and version = v_version - 1;
+    end if;
+    if v_empresas is null or cardinality(v_empresas) = 0 then
+      select array_agg(id) into v_empresas from empresas;
+    end if;
+    foreach e in array v_empresas loop
+      insert into perfil_empresas (perfil_id, version, empresa_id) values (p_id, v_version, e);
     end loop;
   end if;
   update usuarios_admin set perfil_version = v_version where perfil_id = p_id;
@@ -221,68 +254,55 @@ begin
 end $$;
 
 create function crear_usuario_admin(
-  p_dni text, p_perfil text, p_correo text, p_celular text,
-  p_empresas text[], p_sedes text[], p_clave text, p_por text
+  p_dni text, p_perfil text, p_correo text, p_celular text, p_clave text, p_por text
 ) returns bigint language plpgsql security definer as $$
-declare v_id bigint; v_version int; v_super boolean; e text; s text;
+declare v_id bigint; v_version int;
 begin
   if not exists (select 1 from personas where dni = p_dni) then
     raise exception 'La persona % no existe en el maestro de Personal.', p_dni;
   end if;
-  select version, es_superadmin into v_version, v_super
+  select version into v_version
   from perfiles where id = p_perfil and estado = 'activo'
   order by version desc limit 1;
   if v_version is null then
-    raise exception 'El perfil % no existe o está desactivado.', p_perfil;
-  end if;
-  if not v_super and (p_empresas is null or cardinality(p_empresas) = 0) then
-    raise exception 'El alcance de razones sociales es obligatorio.';
+    raise exception 'La categoría % no existe o está archivada.', p_perfil;
   end if;
   insert into usuarios_admin (persona_dni, perfil_id, perfil_version, correo,
-                              celular, clave_provisional, clave_entregada, creado_por)
+                              celular, clave_provisional, clave_entregada,
+                              requiere_cambio_clave, codigo, creado_por)
   values (p_dni, p_perfil, v_version, p_correo, p_celular, p_clave,
-          case when p_correo is null then 'pantalla' else 'correo' end, p_por)
+          case when p_correo is null then 'pantalla' else 'correo' end,
+          true, 'U-' || lpad(nextval('seq_usuario_codigo')::text, 4, '0'), p_por)
   returning id into v_id;
-  if not v_super then
-    foreach e in array p_empresas loop
-      insert into usuario_alcance_empresa (usuario_id, empresa_id) values (v_id, e);
-    end loop;
-    foreach s in array coalesce(p_sedes, '{}') loop
-      insert into usuario_alcance_sede (usuario_id, sede_id) values (v_id, s);
-    end loop;
-  end if;
   return v_id;
 end $$;
 
 create function actualizar_usuario_admin(
-  p_id bigint, p_perfil text, p_correo text, p_celular text,
-  p_empresas text[], p_sedes text[], p_estado text
+  p_id bigint, p_perfil text, p_correo text, p_celular text, p_estado text
 ) returns void language plpgsql security definer as $$
-declare v_version int; v_super boolean; e text; s text;
+declare v_version int;
 begin
-  select version, es_superadmin into v_version, v_super
+  select version into v_version
   from perfiles where id = p_perfil and estado = 'activo'
   order by version desc limit 1;
   if v_version is null then
-    raise exception 'El perfil % no existe o está desactivado.', p_perfil;
-  end if;
-  if not v_super and (p_empresas is null or cardinality(p_empresas) = 0) then
-    raise exception 'El alcance de razones sociales es obligatorio.';
+    raise exception 'La categoría % no existe o está archivada.', p_perfil;
   end if;
   update usuarios_admin
   set perfil_id = p_perfil, perfil_version = v_version, correo = p_correo,
       celular = p_celular, estado = coalesce(p_estado, estado)
   where id = p_id;
-  delete from usuario_alcance_empresa where usuario_id = p_id;
-  delete from usuario_alcance_sede where usuario_id = p_id;
-  if not v_super then
-    foreach e in array p_empresas loop
-      insert into usuario_alcance_empresa (usuario_id, empresa_id) values (p_id, e);
-    end loop;
-    foreach s in array coalesce(p_sedes, '{}') loop
-      insert into usuario_alcance_sede (usuario_id, sede_id) values (p_id, s);
-    end loop;
+end $$;
+
+-- Eliminación definitiva: el trigger del último superadmin protege; el
+-- registro de accesos conserva el rastro (FK set null + dni/correo propios).
+create function eliminar_usuario_admin(p_id bigint) returns void
+language plpgsql security definer as $$
+begin
+  if not exists (select 1 from usuarios_admin where id = p_id) then
+    raise exception 'El usuario no existe.';
   end if;
+  delete from usuarios_admin where id = p_id;
 end $$;
 
 -- Suspender corta el acceso de inmediato; no borra ni anonimiza nada.
@@ -391,14 +411,8 @@ begin
   where perfil_id = v_pid and perfil_version = v_pver and modulo = p_modulo;
   if coalesce(v_nivel, 0) < p_nivel then return false; end if;
   if p_empresa is not null and not exists (
-    select 1 from usuario_alcance_empresa a
-    where a.usuario_id = p_usuario and a.empresa_id = p_empresa) then
-    return false;
-  end if;
-  if p_sede is not null
-     and exists (select 1 from usuario_alcance_sede where usuario_id = p_usuario)
-     and not exists (select 1 from usuario_alcance_sede a
-                     where a.usuario_id = p_usuario and a.sede_id = p_sede) then
+    select 1 from perfil_empresas a
+    where a.perfil_id = v_pid and a.version = v_pver and a.empresa_id = p_empresa) then
     return false;
   end if;
   return true;
@@ -409,32 +423,32 @@ end $$;
 -- ---------------------------------------------------------------------------
 select guardar_perfil('superadmin', 'Superadministrador',
   'Control total del grupo. La marca ignora la matriz y el alcance.',
-  true, false, false, false, '{}'::jsonb, 'Sistema');
+  true, false, false, false, '{}'::jsonb, null, 'Sistema');
 select guardar_perfil('rrhh-operativo', 'RRHH operativo',
   'Opera los módulos de RRHH del día a día, sin aprobaciones.',
   false, false, false, false,
   '{"personal":2,"boletas":2,"acuses":2,"comunicados":2,"memorandums":2,"contratos":2,"tardanzas":2,"activos":1,"accesos":0,"auditoria":0,"configuracion":1}'::jsonb,
-  'Sistema');
+  null, 'Sistema');
 select guardar_perfil('jefatura-rrhh', 'Jefatura de RRHH',
   'Opera y aprueba en los módulos de RRHH. Ve remuneración y exporta datos personales.',
   false, true, true, true,
   '{"personal":3,"boletas":3,"acuses":2,"comunicados":3,"memorandums":3,"contratos":3,"tardanzas":2,"activos":1,"accesos":0,"auditoria":0,"configuracion":1}'::jsonb,
-  'Sistema');
+  null, 'Sistema');
 select guardar_perfil('administracion', 'Administración',
   'Gestiona activos, equipos y EPP de todo el grupo.',
   false, false, false, false,
   '{"personal":1,"boletas":0,"acuses":0,"comunicados":0,"memorandums":0,"contratos":0,"tardanzas":0,"activos":3,"accesos":0,"auditoria":0,"configuracion":1}'::jsonb,
-  'Sistema');
+  null, 'Sistema');
 select guardar_perfil('supervisor-sede', 'Supervisor de sede',
   'Registra acuses asistidos y consulta su cuadrilla, sin ver el contenido de las boletas.',
   false, false, false, false,
   '{"personal":1,"boletas":0,"acuses":2,"comunicados":1,"memorandums":0,"contratos":0,"tardanzas":0,"activos":0,"accesos":0,"auditoria":0,"configuracion":0}'::jsonb,
-  'Sistema');
+  null, 'Sistema');
 select guardar_perfil('auditor', 'Auditor',
   'Solo lectura en los once módulos, con exportación de datos personales.',
   false, false, false, true,
   '{"personal":1,"boletas":1,"acuses":1,"comunicados":1,"memorandums":1,"contratos":1,"tardanzas":1,"activos":1,"accesos":1,"auditoria":1,"configuracion":1}'::jsonb,
-  'Sistema');
+  null, 'Sistema');
 
 -- Personas administrativas (Diego y Karina) + vínculos
 insert into personas (dni, nombre, celular, banco, cuenta, portal) values
@@ -450,13 +464,18 @@ from (values
 where not exists (select 1 from vinculos v
                   where v.persona_dni = t.dni and v.empresa_id = 'negliaf' and v.fecha_fin is null);
 
-select crear_usuario_admin('40776655', 'superadmin', 'dsalguero@grupoer.pe', '999888777', null, null, null, 'Sistema');
-select crear_usuario_admin('40881122', 'rrhh-operativo', 'kprado@grupoer.pe', '988776655',
-  array['negliaf','bremco','promant','lamericana'], null, null, 'Sistema');
-select crear_usuario_admin('40125634', 'supervisor-sede', null, '912345678',
-  array['negliaf'], array['sunat','migraciones'], 'DEMO2026A', 'Sistema');
-select crear_usuario_admin('43906712', 'supervisor-sede', 'ctorres@grupoer.pe', '934567812',
-  array['negliaf'], array['minedu','ins'], 'DEMO2026B', 'Sistema');
+-- Accesos v2: la categoría Gerente de Administración y el archivado de las
+-- plantillas de ejemplo (por ahora solo dos categorías activas).
+select guardar_perfil('gerente-administracion', 'Gerente de Administración',
+  'Gestiona la administración del grupo y los usuarios del BackOffice.',
+  false, false, false, false,
+  '{"personal":1,"boletas":0,"acuses":0,"comunicados":0,"memorandums":0,"contratos":0,"tardanzas":0,"activos":3,"accesos":2,"auditoria":1,"configuracion":1}'::jsonb,
+  null, 'Sistema');
+update perfiles set estado = 'desactivado'
+where id not in ('superadmin', 'gerente-administracion');
+
+select crear_usuario_admin('40776655', 'superadmin', 'dsalguero@grupoer.pe', '999888777', null, 'Sistema');
+select crear_usuario_admin('40881122', 'gerente-administracion', 'kprado@grupoer.pe', '988776655', null, 'Sistema');
 
 update usuarios_admin set ultimo_ingreso = '2026-08-12 08:45-05' where persona_dni = '40776655';
 update usuarios_admin set ultimo_ingreso = '2026-08-11 17:20-05' where persona_dni = '40881122';
@@ -483,8 +502,8 @@ insert into registro_accesos (dni, superficie, resultado, fecha, ip, dispositivo
 do $$
 declare t text;
 begin
-  foreach t in array array['perfiles','perfil_permisos','usuarios_admin',
-    'usuario_alcance_empresa','usuario_alcance_sede','politica_acceso']
+  foreach t in array array['perfiles','perfil_permisos','perfil_empresas',
+    'usuarios_admin','politica_acceso']
   loop
     execute format('create trigger trg_auditar_%s after insert or update or delete on %I
                     for each row execute function fn_auditar()', t, t);
@@ -498,8 +517,8 @@ end $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['perfiles','perfil_permisos','usuarios_admin',
-    'usuario_alcance_empresa','usuario_alcance_sede','politica_acceso','registro_accesos']
+  foreach t in array array['perfiles','perfil_permisos','perfil_empresas',
+    'usuarios_admin','politica_acceso','registro_accesos']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
@@ -520,6 +539,9 @@ select p.id, p.version, p.nombre, p.descripcion,
        coalesce((select jsonb_object_agg(pp.modulo, pp.nivel)
                  from perfil_permisos pp
                  where pp.perfil_id = p.id and pp.perfil_version = p.version), '{}'::jsonb) as matriz,
+       coalesce((select jsonb_agg(pe.empresa_id order by pe.empresa_id)
+                 from perfil_empresas pe
+                 where pe.perfil_id = p.id and pe.version = p.version), '[]'::jsonb) as empresas,
        (select count(*)::int from usuarios_admin u where u.perfil_id = p.id) as usuarios,
        to_char(p.creado_en, 'YYYY-MM-DD HH24:MI') as modificado,
        p.creado_por as "modificadoPor"
@@ -533,21 +555,23 @@ select p.id as "perfilId", p.version, p.nombre,
        coalesce((select jsonb_object_agg(pp.modulo, pp.nivel)
                  from perfil_permisos pp
                  where pp.perfil_id = p.id and pp.perfil_version = p.version), '{}'::jsonb) as matriz,
+       coalesce((select jsonb_agg(pe.empresa_id order by pe.empresa_id)
+                 from perfil_empresas pe
+                 where pe.perfil_id = p.id and pe.version = p.version), '[]'::jsonb) as empresas,
        to_char(p.creado_en, 'YYYY-MM-DD HH24:MI') as creado,
        p.creado_por as por
 from perfiles p
 order by p.id, p.version desc;
 
 create view v_usuarios_admin as
-select u.id, u.persona_dni as dni, pe.nombre,
+select u.id, u.codigo, u.persona_dni as dni, pe.nombre,
        u.perfil_id as perfil, pf.nombre as "perfilNombre",
        pf.es_superadmin as "esSuperadmin",
        u.correo, u.celular, u.estado,
        u.requiere_cambio_clave as "requiereCambio",
-       coalesce((select jsonb_agg(a.empresa_id) from usuario_alcance_empresa a
-                 where a.usuario_id = u.id), '[]'::jsonb) as empresas,
-       coalesce((select jsonb_agg(a.sede_id) from usuario_alcance_sede a
-                 where a.usuario_id = u.id), '[]'::jsonb) as sedes,
+       coalesce((select jsonb_agg(a.empresa_id order by a.empresa_id)
+                 from perfil_empresas a
+                 where a.perfil_id = u.perfil_id and a.version = u.perfil_version), '[]'::jsonb) as empresas,
        to_char(u.ultimo_ingreso, 'YYYY-MM-DD HH24:MI') as "ultimoIngreso",
        (u.ultimo_ingreso is null) as "nuncaIngreso",
        (u.estado = 'activo' and not exists
@@ -559,6 +583,25 @@ join personas pe on pe.dni = u.persona_dni
 join perfiles pf on pf.id = u.perfil_id and pf.version = u.perfil_version
 left join vinculos vi on vi.persona_dni = u.persona_dni and vi.fecha_fin is null
 order by pf.es_superadmin desc, pe.nombre;
+
+-- Lo que el usuario autenticado ES: su categoría vigente, resuelta. La app la
+-- carga al iniciar sesión y de ahí salen menú, selector de empresa y guards.
+create view v_mi_acceso as
+select u.correo,
+       u.id as "usuarioId",
+       pf.es_superadmin as "esSuperadmin",
+       coalesce((select jsonb_object_agg(pp.modulo, pp.nivel)
+                 from perfil_permisos pp
+                 where pp.perfil_id = pf.id and pp.perfil_version = pf.version), '{}'::jsonb) as matriz,
+       pf.ver_remuneracion as "verRemuneracion",
+       pf.ver_documentos_terceros as "verDocumentosTerceros",
+       pf.exportar_datos_personales as "exportarDatosPersonales",
+       coalesce((select jsonb_agg(a.empresa_id order by a.empresa_id)
+                 from perfil_empresas a
+                 where a.perfil_id = pf.id and a.version = pf.version), '[]'::jsonb) as empresas
+from usuarios_admin u
+join perfiles pf on pf.id = u.perfil_id and pf.version = u.perfil_version
+where u.estado = 'activo';
 
 create view v_politica_acceso as
 select sesion_backoffice_horas as "sesionBackofficeHoras",
