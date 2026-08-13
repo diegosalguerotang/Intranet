@@ -2,6 +2,7 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/supa/:path*", "destination": "https://mzpbdkrmokfxrrsotfgs.supabase.co/:path*" },
+    { "source": "/api/supa/:ruta*", "destination": "/api/supa?ruta=:ruta*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
