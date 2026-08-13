@@ -6,7 +6,10 @@
 //   eliminar→ nivel 3 en accesos o superadmin; nunca a sí mismo
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
-const SERVICE = limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY);
+// SUPA_SERVICE_KEY la configura scripts/configurar-service-key.mjs con la
+// clave real del proyecto; la del marketplace (SUPABASE_SERVICE_ROLE_KEY)
+// resultó ser de otro proyecto y queda solo como último recurso.
+const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 
 const cabService = {
   apikey: SERVICE,
