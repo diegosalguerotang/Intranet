@@ -6,6 +6,10 @@ import Ingreso from "./pages/Ingreso";
 import OlvideClave from "./pages/OlvideClave";
 import PrimerIngreso from "./pages/PrimerIngreso";
 import Inicio from "./pages/Inicio";
+import Boletas from "./pages/Boletas";
+import Documento from "./pages/Documento";
+import Comunicado from "./pages/Comunicado";
+import MisDatos from "./pages/MisDatos";
 import { Cargando } from "./components/ui";
 
 // Guards centralizados: sin sesión → Ingreso; primer ingreso pendiente →
@@ -27,8 +31,13 @@ function Pantallas() {
   if (!perfil || perfil.expulsado) return <Ingreso />;
   if (perfil.primerIngresoPendiente) return <PrimerIngreso />;
 
-  let pantalla = <Inicio />;
-  // Las pestañas Boletas y Yo llegan en las tareas 6-8 del plan.
+  let pantalla;
+  if (ruta === "/boletas") pantalla = <Boletas />;
+  else if (ruta.startsWith("/documento/")) pantalla = <Documento id={ruta.split("/")[2]} />;
+  else if (ruta.startsWith("/comunicado/")) pantalla = <Comunicado id={ruta.split("/")[2]} />;
+  else if (ruta === "/yo") pantalla = <MisDatos />;
+  else pantalla = <Inicio />;
+
   return <Marco>{pantalla}</Marco>;
 }
 
