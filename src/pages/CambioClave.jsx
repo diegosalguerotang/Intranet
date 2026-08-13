@@ -36,7 +36,7 @@ export default function CambioClave() {
       <Card className="w-full max-w-md">
         <div className="mb-4 text-center">
           <ShieldCheck size={26} className="mx-auto mb-2 text-petroleo" />
-          <h1 className="text-[17px] font-bold text-tinta">Reemplaza tu clave provisional</h1>
+          <h1 className="font-display text-[17px] font-bold text-tinta">Reemplaza tu clave provisional</h1>
           <p className="mt-1 text-[12.5px] leading-relaxed text-gris">
             {user?.nombre}, tu clave actual es de un solo uso. Hasta que la reemplaces no puedes operar
             ninguna pantalla del BackOffice.

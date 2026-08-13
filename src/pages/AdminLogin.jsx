@@ -154,56 +154,61 @@ export default function AdminLogin() {
       className="flex min-h-screen flex-col justify-between"
       style={{ background: "linear-gradient(180deg, #ffffff 0%, #e9eff6 55%, #d5e2ee 100%)" }}
     >
-      <div className="container mx-auto mt-14 mb-6 px-4 text-center">
-        <div className="text-[34px] font-bold leading-none tracking-tight text-tinta">
-          Grupo<span className="text-petroleo">ER</span>
-        </div>
-        <div className="mt-1.5 text-[13px] font-medium uppercase tracking-[0.3em] text-acero">
-          Intranet · BackOffice
-        </div>
-      </div>
-
-      <section className="w-full">
+      <section className="flex w-full flex-1 items-center py-10">
         <div className="mx-auto w-full max-w-md px-6">
-          <form onSubmit={entrar}>
-            <div className="mb-5 flex">
-              <div className="flex items-center border-2 border-r-0 border-petroleo px-3 text-petroleo">
-                <Mail size={20} />
+          <form
+            onSubmit={entrar}
+            className="animar-aparicion rounded-caja bg-white px-8 py-10 shadow-[0_5px_30px_rgba(29,63,114,0.12)]"
+          >
+            <div className="mb-8 text-center">
+              <div className="font-display text-[32px] font-bold leading-none tracking-tight text-tinta">
+                Grupo<span className="text-petroleo">ER</span>
               </div>
-              <input
-                type="email"
-                placeholder="Correo electrónico"
-                autoFocus
-                autoComplete="username"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                className="w-full border-2 border-petroleo bg-transparent px-3 py-2.5 text-[17px] text-petroleo placeholder:text-petroleo/70 focus:outline-none"
-              />
+              <div className="mt-2 text-[12px] font-medium uppercase tracking-[0.3em] text-acero">
+                Intranet · BackOffice
+              </div>
             </div>
 
-            <div className="mb-3 flex">
-              <div className="flex items-center border-2 border-r-0 border-petroleo px-3 text-petroleo">
-                <KeyRound size={20} />
+            <div className="group relative mb-7">
+              <div className="flex items-center gap-3 border-b-2 border-borde-f pb-2">
+                <Mail size={18} className="shrink-0 text-gris-cl transition-colors group-focus-within:text-petroleo" />
+                <input
+                  type="email"
+                  placeholder="Correo electrónico"
+                  autoFocus
+                  autoComplete="username"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  className="w-full bg-transparent text-[15px] text-gris placeholder:text-gris-cl focus:outline-none"
+                />
               </div>
-              <input
-                type={verClave ? "text" : "password"}
-                placeholder="Clave"
-                autoComplete="current-password"
-                value={clave}
-                onChange={(e) => setClave(e.target.value)}
-                className="w-full border-2 border-r-0 border-petroleo bg-transparent px-3 py-2.5 text-[17px] text-petroleo placeholder:text-petroleo/70 focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => setVerClave((v) => !v)}
-                aria-label={verClave ? "Ocultar clave" : "Mostrar clave"}
-                className="flex items-center border-2 border-l-0 border-petroleo px-3 text-petroleo hover:text-petroleo-cl"
-              >
-                {verClave ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+              <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-petroleo transition-transform duration-300 group-focus-within:scale-x-100" />
             </div>
 
-            <p className="mb-6 text-right text-[12.5px] text-gris-cl">
+            <div className="group relative mb-3">
+              <div className="flex items-center gap-3 border-b-2 border-borde-f pb-2">
+                <KeyRound size={18} className="shrink-0 text-gris-cl transition-colors group-focus-within:text-petroleo" />
+                <input
+                  type={verClave ? "text" : "password"}
+                  placeholder="Clave"
+                  autoComplete="current-password"
+                  value={clave}
+                  onChange={(e) => setClave(e.target.value)}
+                  className="w-full bg-transparent text-[15px] text-gris placeholder:text-gris-cl focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerClave((v) => !v)}
+                  aria-label={verClave ? "Ocultar clave" : "Mostrar clave"}
+                  className="shrink-0 text-gris-cl hover:text-petroleo"
+                >
+                  {verClave ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-petroleo transition-transform duration-300 group-focus-within:scale-x-100" />
+            </div>
+
+            <p className="mb-7 text-right text-[12px] text-gris-cl">
               ¿Olvidaste tu clave? Pídele a un administrador que te la reenvíe.
             </p>
 
@@ -214,20 +219,18 @@ export default function AdminLogin() {
               </div>
             )}
 
-            <p className="text-center">
-              <button
-                type="submit"
-                disabled={cargando || !correo.trim() || !clave}
-                className="rounded-caja bg-petroleo px-10 py-3 text-[20px] font-semibold text-white transition-colors hover:bg-petroleo-cl disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {cargando ? "Verificando…" : "Ingresar"}
-              </button>
-            </p>
+            <button
+              type="submit"
+              disabled={cargando || !correo.trim() || !clave}
+              className="w-full rounded-full bg-petroleo py-3 text-[16px] font-semibold tracking-wide text-white shadow-md transition-all hover:-translate-y-px hover:bg-pend hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:bg-petroleo"
+            >
+              {cargando ? "Verificando…" : "Ingresar"}
+            </button>
 
-            <p className="mt-6 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
+            <p className="mt-7 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
               Acceso restringido a personal autorizado del Grupo ER.
               <br />
-              Todo intento de ingreso queda registrado. · v8.1-sin-bom
+              Todo intento de ingreso queda registrado. · v9-diseno
             </p>
           </form>
         </div>
