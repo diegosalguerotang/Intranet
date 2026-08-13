@@ -7,7 +7,7 @@ export function PageHeader({ code, title, subtitle, actions }) {
         {code && (
           <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-gris-cl">{code}</div>
         )}
-        <h1 className="mt-0.5 inline-block border-b-2 border-pend pb-1 text-xl font-bold tracking-tight text-tinta">
+        <h1 className="mt-0.5 inline-block border-b-2 border-pend pb-1 font-display text-xl font-bold tracking-tight text-tinta">
           {title}
         </h1>
         {subtitle && <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-gris">{subtitle}</p>}
@@ -19,7 +19,7 @@ export function PageHeader({ code, title, subtitle, actions }) {
 
 export function Card({ children, className = "", pad = true }) {
   return (
-    <div className={`rounded-caja border border-borde bg-white shadow-[0_0_3px_rgba(0,0,0,0.18)] ${pad ? "p-5" : ""} ${className}`}>
+    <div className={`rounded-caja border border-borde bg-white shadow-[0_2px_12px_rgba(29,63,114,0.07)] ${pad ? "p-5" : ""} ${className}`}>
       {children}
     </div>
   );
@@ -51,7 +51,7 @@ const BADGE_TONES = {
 
 export function Badge({ tone = "neutral", children }) {
   return (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-caja px-2 py-0.5 text-[11px] font-semibold ${BADGE_TONES[tone]}`}>
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${BADGE_TONES[tone]}`}>
       {children}
     </span>
   );
@@ -64,10 +64,10 @@ export function Button({ variant = "primary", size = "md", className = "", ...pr
     ghost: "text-petroleo hover:bg-petroleo/10",
     danger: "bg-alerta text-white hover:opacity-90",
   };
-  const sizes = { md: "px-4 py-2 text-[13px]", sm: "px-2.5 py-1.5 text-[12px]" };
+  const sizes = { md: "px-5 py-2 text-[13px]", sm: "px-3.5 py-1.5 text-[12px]" };
   return (
     <button
-      className={`inline-flex items-center justify-center gap-1.5 rounded-caja font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-full font-semibold shadow-sm hover:-translate-y-px hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     />
   );
@@ -86,7 +86,7 @@ export function Field({ label, hint, required, children }) {
 }
 
 export const inputCls =
-  "w-full rounded-caja border border-borde-f bg-white px-3 py-2 text-[13px] text-gris placeholder:text-gris-cl focus:border-petroleo focus:outline-none";
+  "w-full rounded-caja border border-borde-f bg-white px-3.5 py-2 text-[13px] text-gris placeholder:text-gris-cl focus:border-petroleo focus:shadow-[0_0_0_3px_rgba(53,105,160,0.14)] focus:outline-none";
 
 export function Input(props) {
   return <input className={inputCls} {...props} />;
@@ -106,7 +106,7 @@ export function Textarea(props) {
 
 export function Table({ head, children }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-caja border border-borde">
       <table className="w-full border-collapse text-[13px]">
         <thead>
           <tr className="bg-acero">
@@ -152,9 +152,9 @@ export function Progress({ value, tone = "conf" }) {
 export function Modal({ open, onClose, title, children, wide }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta-3/60 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta-3/50 p-4 backdrop-blur-[2px]" onClick={onClose}>
       <div
-        className={`max-h-[90vh] w-full ${wide ? "max-w-3xl" : "max-w-lg"} overflow-y-auto rounded-caja bg-white shadow-2xl`}
+        className={`animar-aparicion max-h-[90vh] w-full ${wide ? "max-w-3xl" : "max-w-lg"} overflow-y-auto rounded-caja bg-white shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 rounded-t-caja bg-acero px-5 py-3">
@@ -176,5 +176,5 @@ export function Note({ tone = "pend", children }) {
     conf: "border-conf/30 bg-conf-bg text-conf",
     neutral: "border-borde bg-papel text-gris",
   };
-  return <div className={`rounded-caja border px-3.5 py-2.5 text-[12.5px] leading-relaxed ${tones[tone]}`}>{children}</div>;
+  return <div className={`animar-aparicion rounded-caja border px-3.5 py-2.5 text-[12.5px] leading-relaxed ${tones[tone]}`}>{children}</div>;
 }
