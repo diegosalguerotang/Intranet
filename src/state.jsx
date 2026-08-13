@@ -49,13 +49,11 @@ const LOCAL = {
   registroAccesos: MOCK.REGISTRO_ACCESOS,
 };
 
-// MODO DEMO temporal (pedido de Diego, 2026-08-12): entra directo como
-// superadministrador sin pasar por /admin/login, mientras se resuelve el
-// interceptor de su navegador que corrompe las peticiones (ver AdminLogin).
-// Poner en false para reactivar el login real: toda la maquinaria de
-// autenticación (Supabase Auth, bitácora, bloqueo, cambio de clave) queda
-// intacta y verificada.
-const MODO_DEMO = true;
+// MODO DEMO: entra directo como superadministrador sin pasar por
+// /admin/login. Se usó temporalmente (2026-08-12/13) mientras se cazaba el
+// bug del BOM en la env var de Vercel; el login real quedó reparado y
+// verificado el 2026-08-13. Poner en true solo para demos sin conexión.
+const MODO_DEMO = false;
 const USUARIO_DEMO = {
   id: 0, nombre: "Diego Salguero Tang", rol: "Superadministrador · demo",
   correo: "diegosalguerotang@gmail.com", esSuperadmin: true, requiereCambio: false,

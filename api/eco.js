@@ -1,8 +1,15 @@
-// Espejo de diagnóstico: devuelve las cabeceras y la query tal como LLEGARON
-// al servidor. Es la única forma de ver qué altera un interceptor
-// (antivirus/proxy) en tránsito, porque desde el propio navegador la petición
-// siempre se ve limpia. Solo expone lo que el cliente ya envió, nada más.
+// Espejo de diagnóstico: devuelve cabeceras y query tal como LLEGARON al
+// servidor, para ver si algo las altera en tránsito (así se cazó el BOM de
+// la env var el 2026-08-13). SOLO refleja una lista blanca: las cabeceras
+// que Vercel inyecta (x-vercel-oidc-token, firmas del proxy) jamás deben
+// volver al cliente.
+const REFLEJAR = ["apikey", "authorization", "x-prueba", "x-sesion", "content-type", "user-agent"];
+
 export default function handler(req, res) {
+  const cabeceras = {};
+  for (const nombre of REFLEJAR) {
+    if (req.headers[nombre] != null) cabeceras[nombre] = req.headers[nombre];
+  }
   res.setHeader("Cache-Control", "no-store");
-  res.status(200).json({ metodo: req.method, query: req.query, cabeceras: req.headers });
+  res.status(200).json({ metodo: req.method, query: req.query, cabeceras });
 }
