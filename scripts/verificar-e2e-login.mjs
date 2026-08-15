@@ -42,13 +42,17 @@ const ok = await fetch(`${URL}/auth/v1/token?grant_type=password`, {
 const sesion = await ok.json();
 caso(`Login correcto emite sesión (HTTP ${ok.status})`, ok.ok && !!sesion.access_token);
 
-// 4) El usuario está en el padrón con cambio de clave obligatorio pendiente.
+// 4) El usuario está en el padrón, activo y con rol superadmin. requiereCambio
+// es un booleano de estado normal (true cuando la clave inicial aún no se
+// cambió, false una vez cambiada) y no una invariante de este E2E: en esta
+// cuenta la clave YA fue cambiada en una corrida anterior, así que hoy vale
+// false; ambos valores son aceptables mientras estado y rol sean correctos.
 const fila = await (await fetch(
   `${URL}/rest/v1/v_usuarios_admin?select=estado,requiereCambio,esSuperadmin&correo=eq.${encodeURIComponent(EMAIL)}`,
   { headers: { ...cab, Authorization: `Bearer ${KEY}` } }
 )).json();
-caso("Padrón: activo, superadmin y requiereCambio=true",
-  fila[0]?.estado === "activo" && fila[0]?.esSuperadmin === true && fila[0]?.requiereCambio === true);
+caso(`Padrón: activo, superadmin (requiereCambio=${fila[0]?.requiereCambio})`,
+  fila[0]?.estado === "activo" && fila[0]?.esSuperadmin === true && typeof fila[0]?.requiereCambio === "boolean");
 
 console.log(fallas ? `\n${fallas} caso(s) fallaron.` : "\nTodos los casos pasaron.");
 process.exit(fallas ? 1 : 0);

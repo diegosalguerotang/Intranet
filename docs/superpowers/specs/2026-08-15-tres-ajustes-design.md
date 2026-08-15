@@ -94,3 +94,25 @@ Cada fase cierra con tests en verde y commit → push → deploy (CI/CD Vercel).
 - Datos fiscales de CLEAN antes de insertarla (única pieza bloqueada).
 - Si en algún archivo real CODIGO ≠ Documento:DNI (en la muestra coinciden en las 9).
 - Cualquier contradicción nueva con lo ya construido.
+
+## Estado final (Task 15 — cierre)
+
+Las 15 tareas del plan están completas. Los tres cambios y todos los criterios de aceptación
+del requerimiento tienen test o verificación E2E concreta (ver
+`.superpowers/sdd/2026-08-15-tres-ajustes/task-15-report.md` para la tabla criterio → evidencia
+completa). Resumen:
+
+- **Cambio 1 (Excel)**: parser puro (`src/lib/importar/planilla.js`) + RPCs transaccionales
+  (`importar_planilla`/`previsualizar_importacion`) + UI real en RRH-05. Nunca cesa por
+  ausencia; rechaza entero si la razón social no está en el catálogo (UI y, en profundidad,
+  también la RPC).
+- **Cambio 2 (PDF)**: extracción con pdfjs-dist + validador de lote (`src/lib/boletas/lote.js`)
+  + `publicar_lote_pdf` (hash SHA-256, transaccional, bloquea con excepciones sin resolver,
+  versiona sin duplicar) + UI real en RRH-06→10. Sin cuentas bancarias ni CUSPP en BD.
+- **Cambio 3 (razones sociales)**: cuatro activas (LIMPIEZA AMERICANA, NEGLIAF, PROMANT,
+  CLEAN — con datos fiscales reales ya confirmados por Diego); BREMCO desactivada (`estado =
+  'retirada'`), no eliminada — conserva histórico consultable, fuera de selectores.
+- **Prueba integrada**: `tests/integrada.test.js` — importar `LISTA_PAIS.xlsx` y cargar
+  `BOLETAS.pdf` sobre la misma empresa asigna las nueve boletas sin excepciones.
+- Pendiente fuera del alcance de código: el E2E real en producción (deploy + navegador) lo
+  ejecuta el controlador (Paso 3 del brief de Task 15).

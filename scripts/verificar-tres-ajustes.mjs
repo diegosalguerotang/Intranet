@@ -124,6 +124,21 @@ await prueba("limpieza de datos de prueba de importación queda completa", async
   igual(r.n, 0, "no deben quedar personas de prueba");
 });
 
+await prueba("previsualizar_importacion con empresa que no existe en el catálogo se rechaza entera (defensa en profundidad tras el filtro de UI)", async () => {
+  // El emparejamiento por razón social vive en la UI (Personal.jsx), pero la
+  // RPC es la última línea de defensa: p_empresa debe existir en `empresas`
+  // y estar activa, o rechaza la llamada completa (cero filas se procesan).
+  let mensaje = null;
+  try {
+    await sql("select previsualizar_importacion('empresa-que-no-existe-en-el-catalogo', '[]'::jsonb) as r");
+  } catch (e) {
+    mensaje = e.message;
+  }
+  igual(mensaje !== null, true, "la llamada con una empresa inexistente debe fallar");
+  igual(mensaje?.includes("no está activa"), true,
+    `el mensaje debe ser el rechazo de negocio claro: ${mensaje}`);
+});
+
 await prueba("previsualizar_importacion con empresa retirada da el rechazo de negocio, no un error de casteo", async () => {
   let mensaje = null;
   try {
