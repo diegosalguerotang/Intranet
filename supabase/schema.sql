@@ -17,11 +17,11 @@ drop view if exists v_personal, v_sedes, v_acuses, v_lotes, v_activos,
   v_contratos, v_epp_entregas, v_comunicados, v_memorandums cascade;
 drop table if exists auditoria, epp_entregas, lineas, asignaciones, activos,
   contratos, plantillas, tardanzas, descargos, memorandums, comunicados,
-  acuses, documentos, lotes, vinculos, personas, sedes, empresas cascade;
+  acuses, documentos, lotes, vinculos, personas, sedes, empresas, cargos cascade;
 drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   eliminar_trabajador, publicar_lote, registrar_acuse_asistido,
   emitir_memorandum, resolver_memorandum, asignar_activo, devolver_activo,
-  registrar_epp, publicar_comunicado cascade;
+  registrar_epp, publicar_comunicado, fn_solo_empresa_activa cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -34,19 +34,22 @@ create table empresas (
   logo      text,
   regimen   text not null default 'Régimen general'
     check (regimen in ('Régimen general','Micro empresa','Pequeña empresa')),
+  estado    text not null default 'activa' check (estado in ('activa','retirada')),
+  direccion text,
   creado_en timestamptz not null default now()
 );
 
 create table personas (
-  dni       text primary key check (dni ~ '^[0-9]{8}$'),
-  nombre    text not null,
-  celular   text check (celular is null or celular ~ '^[0-9]{9}$'),
-  direccion text,
-  banco     text,
-  cuenta    text,
-  portal    text not null default 'nunca_ingreso'
+  dni                   text primary key check (dni ~ '^[0-9]{8}$'),
+  nombre                text not null,
+  celular               text check (celular is null or celular ~ '^[0-9]{9}$'),
+  direccion             text,
+  banco                 text,
+  cuenta                text,
+  portal                text not null default 'nunca_ingreso'
     check (portal in ('activo','nunca_ingreso','sin_celular','suspendido')),
-  creado_en timestamptz not null default now()
+  nombre_por_confirmar  boolean not null default false,
+  creado_en             timestamptz not null default now()
 );
 
 create table sedes (
@@ -70,6 +73,7 @@ create table vinculos (
   cargo        text not null,
   fecha_inicio date not null,
   fecha_fin    date check (fecha_fin is null or fecha_fin >= fecha_inicio),
+  centro_costo text,
   creado_en    timestamptz not null default now()
 );
 -- Regla: a lo sumo un vínculo vigente por persona y empresa.
@@ -107,6 +111,7 @@ create table documentos (
   hash_sha256  text not null,               -- huella del archivo exacto entregado
   reemplaza_a  bigint references documentos(id),
   estado       text not null default 'vigente' check (estado in ('vigente','reemplazado')),
+  neto         numeric,
   publicado_en timestamptz not null default now()
 );
 create index ix_documentos_lote on documentos (lote_id);
@@ -146,6 +151,30 @@ end $$;
 create trigger trg_acuses_inmutables
   before update or delete on acuses
   for each row execute function fn_bloquear_cambios();
+
+-- ---------------------------------------------------------------------------
+-- CATÁLOGO DE CARGOS Y CONTROL DE EMPRESA ACTIVA
+-- ---------------------------------------------------------------------------
+create table cargos (nombre text primary key);
+insert into cargos (nombre) values
+  ('Operario de limpieza'), ('Supervisor de sede'), ('Técnico de mantenimiento'),
+  ('Auxiliar de servicios'), ('Analista RRHH'), ('Jefe de RRHH'),
+  ('OPERARIO(A) DE LIMPIEZA'), ('SUPERVISOR(A) DE LIMPIEZA');
+
+-- Nada nuevo sobre una empresa retirada (vínculos y lotes; contratos y
+-- comunicados nuevos quedan bloqueados por la UI, que filtra activas).
+create function fn_solo_empresa_activa() returns trigger
+language plpgsql as $$
+begin
+  if (select estado from empresas where id = new.empresa_id) <> 'activa' then
+    raise exception 'La empresa % está retirada del grupo: no admite registros nuevos.', new.empresa_id;
+  end if;
+  return new;
+end $$;
+create trigger trg_vinculo_empresa_activa before insert on vinculos
+  for each row execute function fn_solo_empresa_activa();
+create trigger trg_lote_empresa_activa before insert on lotes
+  for each row execute function fn_solo_empresa_activa();
 
 -- ---------------------------------------------------------------------------
 -- COMUNICADOS
@@ -312,11 +341,14 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- DATOS INICIALES (demostración, tomados de los Casos de Referencia v1.0)
 -- ---------------------------------------------------------------------------
-insert into empresas (id, nombre, corto, ruc, logo, regimen) values
-  ('negliaf',    'NEGLIAF S.R.L.',            'NEGLIAF',      '20501234567', '/logos/negliaf.jpeg',            'Régimen general'),
-  ('bremco',     'BREMCO S.C.R.L.',           'BREMCO',       '20512345678', null,                             'Régimen general'),
-  ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20523456789', '/logos/promant.jpeg',            'Pequeña empresa'),
-  ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20534567890', '/logos/limpieza-americana.jpeg', 'Régimen general');
+-- Nota: bremco se inserta con estado 'activa' (default) para que los vínculos y
+-- lotes históricos de la carga inicial se registren sin tropezar con el trigger
+-- fn_solo_empresa_activa; se retira al final de esta sección, como en producción.
+insert into empresas (id, nombre, corto, ruc, logo, regimen, direccion) values
+  ('negliaf',    'NEGLIAF S.R.L.',            'NEGLIAF',      '20501234567', '/logos/negliaf.jpeg',            'Régimen general', null),
+  ('bremco',     'BREMCO S.C.R.L.',           'BREMCO',       '20512345678', null,                             'Régimen general', null),
+  ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20523456789', '/logos/promant.jpeg',            'Pequeña empresa', null),
+  ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20601705185', '/logos/limpieza-americana.jpeg', 'Régimen general', 'Av. San Borja Sur Nro. 1184, Urb. San Borja Sur');
 
 insert into personas (dni, nombre, celular, banco, cuenta, portal) values
   ('45231876', 'Rosa Quispe Huamán',    '987654321', 'BCP',       '191-23456789-0-11',  'activo'),
@@ -474,6 +506,11 @@ insert into epp_entregas (id, dni, items, entrega, reposicion) values
   (2, '41887203', 'Guantes de nitrilo (2), Botas talla 41 (1)',                   '2026-07-01', '2026-10-01'),
   (3, '46782301', 'Uniforme talla S (2), Mascarilla (5)',                         '2026-05-15', '2026-08-01');
 select setval(pg_get_serial_sequence('epp_entregas','id'), (select max(id) from epp_entregas));
+
+-- BREMCO sale del grupo: retirada, jamás eliminada (conservación documental).
+-- Se actualiza aquí, después de cargar su historial, para no chocar con
+-- fn_solo_empresa_activa (que solo bloquea INSERTs nuevos, no la carga previa).
+update empresas set estado = 'retirada' where id = 'bremco';
 
 -- ---------------------------------------------------------------------------
 -- TRIGGERS DE AUDITORÍA (después de la carga inicial)
