@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UserPlus, Upload, Download, Trash2, Smartphone, KeyRound } from "lucide-react";
 import { useApp } from "../../state";
@@ -303,12 +303,19 @@ function ImportarPlanilla({ open, onClose }) {
   const [rechazo, setRechazo] = useState(null); // rechazo total: string, sin botón de continuar
   const [analisis, setAnalisis] = useState(null); // {empresaId, empresaNombre, nombreArchivo, filas, errores, previa}
   const [resultado, setResultado] = useState(null);
+  // Vigencia de la "sesión" del modal: cerrar (X/backdrop) no cancela una
+  // operación en vuelo (previsualizar/importar), pero incrementar este ref
+  // hace que su resultado, cuando llegue, se descarte en vez de reaplicar
+  // paso/analisis/resultado sobre un modal ya reseteado o reabierto.
+  const sesionRef = useRef(0);
   const cerrar = () => {
+    sesionRef.current += 1;
     setPaso(1); setOcupado(false); setError(null); setRechazo(null); setAnalisis(null); setResultado(null);
     onClose();
   };
 
   const analizar = async (archivo) => {
+    const sesion = sesionRef.current;
     setError(null);
     setRechazo(null);
     setOcupado(true);
@@ -317,36 +324,53 @@ function ImportarPlanilla({ open, onClose }) {
       const { parsearPlanilla, normalizar } = await import("../../lib/importar/planilla.js");
       const filas = await leerXlsx(new Uint8Array(await archivo.arrayBuffer()));
       const r = parsearPlanilla(filas);
-      const emp = db.empresas.find((e) =>
-        normalizar(e.nombre) === normalizar(r.empresa) || normalizar(r.empresa).startsWith(normalizar(e.nombre)));
+      // Empresa exacta primero, en TODO el catálogo (para poder distinguir
+      // "no existe" de "existe pero retirada"); solo si no hay exacta se
+      // busca por prefijo, y si el prefijo es ambiguo se rechaza sin elegir.
+      const empresaNorm = normalizar(r.empresa);
+      let emp = db.empresas.find((e) => normalizar(e.nombre) === empresaNorm);
       if (!emp) {
-        setRechazo(`La razón social del reporte («${r.empresa}») no está en el catálogo de empresas del grupo. Importación rechazada: ninguna fila se aplica.`);
+        const candidatas = db.empresas.filter((e) => empresaNorm.startsWith(normalizar(e.nombre)));
+        if (candidatas.length > 1) {
+          if (sesionRef.current === sesion) setRechazo(
+            `La razón social del reporte («${r.empresa}») coincide parcialmente con ${candidatas.length} empresas del catálogo (${candidatas.map((e) => e.nombre).join(", ")}) y no se puede determinar cuál es. Importación rechazada: ninguna fila se aplica.`);
+          return;
+        }
+        emp = candidatas[0];
+      }
+      if (!emp) {
+        if (sesionRef.current === sesion) setRechazo(
+          `La razón social del reporte («${r.empresa}») no está en el catálogo de empresas del grupo. Importación rechazada: ninguna fila se aplica.`);
         return;
       }
       if (emp.estado === "retirada") {
-        setRechazo(`${emp.nombre} está retirada del grupo: no admite importaciones.`);
+        if (sesionRef.current === sesion) setRechazo(`${emp.nombre} está retirada del grupo: no admite importaciones.`);
         return;
       }
       const previa = await previsualizarImportacion(emp.id, r.filas);
+      if (sesionRef.current !== sesion) return; // el modal se cerró/reabrió mientras se esperaba la RPC
       setAnalisis({ empresaId: emp.id, empresaNombre: emp.nombre, nombreArchivo: archivo.name, ...r, previa });
       setPaso(2);
     } catch (e) {
-      setError(e.message);
+      if (sesionRef.current === sesion) setError(e.message);
     } finally {
-      setOcupado(false);
+      if (sesionRef.current === sesion) setOcupado(false);
     }
   };
 
   const confirmar = async () => {
+    const sesion = sesionRef.current;
     setError(null);
     setOcupado(true);
     try {
-      setResultado(await importarPlanilla(analisis.empresaId, analisis.filas));
+      const r = await importarPlanilla(analisis.empresaId, analisis.filas);
+      if (sesionRef.current !== sesion) return; // el modal se cerró/reabrió mientras se esperaba la RPC
+      setResultado(r);
       setPaso(3);
     } catch (e) {
-      setError(e.message);
+      if (sesionRef.current === sesion) setError(e.message);
     } finally {
-      setOcupado(false);
+      if (sesionRef.current === sesion) setOcupado(false);
     }
   };
 
