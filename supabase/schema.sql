@@ -23,7 +23,7 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   emitir_memorandum, resolver_memorandum, asignar_activo, devolver_activo,
   registrar_epp, publicar_comunicado, fn_solo_empresa_activa,
   fn_es_prefijo_truncado, fn_sede_para_importacion, importar_planilla,
-  previsualizar_importacion cascade;
+  previsualizar_importacion, publicar_lote_pdf cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL

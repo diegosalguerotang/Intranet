@@ -138,5 +138,130 @@ await prueba("previsualizar_importacion con empresa retirada da el rechazo de ne
     "la colisión de SQLSTATE P0001 no debe filtrar un error de casteo jsonb");
 });
 
+// --- Task 13: RPC publicar_lote_pdf ----------------------------------------
+// DNIs sintéticos 0999990x (distintos de los 099999xx de importar_planilla,
+// para no chocar entre bloques). Vínculo vigente REAL en lamericana (empresa
+// activa real del grupo), sede sintética propia para no interferir con la
+// sede que crea/borra el bloque de importar_planilla.
+const EMPRESA_PDF = "lamericana";
+const DNI_A = "09999901";
+const DNI_B = "09999902";
+const DNI_C = "09999903"; // a propósito: NUNCA tiene vínculo, prueba (b)
+const SEDE_PDF_ID = "lamericana-sede-pdf-e2e";
+const SEDE_PDF_NOMBRE = "SEDE PUBLICAR LOTE PDF E2E";
+const TIPO_PDF = "Boleta de pago";
+const PERIODO_PDF = "2026-06";
+const POR_PDF = "verificacion-lote-pdf";
+
+function boletasJson(items) {
+  return JSON.stringify(items).replace(/'/g, "''");
+}
+
+async function limpiarDatosPruebaPdf() {
+  await sql(`delete from documentos where lote_id in (
+    select id from lotes where empresa_id = '${EMPRESA_PDF}' and tipo = '${TIPO_PDF}' and periodo = '${PERIODO_PDF}'
+  )`);
+  await sql(`delete from lotes where empresa_id = '${EMPRESA_PDF}' and tipo = '${TIPO_PDF}' and periodo = '${PERIODO_PDF}'`);
+  await sql(`delete from vinculos where persona_dni in ('${DNI_A}','${DNI_B}','${DNI_C}') and empresa_id = '${EMPRESA_PDF}'`);
+  await sql(`delete from personas where dni in ('${DNI_A}','${DNI_B}','${DNI_C}')`);
+  await sql(`delete from sedes where id = '${SEDE_PDF_ID}'`);
+}
+
+await limpiarDatosPruebaPdf(); // por si quedó basura de una corrida anterior fallida
+
+let loteV1 = null;
+try {
+  await sql(`insert into sedes (id, empresa_id, nombre, cliente) values
+    ('${SEDE_PDF_ID}', '${EMPRESA_PDF}', '${SEDE_PDF_NOMBRE}', 'Por asignar')`);
+  await sql(`insert into personas (dni, nombre, portal) values
+    ('${DNI_A}', 'VERIFICACION PDF UNO', 'sin_celular'),
+    ('${DNI_B}', 'VERIFICACION PDF DOS', 'sin_celular')`);
+  await sql(`insert into vinculos (persona_dni, empresa_id, sede_id, cargo, centro_costo, fecha_inicio) values
+    ('${DNI_A}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
+    ('${DNI_B}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Supervisor de sede', 'CC PDF E2E', '2026-01-01')`);
+
+  await prueba("publicar_lote_pdf: lote con 2 boletas de DNIs con vínculo vigente crea 2 documentos con hash y url", async () => {
+    const boletas = boletasJson([
+      { dni: DNI_A, correlativo: 1, nombre: "VERIFICACION PDF UNO", cargo: "Operario de limpieza",
+        sede: SEDE_PDF_NOMBRE, centroCosto: "CC PDF E2E", ingreso: "2026-01-01", neto: 1500.5,
+        hash: "hashA1", archivo_url: "https://storage.test/hashA1.pdf",
+        ruc: "20601705185", periodoCabecera: "JUNIO 2026", periodoPago: "2026-06" },
+      { dni: DNI_B, correlativo: 2, nombre: "VERIFICACION PDF DOS", cargo: "Supervisor de sede",
+        sede: SEDE_PDF_NOMBRE, centroCosto: "CC PDF E2E", ingreso: "2026-01-01", neto: 1800.25,
+        hash: "hashB1", archivo_url: "https://storage.test/hashB1.pdf" },
+    ]);
+    const [fila] = await sql(
+      `select publicar_lote_pdf('${EMPRESA_PDF}','${TIPO_PDF}','${PERIODO_PDF}','${POR_PDF}','${boletas}'::jsonb) as r`
+    );
+    igual(fila.r.documentos, 2, "documentos publicados");
+    igual(fila.r.version, 1, "versión inicial");
+    loteV1 = fila.r.lote_id;
+    const docs = await sql(
+      `select v.persona_dni as dni, d.hash_sha256, d.archivo_url, d.neto::float as neto
+       from documentos d join vinculos v on v.id = d.vinculo_id where d.lote_id = '${loteV1}' order by v.persona_dni`
+    );
+    igual(docs.length, 2, "dos filas de documentos");
+    igual(docs[0].dni, DNI_A, "dni del primer documento");
+    igual(docs[0].hash_sha256, "hashA1", "hash del primer documento");
+    igual(docs[0].archivo_url, "https://storage.test/hashA1.pdf", "url del primer documento");
+    igual(docs[0].neto, 1500.5, "neto del primer documento");
+    igual(docs[1].dni, DNI_B, "dni del segundo documento");
+    igual(docs[1].hash_sha256, "hashB1", "hash del segundo documento");
+  });
+
+  await prueba("publicar_lote_pdf: DNI sin vínculo vigente rechaza el lote completo (cero filas nuevas)", async () => {
+    const boletas = boletasJson([
+      { dni: DNI_A, nombre: "VERIFICACION PDF UNO", neto: 1500.5, hash: "hashA2", archivo_url: "https://storage.test/hashA2.pdf" },
+      { dni: DNI_C, nombre: "SIN VINCULO", neto: 1000, hash: "hashC2", archivo_url: "https://storage.test/hashC2.pdf" },
+    ]);
+    let mensaje = null;
+    try {
+      await sql(`select publicar_lote_pdf('${EMPRESA_PDF}','${TIPO_PDF}','${PERIODO_PDF}','${POR_PDF}','${boletas}'::jsonb) as r`);
+    } catch (e) { mensaje = e.message; }
+    igual(mensaje !== null, true, "la llamada con un DNI sin vínculo debe fallar");
+    igual(mensaje?.includes("vínculo vigente"), true, `mensaje debe indicar falta de vínculo vigente: ${mensaje}`);
+    const [lts] = await sql(`select count(*)::int n from lotes where empresa_id = '${EMPRESA_PDF}' and tipo = '${TIPO_PDF}' and periodo = '${PERIODO_PDF}'`);
+    igual(lts.n, 1, "no debe haberse creado un segundo lote (transaccional)");
+    const [dcs] = await sql(`select count(*)::int n from documentos where lote_id = '${loteV1}'`);
+    igual(dcs.n, 2, "los documentos del lote v1 no deben verse alterados");
+  });
+
+  let loteV2 = null;
+  await prueba("publicar_lote_pdf: republicar el mismo periodo crea versión 2 y deja v1 'reemplazado' sin tocar acuses", async () => {
+    const [acusesAntes] = await sql("select count(*)::int n from acuses");
+    const boletas = boletasJson([
+      { dni: DNI_A, nombre: "VERIFICACION PDF UNO", neto: 1550, hash: "hashA3", archivo_url: "https://storage.test/hashA3.pdf" },
+      { dni: DNI_B, nombre: "VERIFICACION PDF DOS", neto: 1850, hash: "hashB3", archivo_url: "https://storage.test/hashB3.pdf" },
+    ]);
+    const [fila] = await sql(
+      `select publicar_lote_pdf('${EMPRESA_PDF}','${TIPO_PDF}','${PERIODO_PDF}','${POR_PDF}','${boletas}'::jsonb) as r`
+    );
+    igual(fila.r.version, 2, "segunda versión");
+    igual(fila.r.documentos, 2, "documentos de la versión 2");
+    loteV2 = fila.r.lote_id;
+    const v1 = await sql(`select estado from documentos where lote_id = '${loteV1}'`);
+    igual(v1.every((d) => d.estado === "reemplazado"), true, "todos los documentos de v1 deben quedar 'reemplazado'");
+    const [acusesDespues] = await sql("select count(*)::int n from acuses");
+    igual(acusesDespues.n, acusesAntes.n, "el conteo de acuses no debe cambiar al versionar (jamás se tocan)");
+  });
+
+  await prueba("motor documental (documentos/lotes) no tiene columnas de cuentas bancarias ni CUSPP", async () => {
+    const [r] = await sql(
+      `select count(*)::int n from information_schema.columns
+       where column_name ~* 'cuenta|cuspp' and table_name in ('documentos','lotes')`
+    );
+    igual(r.n, 0, "no debe existir ninguna columna de cuenta/CUSPP en documentos ni lotes");
+  });
+} finally {
+  await limpiarDatosPruebaPdf();
+}
+
+await prueba("limpieza de datos de prueba de publicar_lote_pdf queda completa", async () => {
+  const [r] = await sql(`select count(*)::int n from personas where dni in ('${DNI_A}','${DNI_B}','${DNI_C}')`);
+  igual(r.n, 0, "no deben quedar personas de prueba");
+  const [l] = await sql(`select count(*)::int n from lotes where empresa_id = '${EMPRESA_PDF}' and tipo = '${TIPO_PDF}' and periodo = '${PERIODO_PDF}'`);
+  igual(l.n, 0, "no deben quedar lotes de prueba");
+});
+
 console.log(fallos ? `\n${fallos} PRUEBAS FALLARON` : "\nTODAS LAS PRUEBAS PASARON");
 process.exit(fallos ? 1 : 0);
