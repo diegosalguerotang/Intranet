@@ -327,6 +327,26 @@ export function AppProvider({ children }) {
         p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
       }, "politica");
     },
+    // RRH-05 — Importación de planilla desde Excel. La vista previa es de
+    // solo lectura (no toca `db` local); la confirmación es un único RPC
+    // transaccional y refresca "personal" con el mecanismo real (recargar).
+    previsualizarImportacion: async (empresaIdArg, filas) => {
+      if (!supabaseListo) return { altas: [], actualizaciones: [], sin_cambio: [], nombres_por_confirmar: 0 };
+      const { data, error } = await supabase.rpc("previsualizar_importacion", {
+        p_empresa: empresaIdArg, p_filas: filas,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    importarPlanilla: async (empresaIdArg, filas) => {
+      if (!supabaseListo) throw new Error("Importación real requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_planilla", {
+        p_empresa: empresaIdArg, p_filas: filas, p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("personal");
+      return data;
+    },
     addEpp: (rows) => {
       local("epp_entregas", (xs) => [...rows, ...xs]);
       (async () => {

@@ -296,49 +296,123 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
 
 // RRH-05 — Importar planilla
 function ImportarPlanilla({ open, onClose }) {
+  const { db, previsualizarImportacion, importarPlanilla } = useApp();
   const [paso, setPaso] = useState(1);
-  const cerrar = () => { setPaso(1); onClose(); };
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+  const [rechazo, setRechazo] = useState(null); // rechazo total: string, sin botón de continuar
+  const [analisis, setAnalisis] = useState(null); // {empresaId, empresaNombre, nombreArchivo, filas, errores, previa}
+  const [resultado, setResultado] = useState(null);
+  const cerrar = () => {
+    setPaso(1); setOcupado(false); setError(null); setRechazo(null); setAnalisis(null); setResultado(null);
+    onClose();
+  };
+
+  const analizar = async (archivo) => {
+    setError(null);
+    setRechazo(null);
+    setOcupado(true);
+    try {
+      const { leerXlsx } = await import("../../lib/importar/xlsx.js");
+      const { parsearPlanilla, normalizar } = await import("../../lib/importar/planilla.js");
+      const filas = await leerXlsx(new Uint8Array(await archivo.arrayBuffer()));
+      const r = parsearPlanilla(filas);
+      const emp = db.empresas.find((e) =>
+        normalizar(e.nombre) === normalizar(r.empresa) || normalizar(r.empresa).startsWith(normalizar(e.nombre)));
+      if (!emp) {
+        setRechazo(`La razón social del reporte («${r.empresa}») no está en el catálogo de empresas del grupo. Importación rechazada: ninguna fila se aplica.`);
+        return;
+      }
+      if (emp.estado === "retirada") {
+        setRechazo(`${emp.nombre} está retirada del grupo: no admite importaciones.`);
+        return;
+      }
+      const previa = await previsualizarImportacion(emp.id, r.filas);
+      setAnalisis({ empresaId: emp.id, empresaNombre: emp.nombre, nombreArchivo: archivo.name, ...r, previa });
+      setPaso(2);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const confirmar = async () => {
+    setError(null);
+    setOcupado(true);
+    try {
+      setResultado(await importarPlanilla(analisis.empresaId, analisis.filas));
+      setPaso(3);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  const nombresPorConfirmar = analisis?.filas.filter((f) => f.nombreTruncado).length ?? 0;
 
   return (
     <Modal open={open} onClose={cerrar} title="RRH-05 · Importar planilla" wide>
-      {paso === 1 && (
-        <div className="space-y-4">
-          <div
-            className="cursor-pointer rounded-md border-2 border-dashed border-borde-f bg-papel/60 px-6 py-10 text-center hover:border-petroleo-cl"
-            onClick={() => setPaso(2)}
-          >
-            <div className="text-[14px] font-semibold text-tinta-2">Arrastra el archivo Excel o CSV, o haz clic para elegirlo</div>
-            <div className="mt-1 text-[12px] text-gris">La identificación es siempre por DNI, nunca por nombre ni posición de fila.</div>
-          </div>
-          <button className="text-[12.5px] font-medium text-petroleo underline underline-offset-2">
-            Descargar plantilla de columnas esperadas
-          </button>
-        </div>
-      )}
-      {paso === 2 && (
-        <div className="space-y-4">
-          <Note tone="neutral"><b>planilla_agosto_2026.xlsx</b> — 312 filas leídas (simulación)</Note>
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">6</div><div className="font-mono text-[10px] uppercase text-gris">Nuevos</div></div>
-            <div className="rounded-md bg-pend-bg py-4"><div className="text-[22px] font-bold text-pend">14</div><div className="font-mono text-[10px] uppercase text-gris">A actualizar</div></div>
-            <div className="rounded-md bg-alerta-bg py-4"><div className="text-[22px] font-bold text-alerta">2</div><div className="font-mono text-[10px] uppercase text-gris">Con error</div></div>
-          </div>
-          <Note tone="pend">
-            2 filas con error: fila 87 (DNI de 7 dígitos), fila 203 (sede no reconocida). Ninguna fila se aplica hasta
-            confirmar; la importación es transaccional.
-          </Note>
-          <div className="flex gap-2">
-            <Button onClick={() => setPaso(3)}>Confirmar importación</Button>
-            <Button variant="secondary" onClick={cerrar}>Cancelar</Button>
-          </div>
-        </div>
-      )}
-      {paso === 3 && (
-        <div className="space-y-4">
-          <Note tone="conf">Importación aplicada (demostración): 6 altas, 14 actualizaciones. Los nuevos recibieron su acceso al portal.</Note>
-          <Button onClick={cerrar}>Cerrar</Button>
-        </div>
-      )}
+      <div className="space-y-4">
+        {paso === 1 && (
+          <>
+            <label
+              className={`block rounded-md border-2 border-dashed border-borde-f bg-papel/60 px-6 py-10 text-center hover:border-petroleo-cl ${ocupado ? "opacity-60" : "cursor-pointer"}`}
+            >
+              <input
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                disabled={ocupado}
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) analizar(f); }}
+              />
+              <div className="text-[14px] font-semibold text-tinta-2">
+                {ocupado ? "Leyendo el archivo…" : "Haz clic para elegir el reporte PLATRA1 exportado a Excel (.xlsx)"}
+              </div>
+              <div className="mt-1 text-[12px] text-gris">La identificación es siempre por DNI, nunca por nombre ni posición de fila.</div>
+            </label>
+            {rechazo && <Note tone="alerta">{rechazo}</Note>}
+          </>
+        )}
+        {paso === 2 && analisis && (
+          <>
+            <Note tone="neutral"><b>{analisis.nombreArchivo}</b> — {analisis.empresaNombre} · {analisis.filas.length} filas válidas</Note>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{analisis.previa.altas.length}</div><div className="font-mono text-[10px] uppercase text-gris">Altas</div></div>
+              <div className="rounded-md bg-pend-bg py-4"><div className="text-[22px] font-bold text-pend">{analisis.previa.actualizaciones.length}</div><div className="font-mono text-[10px] uppercase text-gris">A actualizar</div></div>
+              <div className="rounded-md bg-papel py-4"><div className="text-[22px] font-bold text-tinta-2">{analisis.previa.sin_cambio.length}</div><div className="font-mono text-[10px] uppercase text-gris">Sin cambio</div></div>
+            </div>
+            {analisis.errores.length > 0 && (
+              <Note tone="pend">
+                {analisis.errores.length} {analisis.errores.length === 1 ? "fila" : "filas"} con error, no se importan:
+                <ul className="mt-1 list-disc pl-4">
+                  {analisis.errores.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              </Note>
+            )}
+            {nombresPorConfirmar > 0 && (
+              <Note tone="pend">{nombresPorConfirmar} nombres quedarán «por confirmar» (truncados a 30 caracteres en el reporte).</Note>
+            )}
+            {error && <Note tone="alerta">{error}</Note>}
+            <div className="flex gap-2">
+              <Button onClick={confirmar} disabled={ocupado}>{ocupado ? "Importando…" : "Confirmar importación"}</Button>
+              <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
+            </div>
+          </>
+        )}
+        {paso === 3 && resultado && (
+          <>
+            <Note tone="conf">
+              Importación aplicada: {resultado.altas.length} altas, {resultado.actualizaciones.length} actualizaciones,
+              {" "}{resultado.sin_cambio.length} sin cambio.
+              {resultado.nombres_por_confirmar > 0 && ` ${resultado.nombres_por_confirmar} nombres quedaron «por confirmar».`}
+            </Note>
+            <Button onClick={cerrar}>Cerrar</Button>
+          </>
+        )}
+        {paso === 1 && error && <Note tone="alerta">{error}</Note>}
+      </div>
     </Modal>
   );
 }
