@@ -12,27 +12,57 @@ async function cargarPdfjs() {
   return import("pdfjs-dist/legacy/build/pdf.mjs"); // Node (tests), sin worker
 }
 
+const TOLERANCIA_Y = 2; // unidades PDF: ítems de una misma línea visual pueden
+// diferir en fracciones (ej. 300.49 vs 300.51) por redondeo del generador.
+
+// Agrupa ítems de texto (con posición {x, y} y contenido {s}) en líneas,
+// tolerando pequeñas variaciones de Y en vez de exigir igualdad exacta.
+// Ordena por Y descendente (arriba hacia abajo) y agrupa consecutivos cuya Y
+// no se aleje más de TOLERANCIA_Y del ancla del grupo (la Y del primer ítem
+// del grupo, fija — no una media móvil, para no arrastrar el grupo). Dentro
+// de cada línea, ordena por X ascendente (izquierda a derecha).
+export function agruparLineas(items) {
+  const ordenados = [...items].sort((a, b) => b.y - a.y);
+  const grupos = [];
+  let grupoActual = null;
+  let ancla = null;
+  for (const item of ordenados) {
+    if (grupoActual !== null && Math.abs(item.y - ancla) <= TOLERANCIA_Y) {
+      grupoActual.push(item);
+    } else {
+      grupoActual = [item];
+      grupos.push(grupoActual);
+      ancla = item.y;
+    }
+  }
+  return grupos.map((grupo) =>
+    [...grupo].sort((a, b) => a.x - b.x).map((i) => i.s).join(" ")
+  );
+}
+
 export async function extraerPaginas(bytes) {
   const pdfjs = await cargarPdfjs();
   const opciones = { data: bytes, useSystemFonts: true };
   if (!esNavegador) opciones.disableWorker = true; // Node: sin worker thread
   const doc = await pdfjs.getDocument(opciones).promise;
-  const paginas = [];
-  for (let n = 1; n <= doc.numPages; n++) {
-    const pagina = await doc.getPage(n);
-    const contenido = await pagina.getTextContent();
-    // Reagrupar por coordenada Y para conservar las líneas del reporte.
-    const lineas = new Map();
-    for (const item of contenido.items) {
-      const y = Math.round(item.transform[5]);
-      if (!lineas.has(y)) lineas.set(y, []);
-      lineas.get(y).push({ x: item.transform[4], s: item.str });
+  try {
+    const paginas = [];
+    for (let n = 1; n <= doc.numPages; n++) {
+      const pagina = await doc.getPage(n);
+      try {
+        const contenido = await pagina.getTextContent();
+        const items = contenido.items.map((item) => ({
+          x: item.transform[4],
+          y: item.transform[5],
+          s: item.str,
+        }));
+        paginas.push(agruparLineas(items).join("\n"));
+      } finally {
+        pagina.cleanup();
+      }
     }
-    const texto = [...lineas.entries()].sort((a, b) => b[0] - a[0])
-      .map(([, items]) => items.sort((a, b) => a.x - b.x).map((i) => i.s).join(" "))
-      .join("\n");
-    paginas.push(texto);
+    return paginas;
+  } finally {
+    await doc.destroy();
   }
-  await doc.destroy();
-  return paginas;
 }

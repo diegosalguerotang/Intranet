@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
-import { extraerPaginas } from "../../src/lib/boletas/pdf.js";
+import { extraerPaginas, agruparLineas } from "../../src/lib/boletas/pdf.js";
 
 let paginas;
 beforeAll(async () => {
@@ -32,5 +32,32 @@ describe("extraerPaginas con BOLETAS.pdf", () => {
     expect(paginas[0]).toMatch(/CODIGO:/);
     expect(paginas[0]).toMatch(/Documento/);
     expect(paginas[0]).toMatch(/Neto a pagar/);
+  });
+});
+
+describe("agruparLineas (clustering por Y con tolerancia)", () => {
+  it("agrupa en la misma línea ítems con Y casi igual (300.49 vs 300.51)", () => {
+    const items = [
+      { x: 10, y: 300.49, s: "Hola" },
+      { x: 50, y: 300.51, s: "Mundo" },
+    ];
+    expect(agruparLineas(items)).toEqual(["Hola Mundo"]);
+  });
+
+  it("separa en dos líneas ítems cuya Y difiere en más de 2 unidades", () => {
+    const items = [
+      { x: 10, y: 310, s: "Primera" },
+      { x: 10, y: 300, s: "Segunda" },
+    ];
+    expect(agruparLineas(items)).toEqual(["Primera", "Segunda"]);
+  });
+
+  it("ordena por X ascendente dentro de una línea, sin importar el orden de entrada", () => {
+    const items = [
+      { x: 50, y: 100, s: "B" },
+      { x: 10, y: 100, s: "A" },
+      { x: 30, y: 100, s: "M" },
+    ];
+    expect(agruparLineas(items)).toEqual(["A M B"]);
   });
 });
