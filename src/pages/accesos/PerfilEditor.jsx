@@ -157,6 +157,14 @@ export default function PerfilEditor() {
 
   const versiones = db.perfilVersiones.filter((v) => v.perfilId === id);
 
+  // Empresas retiradas que ya formaban parte del alcance de este perfil: se
+  // siguen mostrando (marcadas, atenuadas) para que no queden ocultas y
+  // re-guardadas en silencio, pero solo pueden desmarcarse — una retirada
+  // que no está en el alcance nunca aparece ni puede agregarse.
+  const empresasRetiradasEnAlcance = db.empresas.filter(
+    (e) => (e.estado ?? "activa") !== "activa" && empresas.includes(e.id)
+  );
+
   return (
     <>
       <PageHeader
@@ -274,6 +282,19 @@ export default function PerfilEditor() {
                       }
                     />
                     {e.nombre}
+                  </label>
+                ))}
+                {empresasRetiradasEnAlcance.map((e) => (
+                  <label key={e.id} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-gris-cl opacity-60">
+                    <input
+                      type="checkbox"
+                      className="accent-petroleo"
+                      checked
+                      onChange={(ev) => {
+                        if (!ev.target.checked) setEmpresas((xs) => xs.filter((x) => x !== e.id));
+                      }}
+                    />
+                    {e.nombre} <span className="italic">(retirada)</span>
                   </label>
                 ))}
               </div>
