@@ -32,9 +32,12 @@ const limpiar = (s) => (s ?? "").replace(/\s+/g, " ").trim() || null;
 
 function parsearPagina(texto) {
   // Ancla de boleta: "... BOLETA DE PAGO JUNIO - 2026   No 1". El mes puede
-  // venir con espacios internos espurios (kerning); normalizarPeriodo los
-  // quita, así que aquí basta con no cortar la captura antes de tiempo.
-  const cabecera = buscar(texto, /BOLETA DE PAGO\s+([A-ZÁÉÍÓÚÑ\s]+?-\s*\d{4})/i);
+  // venir con espacios/tabs internos espurios (kerning); normalizarPeriodo
+  // los quita, así que aquí basta con no cortar la captura antes de tiempo.
+  // El cruce de línea dentro de la captura se limita a UN salto como máximo
+  // (en vez de \s ilimitado, que podría arrastrar la captura por toda la
+  // página buscando el próximo "-NNNN" si la línea esperada no lo trae).
+  const cabecera = buscar(texto, /BOLETA DE PAGO\s+([A-ZÁÉÍÓÚÑ \t]+?(?:\n[^\S\n]*[A-ZÁÉÍÓÚÑ \t]+?)?-\s*\d{4})/i);
   if (!cabecera) return null; // página de continuación (o vacía, filtrada antes)
 
   const ing = buscar(texto, /Fec\.?\s*Ing\.?\s*:?\s*(\d{2}\/\d{2}\/\d{2})/i);
@@ -46,11 +49,15 @@ function parsearPagina(texto) {
   const neto = buscar(texto, /Neto a pagar\s*:?\s*S\/\.?\s*([\d,]+\.\d{2})/i);
   return {
     periodoCabecera: normalizarPeriodo(cabecera),
-    correlativo: Number(buscar(texto, /\bNo\.?\s+(\d+)\b/)),
+    // parseInt (no Number) sobre "" cuando el ancla "No N" no matchea da
+    // NaN real, no 0: un correlativo ilegible NO debe colarse como "0" y
+    // evadir en silencio la garantía "1..N sin saltos" (Number(null) sería
+    // 0, que pasaba Number.isFinite y no generaba ninguna excepción).
+    correlativo: Number.parseInt(buscar(texto, /\bNo\.?\s+(\d+)\b/) ?? "", 10),
     ruc: buscar(texto, /RUC\s*:?\s*(\d{11})/i),
     codigo: (buscar(texto, /CODIGO\s*:?\s*(\d+)/i) || "").trim() || null,
     periodoPago: normalizarPeriodo(
-      buscar(texto, /PERIODO DE PAGO\s*:?\s*([A-ZÁÉÍÓÚÑ\s]+?-\s*\d{4})/i) || ""
+      buscar(texto, /PERIODO DE PAGO\s*:?\s*([A-ZÁÉÍÓÚÑ \t]+?(?:\n[^\S\n]*[A-ZÁÉÍÓÚÑ \t]+?)?-\s*\d{4})/i) || ""
     ),
     dni: buscar(texto, /Documento\s*:?\s*DNI\s*(\d{8})/i),
     ingreso,
@@ -99,6 +106,9 @@ export function analizarLote(paginas) {
 
   boletas.forEach((b) => {
     const pag = b.paginas[0] + 1;
+    if (!Number.isFinite(b.correlativo))
+      excepciones.push({ tipo: "salto_correlativo", pagina: pag,
+        detalle: "No se pudo leer el correlativo (No n) de esta página." });
     if (!b.dni) excepciones.push({ tipo: "sin_dni", pagina: pag, detalle: "Página sin DNI legible." });
     else if (b.codigo && b.codigo.padStart(8, "0") !== b.dni)
       excepciones.push({ tipo: "codigo_distinto", pagina: pag,

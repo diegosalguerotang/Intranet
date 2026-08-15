@@ -40,6 +40,18 @@ describe("analizarLote con BOLETAS.pdf", () => {
     const r = analizarLote(alteradas);
     expect(r.excepciones.some((e) => e.tipo === "ruc_distinto" && e.pagina === 3)).toBe(true);
   });
+  it("un ancla 'No N' ilegible reporta salto_correlativo en vez de colarse como correlativo 0", () => {
+    const alteradas = [...paginas];
+    alteradas[0] = alteradas[0].replace(/\bNo\.?\s+1\b/, "No **");
+    const r = analizarLote(alteradas);
+    expect(r.excepciones.some((e) => e.tipo === "salto_correlativo" && e.pagina === 1)).toBe(true);
+    // las demás 8 boletas siguen bien: DNI/RUC/periodo intactos, sin excepciones propias.
+    const otras = r.boletas.filter((b) => b.paginas[0] !== 0);
+    expect(otras.length).toBe(8);
+    expect(otras.every((b) => Number.isFinite(b.correlativo))).toBe(true);
+    expect(r.excepciones.some((e) => e.tipo === "codigo_distinto" || e.tipo === "ruc_distinto" || e.tipo === "periodo_distinto")).toBe(false);
+  });
+
   it("CODIGO ≠ DNI es excepción, sin elegir por su cuenta", () => {
     const alteradas = [...paginas];
     alteradas[0] = alteradas[0].replace(/CODIGO:\s*\d+/, "CODIGO: 00000001");
