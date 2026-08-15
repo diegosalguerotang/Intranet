@@ -33,7 +33,7 @@ create table empresas (
   ruc       text not null unique check (ruc ~ '^[0-9]{11}$'),
   logo      text,
   regimen   text not null default 'Régimen general'
-    check (regimen in ('Régimen general','Micro empresa','Pequeña empresa')),
+    check (regimen in ('Régimen general','Micro empresa','Pequeña empresa','Por confirmar')),
   estado    text not null default 'activa' check (estado in ('activa','retirada')),
   direccion text,
   creado_en timestamptz not null default now()
@@ -348,7 +348,8 @@ insert into empresas (id, nombre, corto, ruc, logo, regimen, direccion) values
   ('negliaf',    'NEGLIAF S.R.L.',            'NEGLIAF',      '20501234567', '/logos/negliaf.jpeg',            'Régimen general', null),
   ('bremco',     'BREMCO S.C.R.L.',           'BREMCO',       '20512345678', null,                             'Régimen general', null),
   ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20523456789', '/logos/promant.jpeg',            'Pequeña empresa', null),
-  ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20601705185', '/logos/limpieza-americana.jpeg', 'Régimen general', 'Av. San Borja Sur Nro. 1184, Urb. San Borja Sur');
+  ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20601705185', '/logos/limpieza-americana.jpeg', 'Régimen general', 'Av. San Borja Sur Nro. 1184, Urb. San Borja Sur'),
+  ('clean',      'Consorcio Clean',           'CLEAN',        '20614759870', '/logos/clean.png',               'Por confirmar',    'Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)');
 
 insert into personas (dni, nombre, celular, banco, cuenta, portal) values
   ('45231876', 'Rosa Quispe Huamán',    '987654321', 'BCP',       '191-23456789-0-11',  'activo'),

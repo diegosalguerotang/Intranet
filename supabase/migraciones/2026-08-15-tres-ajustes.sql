@@ -48,3 +48,17 @@ create trigger trg_lote_empresa_activa before insert on lotes
 alter table cargos enable row level security;
 drop policy if exists acceso_demo on cargos;
 create policy acceso_demo on cargos for all to anon, authenticated using (true) with check (true);
+
+-- El grupo suma la razón social CLEAN. Diego no ha confirmado su régimen
+-- tributario: se amplía el check para admitir 'Por confirmar' explícito en
+-- vez de inventar un valor real (regimen sigue not null).
+alter table empresas drop constraint if exists empresas_regimen_check;
+alter table empresas add constraint empresas_regimen_check
+  check (regimen in ('Régimen general','Micro empresa','Pequeña empresa','Por confirmar'));
+
+insert into empresas (id, nombre, corto, ruc, logo, regimen, direccion, estado)
+values ('clean', 'Consorcio Clean', 'CLEAN', '20614759870', '/logos/clean.png',
+        'Por confirmar', 'Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)', 'activa')
+on conflict (id) do update set nombre = excluded.nombre, ruc = excluded.ruc,
+  logo = excluded.logo, regimen = excluded.regimen, direccion = excluded.direccion,
+  estado = excluded.estado;

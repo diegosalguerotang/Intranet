@@ -46,5 +46,9 @@ await prueba("cargos tiene RLS habilitado", async () => {
   const [r] = await sql("select relrowsecurity from pg_class where relname='cargos'");
   igual(r.relrowsecurity, true, "relrowsecurity");
 });
+await prueba("el sistema muestra cuatro razones sociales activas", async () => {
+  const [r] = await sql("select count(*)::int n from empresas where estado='activa'");
+  igual(r.n, 4, "empresas activas");
+});
 console.log(fallos ? `\n${fallos} PRUEBAS FALLARON` : "\nTODAS LAS PRUEBAS PASARON");
 process.exit(fallos ? 1 : 0);

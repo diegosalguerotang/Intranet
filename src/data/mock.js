@@ -6,6 +6,7 @@ export const EMPRESAS = [
   { id: "bremco", nombre: "BREMCO S.C.R.L.", corto: "BREMCO", ruc: "20512345678", logo: null, regimen: "Régimen general", estado: "retirada" },
   { id: "promant", nombre: "PROMANT SERVICIOS", corto: "PROMANT", ruc: "20523456789", logo: "/logos/promant.jpeg", regimen: "Pequeña empresa", estado: "activa" },
   { id: "lamericana", nombre: "LIMPIEZA AMERICANA S.A.C.", corto: "L. AMERICANA", ruc: "20601705185", logo: "/logos/limpieza-americana.jpeg", regimen: "Régimen general", estado: "activa", direccion: "Av. San Borja Sur Nro. 1184, Urb. San Borja Sur" },
+  { id: "clean", nombre: "Consorcio Clean", corto: "CLEAN", ruc: "20614759870", logo: "/logos/clean.png", regimen: "Por confirmar", estado: "activa", direccion: "Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)" },
 ];
 
 export const SEDES = [
