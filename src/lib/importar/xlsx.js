@@ -66,18 +66,30 @@ export async function leerXlsx(bytes) {
   const hoja = await texto("xl/worksheets/sheet1.xml");
   if (!hoja) throw new Error("El .xlsx no contiene la hoja esperada (xl/worksheets/sheet1.xml).");
 
-  const filas = [];
-  for (const [, cuerpo] of hoja.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)) {
+  // Se indexa por el atributo r="N" de <row> (posición real de la fila en la hoja):
+  // una fila vacía puede venir self-closing (<row r="N"/>, sin cuerpo) y no debe
+  // desplazar a las filas siguientes.
+  const filasPorIndice = [];
+  let maxIndice = -1;
+  for (const m of hoja.matchAll(/<row([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g)) {
+    const rowAttrs = m[1];
+    const cuerpo = m[2] ?? "";
+    const numFila = Number((rowAttrs.match(/r="(\d+)"/) || [])[1]);
+    const indice = Number.isFinite(numFila) && numFila > 0 ? numFila - 1 : maxIndice + 1;
     const fila = [];
     for (const c of cuerpo.matchAll(/<c ([^>]*?)\/?>(?:<v>([^<]*)<\/v>)?(?:<\/c>)?/g)) {
       const attrs = c[1];
       const ref = (attrs.match(/r="([A-Z]+)\d+"/) || [])[1];
-      let valor = c[2] ?? "";
-      if (/t="s"/.test(attrs)) valor = compartidas[Number(valor)] ?? "";
-      else valor = decodificarXml(valor);
+      const hayValor = c[2] != null;
+      let valor;
+      if (/t="s"/.test(attrs)) valor = hayValor ? (compartidas[Number(c[2])] ?? "") : "";
+      else valor = hayValor ? decodificarXml(c[2]) : "";
       if (ref) fila[colAIndice(ref)] = String(valor);
     }
-    filas.push(Array.from(fila, (v) => v ?? ""));
+    filasPorIndice[indice] = Array.from(fila, (v) => v ?? "");
+    if (indice > maxIndice) maxIndice = indice;
   }
+  const filas = [];
+  for (let i = 0; i <= maxIndice; i++) filas.push(filasPorIndice[i] ?? []);
   return filas;
 }
