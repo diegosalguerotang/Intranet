@@ -347,6 +347,21 @@ export function AppProvider({ children }) {
       await recargar("personal");
       return data;
     },
+    // RRH-06→10 — Carga real de boletas desde PDF consolidado (Task 14). El
+    // análisis/división/hash/subida a Storage ocurren en la pantalla (Boletas.jsx,
+    // necesita progreso y reintento por archivo); esta acción es solo la
+    // publicación transaccional final: crea el lote y sus documentos en un
+    // único RPC y refresca las vistas que dependen de él.
+    publicarLotePdf: async ({ empresaId: empresaIdArg, tipo, periodo, boletas }) => {
+      if (!supabaseListo) throw new Error("Publicación real requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("publicar_lote_pdf", {
+        p_empresa: empresaIdArg, p_tipo: tipo, p_periodo: periodo,
+        p_por: user?.nombre ?? "RRHH", p_boletas: boletas,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("lotes", "acuses");
+      return data;
+    },
     addEpp: (rows) => {
       local("epp_entregas", (xs) => [...rows, ...xs]);
       (async () => {
