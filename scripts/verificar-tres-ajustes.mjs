@@ -105,6 +105,16 @@ try {
     igual(despues.n, antes.n, "los vínculos vigentes no deben cesar por ausencia de fecha de cese");
     igual(despues.n, 2, "ambos vínculos de prueba deben seguir vigentes");
   });
+
+  await prueba("importar_planilla deja rastro en auditoria con p_por", async () => {
+    const marca = `verificacion-auditoria-${Date.now()}`;
+    await sql(`select importar_planilla('${EMPRESA_TEST}', '${filasPrueba}'::jsonb, '${marca}') as r`);
+    const [fila] = await sql(
+      `select datos_despues from auditoria where accion = 'IMPORTAR_PLANILLA' and datos_despues->>'por' = '${marca}' order by id desc limit 1`
+    );
+    igual(fila?.datos_despues?.por, marca, "debe existir una fila de auditoria con el p_por exacto de esta llamada");
+    igual(fila?.datos_despues?.empresa, EMPRESA_TEST, "la fila de auditoria debe registrar la empresa importada");
+  });
 } finally {
   await limpiarDatosPrueba();
 }
@@ -112,6 +122,20 @@ try {
 await prueba("limpieza de datos de prueba de importación queda completa", async () => {
   const [r] = await sql(`select count(*)::int n from personas where dni in ('${DNI1}','${DNI2}')`);
   igual(r.n, 0, "no deben quedar personas de prueba");
+});
+
+await prueba("previsualizar_importacion con empresa retirada da el rechazo de negocio, no un error de casteo", async () => {
+  let mensaje = null;
+  try {
+    await sql("select previsualizar_importacion('bremco', '[]'::jsonb) as r");
+  } catch (e) {
+    mensaje = e.message;
+  }
+  igual(mensaje !== null, true, "la llamada con una empresa retirada debe fallar");
+  igual(mensaje?.includes("no está activa"), true,
+    `el mensaje debe ser el rechazo de negocio claro, no un error de casteo jsonb: ${mensaje}`);
+  igual(mensaje?.toLowerCase().includes("invalid input syntax"), false,
+    "la colisión de SQLSTATE P0001 no debe filtrar un error de casteo jsonb");
 });
 
 console.log(fallos ? `\n${fallos} PRUEBAS FALLARON` : "\nTODAS LAS PRUEBAS PASARON");

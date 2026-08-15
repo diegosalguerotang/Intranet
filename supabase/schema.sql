@@ -931,6 +931,25 @@ begin
       end if;
     end if;
   end loop;
+
+  -- Traza de "quién importó" (p_por): la tabla auditoria es por-fila (una
+  -- fila por INSERT/UPDATE/DELETE, ver fn_auditar) y personas/vinculos ya
+  -- quedan auditadas fila-por-fila automáticamente por los triggers
+  -- trg_auditar_personas / trg_auditar_vinculos. Eso registra el QUÉ pero no
+  -- el p_por (columna `usuario` de auditoria guarda current_user, el rol de
+  -- Postgres, no el nombre humano recibido por parámetro). Se agrega UNA fila
+  -- resumen adicional por llamada, con la misma forma que usa fn_auditar
+  -- (accion/tabla/datos_antes/datos_despues), guardando p_por + empresa +
+  -- conteos dentro de datos_despues. Si la llamada viene de
+  -- previsualizar_importacion esta fila también se revierte junto con todo lo
+  -- demás (misma transacción/savepoint), así que el preview sigue sin dejar
+  -- rastro.
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('IMPORTAR_PLANILLA', 'importar_planilla', null,
+    jsonb_build_object('por', p_por, 'empresa', p_empresa,
+      'altas', to_jsonb(v_altas), 'actualizaciones', to_jsonb(v_act),
+      'sin_cambio', to_jsonb(v_sin), 'nombres_por_confirmar', v_por_confirmar));
+
   return jsonb_build_object('altas', to_jsonb(v_altas), 'actualizaciones', to_jsonb(v_act),
     'sin_cambio', to_jsonb(v_sin), 'nombres_por_confirmar', v_por_confirmar);
 end $$;
@@ -941,13 +960,24 @@ end $$;
 -- clasificación es exactamente la misma lógica que aplica la importación
 -- real, sin duplicarla. Verificado contra producción que sqlerrm::jsonb
 -- reconstruye el jsonb exacto sin truncar ni anteponer prefijo/contexto.
+--
+-- CORRECCIÓN post-revisión: la señal de reversión usa un errcode CUSTOM
+-- exclusivo ('PV999', no usado por Postgres ni por ninguna excepción de
+-- negocio del proyecto) en vez del P0001 por defecto — P0001 es también el
+-- código por defecto de cualquier RAISE EXCEPTION sin USING ERRCODE (p. ej.
+-- el rechazo de importar_planilla cuando la empresa no está activa), así que
+-- el `exception when sqlstate 'P0001'` original atrapaba también los
+-- rechazos de negocio y el `sqlerrm::jsonb` fallaba sobre un mensaje que no
+-- era jsonb válido (reproducible con previsualizar_importacion('bremco',
+-- '[]'::jsonb), bremco retirada). Con 'PV999' solo se atrapa la señal
+-- deliberada; cualquier otra excepción se propaga tal cual.
 create function previsualizar_importacion(p_empresa text, p_filas jsonb)
 returns jsonb language plpgsql security definer as $$
 declare v jsonb;
 begin
   v := importar_planilla(p_empresa, p_filas, '(vista previa)');
-  raise exception using errcode = 'P0001', message = v::text; -- revertir TODO
-exception when sqlstate 'P0001' then
+  raise exception using errcode = 'PV999', message = v::text; -- revertir TODO
+exception when sqlstate 'PV999' then
   return sqlerrm::jsonb;
 end $$;
 
