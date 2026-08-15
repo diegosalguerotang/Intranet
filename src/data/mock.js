@@ -2,10 +2,10 @@
 // Todo es ficticio: sirve para construir y validar la interfaz mientras no existe backend.
 
 export const EMPRESAS = [
-  { id: "negliaf", nombre: "NEGLIAF S.R.L.", corto: "NEGLIAF", ruc: "20501234567", logo: "/logos/negliaf.jpeg", regimen: "Régimen general" },
-  { id: "bremco", nombre: "BREMCO S.C.R.L.", corto: "BREMCO", ruc: "20512345678", logo: null, regimen: "Régimen general" },
-  { id: "promant", nombre: "PROMANT SERVICIOS", corto: "PROMANT", ruc: "20523456789", logo: "/logos/promant.jpeg", regimen: "Pequeña empresa" },
-  { id: "lamericana", nombre: "LIMPIEZA AMERICANA S.A.C.", corto: "L. AMERICANA", ruc: "20534567890", logo: "/logos/limpieza-americana.jpeg", regimen: "Régimen general" },
+  { id: "negliaf", nombre: "NEGLIAF S.R.L.", corto: "NEGLIAF", ruc: "20501234567", logo: "/logos/negliaf.jpeg", regimen: "Régimen general", estado: "activa" },
+  { id: "bremco", nombre: "BREMCO S.C.R.L.", corto: "BREMCO", ruc: "20512345678", logo: null, regimen: "Régimen general", estado: "retirada" },
+  { id: "promant", nombre: "PROMANT SERVICIOS", corto: "PROMANT", ruc: "20523456789", logo: "/logos/promant.jpeg", regimen: "Pequeña empresa", estado: "activa" },
+  { id: "lamericana", nombre: "LIMPIEZA AMERICANA S.A.C.", corto: "L. AMERICANA", ruc: "20601705185", logo: "/logos/limpieza-americana.jpeg", regimen: "Régimen general", estado: "activa", direccion: "Av. San Borja Sur Nro. 1184, Urb. San Borja Sur" },
 ];
 
 export const SEDES = [

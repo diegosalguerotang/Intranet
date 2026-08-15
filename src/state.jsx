@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseListo } from "./lib/supabase";
 import * as MOCK from "./data/mock";
 
@@ -163,6 +163,13 @@ export function AppProvider({ children }) {
   const persona = (dni) => db.personal.find((p) => p.dni === dni);
   const sede = (id) => db.sedes.find((s) => s.id === id);
   const empresaPor = (id) => db.empresas.find((e) => e.id === id);
+  // Empresas ofrecidas en altas, asistentes de carga y el selector global: las
+  // retiradas (Task 2) siguen existiendo para no romper los históricos, pero
+  // dejan de ofrecerse para trabajo nuevo.
+  const empresasActivas = useMemo(
+    () => db.empresas.filter((e) => (e.estado ?? "activa") === "activa"),
+    [db.empresas]
+  );
 
   // Cada acción: actualización optimista local + RPC en el backend (la lógica
   // de negocio vive en Postgres) + recarga de las vistas afectadas.
@@ -335,7 +342,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppCtx.Provider
-      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, origen, persona, sede, empresaPor, recargar, ...acciones }}
+      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, ...acciones }}
     >
       {children}
     </AppCtx.Provider>

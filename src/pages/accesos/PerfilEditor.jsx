@@ -48,7 +48,7 @@ export default function PerfilEditor() {
   const { id } = useParams();
   const [search] = useSearchParams();
   const navigate = useNavigate();
-  const { db, guardarPerfil } = useApp();
+  const { db, empresasActivas, guardarPerfil } = useApp();
 
   const nuevo = id === "nuevo";
   const base = nuevo ? db.perfiles.find((p) => p.id === search.get("desde")) : db.perfiles.find((p) => p.id === id);
@@ -263,7 +263,7 @@ export default function PerfilEditor() {
                 sociales en toda la intranet.
               </p>
               <div className="flex flex-wrap gap-4">
-                {db.empresas.map((e) => (
+                {empresasActivas.map((e) => (
                   <label key={e.id} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-gris">
                     <input
                       type="checkbox"

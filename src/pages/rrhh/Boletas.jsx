@@ -15,7 +15,7 @@ const EXCEPCIONES_DEMO = [
 ];
 
 export default function Boletas() {
-  const { db, empresaId, empresaPor, addLote, user } = useApp();
+  const { db, empresaId, empresaPor, empresasActivas, addLote, user } = useApp();
   const [paso, setPaso] = useState(0);
   const [empresaLote, setEmpresaLote] = useState(empresaId);
   const [tipo, setTipo] = useState("Boleta de pago");
@@ -91,7 +91,7 @@ export default function Boletas() {
           <div className="space-y-4">
             <Field label="Empresa" required hint="Cada lote pertenece a una sola razón social: sus documentos llevan el membrete y RUC de esa empresa.">
               <Select value={empresaLote} onChange={(e) => setEmpresaLote(e.target.value)}>
-                {db.empresas.map((e) => (
+                {empresasActivas.map((e) => (
                   <option key={e.id} value={e.id}>{e.nombre} — RUC {e.ruc}</option>
                 ))}
               </Select>

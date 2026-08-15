@@ -71,14 +71,16 @@ function NavGroup({ title, items, acceso }) {
 }
 
 export default function Shell() {
-  const { user, salir, empresaId, setEmpresaId, db, origen } = useApp();
+  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen } = useApp();
   const navigate = useNavigate();
 
-  // Selector de empresa restringido al alcance de la categoría.
+  // Selector de empresa restringido al alcance de la categoría. Solo ofrece
+  // empresas activas: una empresa retirada no debe poder elegirse para
+  // trabajo nuevo, aunque su historial siga accesible desde otras pantallas.
   const acceso = user?.acceso ?? (user ? { esSuperadmin: user.esSuperadmin, matriz: {}, empresas: [] } : null);
   const empresasVisibles = acceso?.esSuperadmin
-    ? db.empresas
-    : db.empresas.filter((e) => (acceso?.empresas ?? []).includes(e.id));
+    ? empresasActivas
+    : empresasActivas.filter((e) => (acceso?.empresas ?? []).includes(e.id));
   useEffect(() => {
     if (user && empresasVisibles.length && !empresasVisibles.some((e) => e.id === empresaId)) {
       setEmpresaId(empresasVisibles[0].id);

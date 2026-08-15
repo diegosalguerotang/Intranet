@@ -48,7 +48,7 @@ async function ecoCanales() {
 }
 
 export default function AdminLogin() {
-  const { user, db } = useApp();
+  const { user, empresasActivas } = useApp();
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
   const [error, setError] = useState(null);
@@ -147,7 +147,9 @@ export default function AdminLogin() {
     }
   };
 
-  const logos = db.empresas.filter((e) => e.logo);
+  // Branding del splash: solo empresas activas del grupo (una retirada ya
+  // no debe presentarse como parte vigente de la marca).
+  const logos = empresasActivas.filter((e) => e.logo);
 
   return (
     <main

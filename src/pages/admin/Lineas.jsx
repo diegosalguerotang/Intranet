@@ -7,7 +7,7 @@ import {
 
 // ADQ-05 — Líneas móviles
 export default function Lineas() {
-  const { db, persona, empresaPor, addLinea } = useApp();
+  const { db, persona, empresaPor, empresasActivas, addLinea } = useApp();
   const [nueva, setNueva] = useState(false);
   const LINEAS = db.lineas;
   const ACTIVOS = db.activos;
@@ -58,7 +58,7 @@ export default function Lineas() {
         onClose={() => setNueva(false)}
         onGuardar={(l) => { addLinea(l); setNueva(false); }}
         activos={ACTIVOS}
-        empresas={db.empresas}
+        empresas={empresasActivas}
       />
     </>
   );
