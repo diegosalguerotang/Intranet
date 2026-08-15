@@ -1,10 +1,22 @@
 // scripts/verificar-storage.mjs — Task 12: verifica el canal binario a
 // Supabase Storage que usará la subida de boletas (Task 14).
 //
-// Parte PRE-DEPLOY (siempre corre): sube un PDF pequeño DIRECTO a Supabase
-// Storage con la service key (patrón de adjuntar-pdfs-demo.mjs), lo
-// descarga por su URL pública y compara SHA-256 byte a byte.
+// Parte PRE-DEPLOY (siempre corre):
+//   1. Inspecciona pg_policies: las políticas de storage.objects para el
+//      bucket `documentos` deben depender de usuarios_admin (no solo del
+//      bucket) — endurecimiento ronda 1.
+//   2. Con condiciones REALES (no solo inspección de la definición SQL, que
+//      dejó pasar el bug de la ronda 2 — auth.jwt() no resolvía en el
+//      contexto de storage-api): si SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD_INICIAL
+//      están seteadas, hace login real y sube un PDF DIRECTO (sin proxy) con
+//      ese JWT, reproduciendo el escenario 403 reportado. Si no están, cae a
+//      simular auth.uid() con set_config() contra un usuarios_admin activo
+//      real y confirma que public.es_admin_activo() resuelve true/false.
+//   3. Sube un PDF pequeño DIRECTO a Supabase Storage con la service key
+//      (patrón de adjuntar-pdfs-demo.mjs), lo descarga por su URL pública y
+//      compara SHA-256 byte a byte.
 //   & scripts/token-supabase.ps1 | Out-Null; node scripts/verificar-storage.mjs
+//   (opcional) $env:SUPERADMIN_EMAIL=...; $env:SUPERADMIN_PASSWORD_INICIAL=...
 //
 // Parte POST-DEPLOY (solo con --proxy, después de hacer push/deployar):
 // repite la subida/descarga pero a través de
@@ -49,10 +61,18 @@ function pdfPrueba() {
 }
 
 // Prueba negativa factible por SQL (sin simular un JWT de portal): confirma
-// vía Management API que las políticas insert/update de storage.objects para
-// el bucket `documentos` exigen pertenencia a usuarios_admin (estado activo),
-// y no solo `bucket_id = 'documentos'` — que es justo el hueco que dejaba
-// pasar a cualquier trabajador del Portal (también `authenticated`).
+// vía Management API que las políticas de storage.objects para el bucket
+// `documentos` exigen pertenencia a usuarios_admin (estado activo) y no solo
+// `bucket_id = 'documentos'` — que es justo el hueco que dejaba pasar a
+// cualquier trabajador del Portal (también `authenticated`).
+//
+// Ronda 3: deben ser TRES políticas, no dos. storage-api sube con
+// `INSERT ... RETURNING`, y bajo RLS el RETURNING exige que la fila insertada
+// sea visible por alguna política SELECT — sin `documentos_leer`, el insert
+// pasaba `with_check` pero el RETURNING fallaba con 403/42501 ("new row
+// violates row-level security policy"), aunque la política y
+// es_admin_activo() estuvieran correctas. Lección: cualquier política de
+// storage con RETURNING (como usa el SDK) necesita también su política SELECT.
 async function verificarPoliticaEndurecida(token) {
   const r = await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/database/query`, {
     method: "POST",
@@ -65,14 +85,88 @@ async function verificarPoliticaEndurecida(token) {
   const texto = await r.text();
   if (!r.ok) { caso("políticas de Storage exigen usuarios_admin activo", false, `HTTP ${r.status} ${texto}`); return; }
   const filas = JSON.parse(texto);
-  caso("existen las políticas documentos_subir y documentos_actualizar", filas.length === 2,
-    `encontradas: ${filas.map((f) => f.policyname).join(", ") || "ninguna"}`);
+  const esperadas = ["documentos_leer", "documentos_subir", "documentos_actualizar"];
+  const encontradas = filas.map((f) => f.policyname);
+  caso("existen las tres políticas (leer, subir, actualizar)",
+    filas.length === 3 && esperadas.every((p) => encontradas.includes(p)),
+    `encontradas: ${encontradas.join(", ") || "ninguna"}`);
   for (const f of filas) {
     const condicion = `${f.qual ?? ""} ${f.with_check ?? ""}`;
-    const endurecida = condicion.includes("usuarios_admin") && condicion.includes("'activo'");
-    caso(`${f.policyname} exige usuarios_admin activo (no solo bucket_id)`, endurecida,
-      endurecida ? undefined : `condición no contiene usuarios_admin/'activo': ${condicion.trim()}`);
+    // Ronda 2: la condición ya no compara auth.jwt()->>'email' inline (no
+    // resolvía en producción); ahora delega en la función helper
+    // public.es_admin_activo() (auth.uid() → auth.users → usuarios_admin).
+    const endurecida = condicion.includes("es_admin_activo");
+    caso(`${f.policyname} exige es_admin_activo() (no solo bucket_id)`, endurecida,
+      endurecida ? undefined : `condición no llama a es_admin_activo(): ${condicion.trim()}`);
   }
+}
+
+// Ronda 2 de la revisión: la política endurecida con auth.jwt()->>'email' se
+// probó "en el papel" (pg_policies) pero fallaba en producción con un JWT
+// real (403), porque auth.jwt() no resuelve de forma fiable en el contexto
+// de evaluación de storage-api. El fix (auth.uid() vía la función
+// public.es_admin_activo()) necesita una prueba con condiciones reales, no
+// solo inspección de la definición SQL. Camino preferido: login real del
+// superadmin + subida DIRECTA (sin proxy) con ese JWT, reproduciendo
+// exactamente el escenario que el controlador reportó como 403.
+async function verificarConJwtReal(token) {
+  const KEY = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+  const { SUPERADMIN_EMAIL: EMAIL, SUPERADMIN_PASSWORD_INICIAL: CLAVE } = process.env;
+
+  if (EMAIL && CLAVE) {
+    console.log("(SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD_INICIAL presentes: probando el camino real)");
+    const login = await fetch(`${SUPA}/auth/v1/token?grant_type=password`, {
+      method: "POST", headers: { apikey: KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: EMAIL, password: CLAVE }),
+    });
+    const sesion = await login.json();
+    caso("login del superadmin obtiene JWT real", login.ok && !!sesion.access_token,
+      login.ok ? undefined : `HTTP ${login.status}`);
+    if (!sesion.access_token) return;
+
+    const pdf = pdfPrueba();
+    const up = await fetch(`${SUPA}/storage/v1/object/documentos/pruebas/jwt-directo.pdf`, {
+      method: "POST",
+      headers: { apikey: KEY, Authorization: `Bearer ${sesion.access_token}`, "Content-Type": "application/pdf", "x-upsert": "true" },
+      body: pdf,
+    });
+    caso("subida DIRECTA (sin proxy) con JWT real del superadmin — reproduce el 403 reportado", up.ok,
+      up.ok ? undefined : `HTTP ${up.status} ${await up.text()}`);
+    return;
+  }
+
+  console.log("(SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD_INICIAL no están seteadas en esta sesión — "
+    + "cae al camino simulado: set_config('request.jwt.claim.sub', …) contra un usuarios_admin activo real)");
+  const query = `
+with admin_activo as materialized (
+  select set_config('request.jwt.claim.sub',
+    (select au.id::text from auth.users au join usuarios_admin u on u.correo = au.email where u.estado='activo' limit 1),
+    true) as claim
+),
+resultado_true as materialized (
+  select public.es_admin_activo() as v from admin_activo
+),
+reset_falso as materialized (
+  select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000000', true) as claim
+  from resultado_true
+),
+resultado_false as materialized (
+  select public.es_admin_activo() as v from reset_falso
+)
+select (select v from resultado_true) as con_admin_real,
+       (select v from resultado_false) as con_uid_inexistente;`;
+  const r = await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/database/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+  const texto = await r.text();
+  if (!r.ok) { caso("es_admin_activo() con claim simulado", false, `HTTP ${r.status} ${texto}`); return; }
+  const [fila] = JSON.parse(texto);
+  caso("es_admin_activo() da true con auth.uid() de un usuarios_admin activo real", fila?.con_admin_real === true,
+    `resultado=${fila?.con_admin_real}`);
+  caso("es_admin_activo() da false con un uid inexistente", fila?.con_uid_inexistente === false,
+    `resultado=${fila?.con_uid_inexistente}`);
 }
 
 async function verificarDirecto() {
@@ -81,6 +175,7 @@ async function verificarDirecto() {
   if (!token) { console.error("Falta SUPABASE_ACCESS_TOKEN."); process.exit(1); }
 
   await verificarPoliticaEndurecida(token);
+  await verificarConJwtReal(token);
 
   const keys = await (await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/api-keys?reveal=true`, {
     headers: { Authorization: `Bearer ${token}` },

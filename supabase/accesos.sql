@@ -21,6 +21,10 @@ drop function if exists guardar_perfil, desactivar_perfil, crear_usuario_admin,
   verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
   fn_perfil_nombre_unico, fn_superadmin_sin_matriz,
   fn_proteger_ultimo_superadmin, fn_registro_solo_desvincular cascade;
+-- es_admin_activo() NO se dropea aquí: las políticas de storage.objects
+-- (Task 12, en la migración) dependen de ella, y este archivo no es dueño de
+-- esas políticas — un `drop ... cascade` aquí las borraría como efecto
+-- secundario sorpresa. Se recrea más abajo con `create or replace`.
 
 -- ---------------------------------------------------------------------------
 -- PERFILES (versionados: PK id+version; cada guardado inserta, nunca modifica)
@@ -390,6 +394,29 @@ begin
   set requiere_cambio_clave = false, clave_provisional = null
   where correo = p_correo;
 end $$;
+
+-- Task 12: helper para políticas RLS que necesitan saber si el JWT actual
+-- pertenece a un usuario del BackOffice activo (p. ej. storage.objects del
+-- bucket `documentos`, subida de boletas). usuarios_admin.id es bigint, NO el
+-- uuid de Supabase Auth, así que el cruce va por correo contra auth.users vía
+-- auth.uid(). SECURITY DEFINER evita depender de permisos de `authenticated`
+-- sobre el esquema `auth` (que normalmente no puede leer).
+--
+-- Por qué NO auth.jwt()->>'email' directo en la política: verificado en
+-- producción que auth.jwt() no resuelve de forma fiable en el contexto de
+-- evaluación de storage-api (a diferencia de auth.uid(), que storage sí usa,
+-- hasta para la columna owner) — daba 403 con un JWT de superadmin válido y
+-- correcto, tanto vía proxy como directo contra Supabase.
+create or replace function es_admin_activo() returns boolean
+language sql stable security definer set search_path = public, auth as $$
+  select exists (
+    select 1 from public.usuarios_admin u
+    join auth.users au on au.email = u.correo
+    where au.id = auth.uid() and u.estado = 'activo'
+  )
+$$;
+revoke all on function es_admin_activo() from public;
+grant execute on function es_admin_activo() to authenticated;
 
 -- LA regla de evaluación (una sola, aplica en todas partes). Queda lista para
 -- conectarse a Supabase Auth + RLS; el alcance debe aplicarse como filtro de

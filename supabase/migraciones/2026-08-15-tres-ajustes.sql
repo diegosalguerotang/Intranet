@@ -212,38 +212,60 @@ end $$;
 -- público en adjuntar-pdfs-demo.mjs); solo faltaba permitir insert/update
 -- sobre storage.objects.
 --
--- CORRECCIÓN post-revisión: `to authenticated` por sí solo no basta — los
--- trabajadores del Portal también obtienen JWT reales (correo
+-- CORRECCIÓN post-revisión (ronda 1): `to authenticated` por sí solo no
+-- basta — los trabajadores del Portal también obtienen JWT reales (correo
 -- dni@portal.grupoer.pe, ver supabase/portal.sql) y son `authenticated`, así
 -- que con la sola condición del bucket cualquier trabajador podría insertar o
--- sobrescribir CUALQUIER objeto de `documentos`. Se exige además que el
--- correo del JWT (auth.jwt()->>'email', mismo patrón ya usado en
--- supabase/portal.sql) pertenezca a un usuario del BackOffice con estado
--- 'activo' en usuarios_admin (columnas confirmadas en supabase/accesos.sql:
--- usuarios_admin.correo, usuarios_admin.estado check in ('activo','suspendido')).
+-- sobrescribir CUALQUIER objeto de `documentos`. Se exige además pertenencia
+-- activa al BackOffice (usuarios_admin.estado = 'activo').
+--
+-- CORRECCIÓN post-revisión (ronda 2): el primer intento comparaba
+-- auth.jwt()->>'email' contra usuarios_admin.correo directamente dentro de
+-- la política. Verificado en producción con evidencia real: la MISMA subida
+-- (misma JWT del superadmin, mismos claims {email, role: authenticated}) daba
+-- 403 tanto vía proxy como DIRECTA contra Supabase — descartando al proxy
+-- como causa. auth.jwt() no resuelve de forma fiable dentro del contexto de
+-- evaluación de storage-api (a diferencia de auth.uid(), que storage usa
+-- hasta para la columna owner). Fix: una función helper SECURITY DEFINER que
+-- cruza auth.uid() → auth.users.email → usuarios_admin.correo (el id de
+-- usuarios_admin es bigint, no el uuid de Auth, por eso el cruce es por
+-- correo) en vez de leer el JWT a mano dentro de la política.
 -- ---------------------------------------------------------------------------
+-- create or replace (no drop): esta migración se reaplica varias veces y, tras
+-- la primera aplicación, las políticas documentos_subir/documentos_actualizar
+-- ya dependen de esta función — un `drop function` fallaría con 2BP01
+-- ("cannot drop function … because other objects depend on it").
+create or replace function public.es_admin_activo() returns boolean
+language sql stable security definer set search_path = public, auth as $$
+  select exists (
+    select 1 from public.usuarios_admin u
+    join auth.users au on au.email = u.correo
+    where au.id = auth.uid() and u.estado = 'activo'
+  )
+$$;
+revoke all on function public.es_admin_activo() from public;
+grant execute on function public.es_admin_activo() to authenticated;
+
+-- CORRECCIÓN post-revisión (ronda 3): causa raíz confirmada por el
+-- controlador con reproducción exacta en SQL — la política y
+-- es_admin_activo() estaban bien (dan true bajo role authenticated + claims
+-- reales; un INSERT simple pasa RLS). El 403 real venía de que storage-api
+-- sube con `INSERT ... RETURNING`, y bajo RLS el RETURNING exige que la fila
+-- recién insertada sea VISIBLE por alguna política SELECT — no existía
+-- ninguna política SELECT de `authenticated` sobre storage.objects (la
+-- lectura pública iba por el rol `anon`/bucket público, nunca se pensó para
+-- `authenticated`). `insert ... returning id` simulado reprodujo byte a byte
+-- el error "new row violates row-level security policy for table objects"
+-- (42501). Lección para futuras políticas de storage: cualquier operación de
+-- escritura que dependa de RETURNING (como usa el SDK de Storage) necesita
+-- también una política SELECT que cubra esas mismas filas.
+drop policy if exists documentos_leer on storage.objects;
+create policy documentos_leer on storage.objects for select to authenticated
+  using (bucket_id = 'documentos' and public.es_admin_activo());
 drop policy if exists documentos_subir on storage.objects;
 create policy documentos_subir on storage.objects for insert to authenticated
-  with check (
-    bucket_id = 'documentos'
-    and exists (
-      select 1 from usuarios_admin u
-      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
-    )
-  );
+  with check (bucket_id = 'documentos' and public.es_admin_activo());
 drop policy if exists documentos_actualizar on storage.objects;
 create policy documentos_actualizar on storage.objects for update to authenticated
-  using (
-    bucket_id = 'documentos'
-    and exists (
-      select 1 from usuarios_admin u
-      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
-    )
-  )
-  with check (
-    bucket_id = 'documentos'
-    and exists (
-      select 1 from usuarios_admin u
-      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
-    )
-  );
+  using (bucket_id = 'documentos' and public.es_admin_activo())
+  with check (bucket_id = 'documentos' and public.es_admin_activo());
