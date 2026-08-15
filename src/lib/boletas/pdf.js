@@ -42,7 +42,10 @@ export function agruparLineas(items) {
 
 export async function extraerPaginas(bytes) {
   const pdfjs = await cargarPdfjs();
-  const opciones = { data: bytes, useSystemFonts: true };
+  // pdfjs toma posesión del ArrayBuffer y lo detacha: sin la copia, el
+  // caller (Boletas.jsx, scripts/verificar-e2e-produccion.mjs) se queda con
+  // un buffer vacío si reusa `bytes` después de llamar extraerPaginas().
+  const opciones = { data: bytes.slice(), useSystemFonts: true };
   if (!esNavegador) opciones.disableWorker = true; // Node: sin worker thread
   const doc = await pdfjs.getDocument(opciones).promise;
   try {

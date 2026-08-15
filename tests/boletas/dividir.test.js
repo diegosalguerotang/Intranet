@@ -21,3 +21,19 @@ describe("dividirPdf", () => {
     expect(await sha256Hex(p)).toBe(h);
   });
 });
+
+describe("regresión: reuso del mismo buffer entre extraerPaginas y dividirPdf", () => {
+  // pdfjs detacha el ArrayBuffer que recibe en getDocument({ data }). Si
+  // extraerPaginas() no copia los bytes antes de pasarlos a pdfjs, el mismo
+  // array que el caller reutiliza después (p.ej. Boletas.jsx guarda los
+  // bytes en bytesRef para dividirPdf al publicar) queda vacío y pd-lib
+  // revienta con "Failed to parse PDF document: No PDF header found".
+  it("dividirPdf funciona tras extraerPaginas con el MISMO array de bytes", async () => {
+    const bytesCompartidos = new Uint8Array(readFileSync("tests/fixtures/BOLETAS.pdf"));
+    await extraerPaginas(bytesCompartidos);
+    const partes = await dividirPdf(bytesCompartidos, [[0]]);
+    expect(new TextDecoder().decode(partes[0].subarray(0, 5))).toBe("%PDF-");
+    const texto = await extraerPaginas(partes[0]);
+    expect(texto[0]).toMatch(/BOLETA DE PAGO/);
+  });
+});
