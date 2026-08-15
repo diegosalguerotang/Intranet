@@ -166,13 +166,29 @@ export default function Boletas() {
         if (sesionRef.current === sesion) setPiezas(actuales);
       } catch (e) {
         actuales = actuales.map((p, j) => (j === i ? { ...p, estado: "error", error: e.message } : p));
-        if (sesionRef.current === sesion) setPiezas(actuales);
+        if (sesionRef.current === sesion) {
+          setPiezas(actuales);
+          // También a nivel de flujo (no solo en la pieza): así el bloque de
+          // reintentar/cancelar de la publicación, que se guía por
+          // errorPublicar, aparece también cuando lo que falló fue subir un
+          // archivo (y no solo cuando falla el RPC final).
+          setErrorPublicar(e.message);
+        }
         return; // se detiene: el archivo fallido se reintenta, no se sigue con el resto en silencio
       }
     }
     if (sesionRef.current !== sesion) return;
+    await finalizarPublicacion(actuales, sesion);
+  };
+
+  // Cola la llamada al RPC de publicación (última etapa, tras subir todas las
+  // piezas). Separada de subirDesde para poder reintentar SOLO esta etapa
+  // cuando todas las piezas ya están "ok" pero el RPC falló (ej. blip de red
+  // o rechazo del backend): no tiene sentido volver a subir archivos que ya
+  // se subieron con éxito.
+  const finalizarPublicacion = async (piezasFinal, sesion) => {
     try {
-      const cuerpo = actuales.map((p) => ({
+      const cuerpo = piezasFinal.map((p) => ({
         dni: p.boleta.dni, correlativo: p.boleta.correlativo, nombre: p.boleta.nombre,
         cargo: p.boleta.cargo, sede: p.boleta.sede, centroCosto: p.boleta.centroCosto,
         ingreso: p.boleta.ingreso, neto: p.boleta.neto, hash: p.hash, archivo_url: p.url,
@@ -207,12 +223,21 @@ export default function Boletas() {
     }
   };
 
-  const reintentarSubida = async () => {
+  // Reintento único para todo lo que puede fallar tras pulsar "Publicar": si
+  // alguna pieza quedó en error, retoma la subida desde ahí (subirDesde salta
+  // las que ya están "ok"); si TODAS las piezas ya subieron y lo único que
+  // falló fue el RPC final, repite solo esa llamada — nunca vuelve a subir
+  // archivos ya confirmados.
+  const reintentarPublicacion = async () => {
     const sesion = sesionRef.current;
     setErrorPublicar(null);
     setPublicando(true);
     try {
-      await subirDesde(piezas, sesion);
+      if (piezas.every((p) => p.estado === "ok")) {
+        await finalizarPublicacion(piezas, sesion);
+      } else {
+        await subirDesde(piezas, sesion);
+      }
     } finally {
       if (sesionRef.current === sesion) setPublicando(false);
     }
@@ -504,9 +529,9 @@ export default function Boletas() {
                 </Table>
               </Card>
               {errorPublicar && <Note tone="alerta">{errorPublicar}</Note>}
-              {piezas.some((p) => p.estado === "error") && !publicando && (
+              {errorPublicar && !publicando && (
                 <div className="flex gap-2">
-                  <Button onClick={reintentarSubida}>Reintentar subida</Button>
+                  <Button onClick={reintentarPublicacion}>Reintentar publicación</Button>
                   <Button variant="secondary" onClick={() => { setPiezas(null); setErrorPublicar(null); }}>
                     Cancelar publicación
                   </Button>
