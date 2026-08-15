@@ -205,3 +205,16 @@ begin
 exception when sqlstate 'PV999' then
   return sqlerrm::jsonb;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Task 12: subida de documentos (boletas) al bucket `documentos` desde el
+-- BackOffice autenticado. La lectura ya es pública (bucket creado como
+-- público en adjuntar-pdfs-demo.mjs); solo faltaba permitir insert/update
+-- sobre storage.objects para el rol authenticated.
+-- ---------------------------------------------------------------------------
+drop policy if exists documentos_subir on storage.objects;
+create policy documentos_subir on storage.objects for insert to authenticated
+  with check (bucket_id = 'documentos');
+drop policy if exists documentos_actualizar on storage.objects;
+create policy documentos_actualizar on storage.objects for update to authenticated
+  using (bucket_id = 'documentos') with check (bucket_id = 'documentos');

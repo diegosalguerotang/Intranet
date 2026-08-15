@@ -12,8 +12,20 @@ const APIKEY = limpiar(process.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_qg
 
 // Solo cabeceras operativas: cualquier credencial que llegue del cliente se
 // descarta (puede venir corrupta por el interceptor) y se regenera aquí.
-const ENTRAN = ["content-type", "accept", "prefer", "accept-profile", "content-profile", "range", "range-unit", "x-client-info"];
+const ENTRAN = ["content-type", "accept", "prefer", "accept-profile", "content-profile", "range", "range-unit", "x-client-info", "x-upsert"];
 const SALEN = ["content-type", "content-range", "content-profile", "preference-applied", "x-total-count", "www-authenticate"];
+
+// bodyParser apagado: los PDFs de boletas (Task 14) suben binario y el
+// bodyParser JSON + res.send(texto) de antes los corrompía. El passthrough
+// crudo (Buffer tal cual, sin parsear) sirve igual para JSON: PostgREST
+// recibe los mismos bytes que envió el cliente.
+export const config = { api: { bodyParser: false } };
+
+async function leerCuerpo(req) {
+  const trozos = [];
+  for await (const t of req) trozos.push(t);
+  return trozos.length ? Buffer.concat(trozos) : undefined;
+}
 
 export default async function handler(req, res) {
   const ruta = (req.query.ruta ? [].concat(req.query.ruta) : []).join("/");
@@ -30,18 +42,15 @@ export default async function handler(req, res) {
   const sesion = req.headers["x-sesion"];
   if (sesion) cabeceras.authorization = `Bearer ${sesion}`;
 
-  let cuerpo;
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    cuerpo = typeof req.body === "string" ? req.body : req.body != null ? JSON.stringify(req.body) : undefined;
-  }
+  const cuerpo = (req.method !== "GET" && req.method !== "HEAD") ? await leerCuerpo(req) : undefined;
 
   const respuesta = await fetch(destino, { method: req.method, headers: cabeceras, body: cuerpo });
-  const texto = await respuesta.text();
+  const buf = Buffer.from(await respuesta.arrayBuffer());
   res.status(respuesta.status);
   for (const nombre of SALEN) {
     const valor = respuesta.headers.get(nombre);
     if (valor) res.setHeader(nombre, valor);
   }
   res.setHeader("Cache-Control", "no-store");
-  res.send(texto);
+  res.send(buf);
 }
