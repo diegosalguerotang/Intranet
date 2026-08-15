@@ -737,6 +737,100 @@ begin
   return v_id;
 end $$;
 
+-- Task 13: publicar_lote_pdf — publicación transaccional de un lote de
+-- boletas ya partidas (Task 11) y subidas a Storage con nombre por hash
+-- (Task 12). A diferencia de publicar_lote (que genera un documento por cada
+-- vínculo vigente con un hash sintético), aquí el lote y el hash vienen del
+-- PDF real: nada se publica sin trabajador identificado (dni+hash+
+-- archivo_url obligatorios), un DNI sin vínculo vigente o repetido dentro del
+-- lote rechaza TODO (validación previa, antes de escribir una sola fila), y
+-- el versionado es idéntico a publicar_lote (v+1, las versiones previas
+-- quedan 'reemplazado', los acuses jamás se tocan). p_boletas trae más claves
+-- de las que usa esta función (ruc, periodoCabecera, periodoPago del parser
+-- de Task 10): se ignoran sin error, solo se leen dni/hash/archivo_url/
+-- nombre/neto por ->>'clave'.
+-- NOTA de orden: documentos.archivo_url se crea en supabase/portal.sql, no
+-- aquí; plpgsql no valida columnas al CREATE (solo al ejecutar), así que este
+-- reset ordinario (schema.sql → portal.sql → migraciones/*) sigue siendo
+-- válido, pero la función queda inejecutable hasta que portal.sql corra.
+create function publicar_lote_pdf(
+  p_empresa text, p_tipo text, p_periodo text, p_por text, p_boletas jsonb
+) returns jsonb language plpgsql security definer as $$
+declare
+  b jsonb; v_version int; v_id text; v_avisos int; v_vinculo bigint; v_docs int := 0;
+begin
+  -- Validación previa completa: entra todo o no entra nada.
+  for b in select * from jsonb_array_elements(p_boletas) loop
+    if coalesce(b->>'dni','') = '' or coalesce(b->>'hash','') = '' or coalesce(b->>'archivo_url','') = '' then
+      raise exception 'Boleta sin trabajador identificado o sin archivo: nada se publica así.';
+    end if;
+    if not exists (select 1 from vinculos where persona_dni = b->>'dni'
+                   and empresa_id = p_empresa and fecha_fin is null) then
+      raise exception 'El DNI % no tiene vínculo vigente en la empresa: excepción sin resolver.', b->>'dni';
+    end if;
+  end loop;
+  if (select count(distinct x->>'dni') from jsonb_array_elements(p_boletas) x)
+     <> (select count(*) from jsonb_array_elements(p_boletas)) then
+    raise exception 'Hay DNI repetidos en el lote: excepción sin resolver.';
+  end if;
+
+  select coalesce(max(version), 0) + 1 into v_version
+  from lotes where empresa_id = p_empresa and tipo = p_tipo and periodo = p_periodo;
+  v_id := case p_tipo when 'Boleta de pago' then 'BOL' when 'Gratificación' then 'GRA'
+                      when 'Liquidación de CTS' then 'CTS' else 'UTI' end
+          || '-' || upper(left((select corto from empresas where id = p_empresa), 3))
+          || '-' || replace(p_periodo, '-', '') || '-' || lpad(v_version::text, 3, '0');
+
+  -- avisos es "cuántos de ESTE lote" (los DNIs que vienen en p_boletas), no
+  -- todos los vínculos con celular de la empresa entera.
+  select count(*) into v_avisos from vinculos v join personas p on p.dni = v.persona_dni
+  where v.empresa_id = p_empresa and v.fecha_fin is null and p.celular is not null
+    and v.persona_dni in (select x->>'dni' from jsonb_array_elements(p_boletas) x);
+
+  insert into lotes (id, empresa_id, tipo, periodo, version, publicado_por, avisos)
+  values (v_id, p_empresa, p_tipo, p_periodo, v_version, p_por, v_avisos);
+
+  for b in select * from jsonb_array_elements(p_boletas) loop
+    select id into v_vinculo from vinculos
+    where persona_dni = b->>'dni' and empresa_id = p_empresa and fecha_fin is null;
+    -- El PDF puede traer datos MÁS completos que el Excel (sede completa);
+    -- solo se mejora, nunca se degrada a un prefijo.
+    update personas set nombre = case
+        when b->>'nombre' is null then nombre
+        when fn_es_prefijo_truncado(b->>'nombre', nombre) then nombre
+        when length(trim(b->>'nombre')) > length(nombre) then trim(b->>'nombre') else nombre end
+    where dni = b->>'dni';
+    -- Misma regla anti-prefijo aplica a sedes.nombre (sede del vínculo
+    -- guardada truncada por un Excel viejo, el PDF trae el nombre completo) y
+    -- a vinculos.cargo (el PDF trunca el cargo a 20 caracteres; jamás se
+    -- degrada el cargo completo ya guardado a esa versión truncada).
+    if b->>'sede' is not null then
+      update sedes set nombre = trim(b->>'sede')
+      where id = (select sede_id from vinculos where id = v_vinculo)
+        and fn_es_prefijo_truncado(nombre, trim(b->>'sede'));
+    end if;
+    if b->>'cargo' is not null then
+      update vinculos set cargo = trim(b->>'cargo')
+      where id = v_vinculo
+        and not fn_es_prefijo_truncado(trim(b->>'cargo'), cargo)
+        and cargo is distinct from trim(b->>'cargo');
+    end if;
+    insert into documentos (vinculo_id, lote_id, tipo, titulo, periodo, version, hash_sha256, neto)
+    values (v_vinculo, v_id, p_tipo, p_tipo || ' — ' || p_periodo, p_periodo, v_version,
+            b->>'hash', nullif(b->>'neto','')::numeric);
+    update documentos set archivo_url = b->>'archivo_url'
+    where lote_id = v_id and vinculo_id = v_vinculo;
+    v_docs := v_docs + 1;
+  end loop;
+
+  if v_version > 1 then
+    update documentos set estado = 'reemplazado'
+    where lote_id in (select id from lotes where empresa_id = p_empresa
+                      and tipo = p_tipo and periodo = p_periodo and version < v_version);
+  end if;
+  return jsonb_build_object('lote_id', v_id, 'documentos', v_docs, 'version', v_version);
+end $$;
+
 -- Acuse asistido: el único camino de escritura sobre acuses además del acuse
 -- personal. Exige adjunto y fecha de entrega física (la tabla lo garantiza).
 create function registrar_acuse_asistido(

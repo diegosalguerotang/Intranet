@@ -311,8 +311,12 @@ begin
           || '-' || upper(left((select corto from empresas where id = p_empresa), 3))
           || '-' || replace(p_periodo, '-', '') || '-' || lpad(v_version::text, 3, '0');
 
+  -- CORRECCIÓN post-revisión: avisos es "cuántos de ESTE lote" (los DNIs que
+  -- vienen en p_boletas), no todos los vínculos con celular de la empresa
+  -- entera (ese era el comportamiento de publicar_lote, copiado por error).
   select count(*) into v_avisos from vinculos v join personas p on p.dni = v.persona_dni
-  where v.empresa_id = p_empresa and v.fecha_fin is null and p.celular is not null;
+  where v.empresa_id = p_empresa and v.fecha_fin is null and p.celular is not null
+    and v.persona_dni in (select x->>'dni' from jsonb_array_elements(p_boletas) x);
 
   insert into lotes (id, empresa_id, tipo, periodo, version, publicado_por, avisos)
   values (v_id, p_empresa, p_tipo, p_periodo, v_version, p_por, v_avisos);
@@ -327,6 +331,22 @@ begin
         when fn_es_prefijo_truncado(b->>'nombre', nombre) then nombre
         when length(trim(b->>'nombre')) > length(nombre) then trim(b->>'nombre') else nombre end
     where dni = b->>'dni';
+    -- CORRECCIÓN post-revisión: la misma regla anti-prefijo aplica a
+    -- sedes.nombre (la sede del vínculo puede estar guardada truncada por un
+    -- Excel viejo y el PDF trae el nombre completo) y a vinculos.cargo (el
+    -- PDF trunca el cargo a 20 caracteres; jamás se degrada el cargo completo
+    -- ya guardado a esa versión truncada).
+    if b->>'sede' is not null then
+      update sedes set nombre = trim(b->>'sede')
+      where id = (select sede_id from vinculos where id = v_vinculo)
+        and fn_es_prefijo_truncado(nombre, trim(b->>'sede'));
+    end if;
+    if b->>'cargo' is not null then
+      update vinculos set cargo = trim(b->>'cargo')
+      where id = v_vinculo
+        and not fn_es_prefijo_truncado(trim(b->>'cargo'), cargo)
+        and cargo is distinct from trim(b->>'cargo');
+    end if;
     insert into documentos (vinculo_id, lote_id, tipo, titulo, periodo, version, hash_sha256, neto)
     values (v_vinculo, v_id, p_tipo, p_tipo || ' — ' || p_periodo, p_periodo, v_version,
             b->>'hash', nullif(b->>'neto','')::numeric);
