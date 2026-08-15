@@ -41,3 +41,10 @@ create trigger trg_vinculo_empresa_activa before insert on vinculos
 drop trigger if exists trg_lote_empresa_activa on lotes;
 create trigger trg_lote_empresa_activa before insert on lotes
   for each row execute function fn_solo_empresa_activa();
+
+-- RLS de cargos: misma política permisiva que el resto de tablas (bloque
+-- SEGURIDAD de schema.sql), para que no quede desprotegida cuando se aprieten
+-- las políticas más adelante.
+alter table cargos enable row level security;
+drop policy if exists acceso_demo on cargos;
+create policy acceso_demo on cargos for all to anon, authenticated using (true) with check (true);

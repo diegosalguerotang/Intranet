@@ -42,5 +42,9 @@ await prueba("catálogo de cargos existe", async () => {
   const [r] = await sql("select count(*)::int n from cargos");
   igual(r.n >= 8, true, "cargos seed");
 });
+await prueba("cargos tiene RLS habilitado", async () => {
+  const [r] = await sql("select relrowsecurity from pg_class where relname='cargos'");
+  igual(r.relrowsecurity, true, "relrowsecurity");
+});
 console.log(fallos ? `\n${fallos} PRUEBAS FALLARON` : "\nTODAS LAS PRUEBAS PASARON");
 process.exit(fallos ? 1 : 0);

@@ -848,7 +848,7 @@ declare t text;
 begin
   foreach t in array array['empresas','personas','sedes','vinculos','lotes',
     'documentos','acuses','comunicados','memorandums','descargos','tardanzas',
-    'plantillas','contratos','activos','asignaciones','lineas','epp_entregas','auditoria']
+    'plantillas','contratos','activos','asignaciones','lineas','epp_entregas','auditoria','cargos']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
