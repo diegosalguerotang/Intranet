@@ -48,10 +48,39 @@ function pdfPrueba() {
   return Buffer.from(cuerpo, "latin1");
 }
 
+// Prueba negativa factible por SQL (sin simular un JWT de portal): confirma
+// vía Management API que las políticas insert/update de storage.objects para
+// el bucket `documentos` exigen pertenencia a usuarios_admin (estado activo),
+// y no solo `bucket_id = 'documentos'` — que es justo el hueco que dejaba
+// pasar a cualquier trabajador del Portal (también `authenticated`).
+async function verificarPoliticaEndurecida(token) {
+  const r = await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/database/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: "select policyname, cmd, qual, with_check from pg_policies " +
+        "where schemaname='storage' and tablename='objects' and policyname like 'documentos_%'",
+    }),
+  });
+  const texto = await r.text();
+  if (!r.ok) { caso("políticas de Storage exigen usuarios_admin activo", false, `HTTP ${r.status} ${texto}`); return; }
+  const filas = JSON.parse(texto);
+  caso("existen las políticas documentos_subir y documentos_actualizar", filas.length === 2,
+    `encontradas: ${filas.map((f) => f.policyname).join(", ") || "ninguna"}`);
+  for (const f of filas) {
+    const condicion = `${f.qual ?? ""} ${f.with_check ?? ""}`;
+    const endurecida = condicion.includes("usuarios_admin") && condicion.includes("'activo'");
+    caso(`${f.policyname} exige usuarios_admin activo (no solo bucket_id)`, endurecida,
+      endurecida ? undefined : `condición no contiene usuarios_admin/'activo': ${condicion.trim()}`);
+  }
+}
+
 async function verificarDirecto() {
   console.log("\n== Parte pre-deploy: subida DIRECTA a Supabase Storage ==");
   const token = process.env.SUPABASE_ACCESS_TOKEN;
   if (!token) { console.error("Falta SUPABASE_ACCESS_TOKEN."); process.exit(1); }
+
+  await verificarPoliticaEndurecida(token);
 
   const keys = await (await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/api-keys?reveal=true`, {
     headers: { Authorization: `Bearer ${token}` },

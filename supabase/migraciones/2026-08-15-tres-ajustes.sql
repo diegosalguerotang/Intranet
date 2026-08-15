@@ -210,11 +210,40 @@ end $$;
 -- Task 12: subida de documentos (boletas) al bucket `documentos` desde el
 -- BackOffice autenticado. La lectura ya es pública (bucket creado como
 -- público en adjuntar-pdfs-demo.mjs); solo faltaba permitir insert/update
--- sobre storage.objects para el rol authenticated.
+-- sobre storage.objects.
+--
+-- CORRECCIÓN post-revisión: `to authenticated` por sí solo no basta — los
+-- trabajadores del Portal también obtienen JWT reales (correo
+-- dni@portal.grupoer.pe, ver supabase/portal.sql) y son `authenticated`, así
+-- que con la sola condición del bucket cualquier trabajador podría insertar o
+-- sobrescribir CUALQUIER objeto de `documentos`. Se exige además que el
+-- correo del JWT (auth.jwt()->>'email', mismo patrón ya usado en
+-- supabase/portal.sql) pertenezca a un usuario del BackOffice con estado
+-- 'activo' en usuarios_admin (columnas confirmadas en supabase/accesos.sql:
+-- usuarios_admin.correo, usuarios_admin.estado check in ('activo','suspendido')).
 -- ---------------------------------------------------------------------------
 drop policy if exists documentos_subir on storage.objects;
 create policy documentos_subir on storage.objects for insert to authenticated
-  with check (bucket_id = 'documentos');
+  with check (
+    bucket_id = 'documentos'
+    and exists (
+      select 1 from usuarios_admin u
+      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
+    )
+  );
 drop policy if exists documentos_actualizar on storage.objects;
 create policy documentos_actualizar on storage.objects for update to authenticated
-  using (bucket_id = 'documentos') with check (bucket_id = 'documentos');
+  using (
+    bucket_id = 'documentos'
+    and exists (
+      select 1 from usuarios_admin u
+      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
+    )
+  )
+  with check (
+    bucket_id = 'documentos'
+    and exists (
+      select 1 from usuarios_admin u
+      where u.correo = (auth.jwt()->>'email') and u.estado = 'activo'
+    )
+  );
