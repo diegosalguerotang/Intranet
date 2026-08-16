@@ -823,10 +823,17 @@ begin
     v_docs := v_docs + 1;
   end loop;
 
+  -- Un lote PDF puede ser PARCIAL (solo boletas corregidas, no todo el
+  -- personal del periodo) — a diferencia de publicar_lote, que siempre genera
+  -- un documento por cada vínculo vigente de la empresa. Marcar 'reemplazado'
+  -- TODOS los documentos de versiones previas del mismo lote le quitaría su
+  -- boleta vigente a los trabajadores que NO están en la v2. Se acota a los
+  -- vínculos que sí están en el lote nuevo.
   if v_version > 1 then
     update documentos set estado = 'reemplazado'
     where lote_id in (select id from lotes where empresa_id = p_empresa
-                      and tipo = p_tipo and periodo = p_periodo and version < v_version);
+                      and tipo = p_tipo and periodo = p_periodo and version < v_version)
+      and vinculo_id in (select vinculo_id from documentos where lote_id = v_id);
   end if;
   return jsonb_build_object('lote_id', v_id, 'documentos', v_docs, 'version', v_version);
 end $$;

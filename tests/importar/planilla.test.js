@@ -68,4 +68,14 @@ describe("validaciones", () => {
   it("normalizar iguala acentos y Ñ", () => {
     expect(normalizar("ASTUPIÑAN")).toBe(normalizar("ASTUPIÑAN".normalize("NFD")));
   });
+  it("DNI repetido en el archivo va a errores, no se importan dos filas para la misma persona", () => {
+    const fila1 = ["33333333", "PRIMERA VEZ                   ", "33333333", "M", "SEDE X", "CARGO", "1", "01/01/25", "/  /", "VIGENTE"];
+    const fila2 = ["33333333", "SEGUNDA VEZ                   ", "33333333", "M", "SEDE Y", "CARGO", "1", "01/02/25", "/  /", "VIGENTE"];
+    const repetidas = [...filas.slice(0, 6), fila1, fila2];
+    const r = parsearPlanilla(repetidas, HOY);
+    expect(r.filas.filter((f) => f.dni === "33333333").length).toBe(1);
+    expect(r.errores.length).toBe(1);
+    expect(r.errores[0]).toMatch(/repetido en el archivo/i);
+    expect(r.errores[0]).toMatch(/DNI 33333333/);
+  });
 });

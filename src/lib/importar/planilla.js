@@ -44,6 +44,7 @@ export function parsearPlanilla(filas, hoy = new Date()) {
   const datos = [];
   const errores = [];
   const hoyIso = hoy.toISOString().slice(0, 10);
+  const vistos = new Map(); // dni -> número de la primera fila válida (dedup dentro del archivo)
 
   filas.forEach((fila, i) => {
     if (i <= iEnc) return;
@@ -64,6 +65,14 @@ export function parsearPlanilla(filas, hoy = new Date()) {
     if (ingreso.fecha > hoyIso) { errores.push(`Fila ${num}: fecha de ingreso futura (${ingreso.fecha}).`); return; }
     const cese = parsearFecha(fCese);
     if (cese.error) { errores.push(`Fila ${num}: F.Cese ${cese.error}.`); return; }
+    // El parser NO deduplica de por sí (RPCs como importar_planilla asumen
+    // una fila por DNI); un DNI repetido en el archivo va a errores, jamás
+    // se importan silenciosamente dos filas para la misma persona.
+    if (vistos.has(dni)) {
+      errores.push(`Fila ${num}: DNI ${dni} repetido en el archivo (ya en fila ${vistos.get(dni)}).`);
+      return;
+    }
+    vistos.set(dni, num);
 
     datos.push({
       codigo, nombres, dni, sexo, sede, cargo, centroCosto: cc,

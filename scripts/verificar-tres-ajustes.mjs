@@ -169,6 +169,8 @@ const DNI_D1 = "09999906";
 const DNI_D2 = "09999907";
 const DNI_D3 = "09999908";
 const DNI_E = "09999905"; // exclusivo de la prueba de upgrade de sedes.nombre
+const DNI_F = "09999911"; // exclusivo de la prueba de lote PDF parcial (queda en v2)
+const DNI_G = "09999912"; // exclusivo de la prueba de lote PDF parcial (NO está en v2)
 const SEDE_PDF_ID = "lamericana-sede-pdf-e2e";
 const SEDE_PDF_NOMBRE = "SEDE PUBLICAR LOTE PDF E2E";
 const SEDE_TRUNC_ID = "lamericana-sede-pdf-trunc-e2e";
@@ -177,22 +179,24 @@ const SEDE_TRUNC_COMPLETA = "SEDE PRUEBA TRUNCADA";
 const TIPO_PDF = "Boleta de pago";
 const PERIODO_PDF = "2026-06";
 const PERIODO_EXTRA = "2026-07"; // periodo propio para no interferir con el versionado de PERIODO_PDF
+const PERIODO_PARCIAL = "2099-12"; // periodo propio (sintético, jamás real) para la prueba de lote parcial
 const POR_PDF = "verificacion-lote-pdf";
 
 function boletasJson(items) {
   return JSON.stringify(items).replace(/'/g, "''");
 }
 
-const DNIS_PDF = [DNI_A, DNI_B, DNI_C, DNI_D1, DNI_D2, DNI_D3, DNI_E];
+const DNIS_PDF = [DNI_A, DNI_B, DNI_C, DNI_D1, DNI_D2, DNI_D3, DNI_E, DNI_F, DNI_G];
+const PERIODOS_PDF = [PERIODO_PDF, PERIODO_EXTRA, PERIODO_PARCIAL];
 
 async function limpiarDatosPruebaPdf() {
   // Sin filtro por tipo: la prueba de sedes.nombre publica con tipo
   // 'Gratificación' en PERIODO_EXTRA para no compartir versión con la de
   // avisos ('Boleta de pago'), así que el barrido debe cubrir cualquier tipo.
   await sql(`delete from documentos where lote_id in (
-    select id from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in ('${PERIODO_PDF}','${PERIODO_EXTRA}')
+    select id from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")})
   )`);
-  await sql(`delete from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in ('${PERIODO_PDF}','${PERIODO_EXTRA}')`);
+  await sql(`delete from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")})`);
   await sql(`delete from vinculos where persona_dni in (${DNIS_PDF.map((d) => `'${d}'`).join(",")}) and empresa_id = '${EMPRESA_PDF}'`);
   await sql(`delete from personas where dni in (${DNIS_PDF.map((d) => `'${d}'`).join(",")})`);
   await sql(`delete from sedes where id in ('${SEDE_PDF_ID}','${SEDE_TRUNC_ID}')`);
@@ -211,7 +215,9 @@ try {
     ('${DNI_D1}', 'VERIFICACION PDF FUERA UNO', 'activo'),
     ('${DNI_D2}', 'VERIFICACION PDF FUERA DOS', 'activo'),
     ('${DNI_D3}', 'VERIFICACION PDF FUERA TRES', 'activo'),
-    ('${DNI_E}', 'VERIFICACION PDF SEDE TRUNCADA', 'sin_celular')`);
+    ('${DNI_E}', 'VERIFICACION PDF SEDE TRUNCADA', 'sin_celular'),
+    ('${DNI_F}', 'VERIFICACION PDF PARCIAL EN V2', 'sin_celular'),
+    ('${DNI_G}', 'VERIFICACION PDF PARCIAL FUERA DE V2', 'sin_celular')`);
   await sql(`update personas set celular = '987650001' where dni = '${DNI_D1}'`);
   await sql(`update personas set celular = '987650002' where dni = '${DNI_D2}'`);
   await sql(`update personas set celular = '987650003' where dni = '${DNI_D3}'`);
@@ -221,7 +227,9 @@ try {
     ('${DNI_D1}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
     ('${DNI_D2}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
     ('${DNI_D3}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
-    ('${DNI_E}', '${EMPRESA_PDF}', '${SEDE_TRUNC_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01')`);
+    ('${DNI_E}', '${EMPRESA_PDF}', '${SEDE_TRUNC_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
+    ('${DNI_F}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01'),
+    ('${DNI_G}', '${EMPRESA_PDF}', '${SEDE_PDF_ID}', 'Operario de limpieza', 'CC PDF E2E', '2026-01-01')`);
 
   await prueba("publicar_lote_pdf: lote con 2 boletas de DNIs con vínculo vigente crea 2 documentos con hash y url", async () => {
     const boletas = boletasJson([
@@ -316,6 +324,50 @@ try {
     igual(sedeDespues.nombre, SEDE_TRUNC_COMPLETA, "sedes.nombre debe completarse con el nombre íntegro de la boleta");
   });
 
+  // CORRECCIÓN post-revisión (FIX-1): el update que marca 'reemplazado' las
+  // versiones previas al publicar v>1 estaba acotado solo por lote_id — un
+  // lote PDF puede ser PARCIAL (solo boletas corregidas), así que marcaba
+  // 'reemplazado' incluso a trabajadores que NO están en la v2, dejándolos
+  // sin boleta vigente. Se publica v1 con DNI_F y DNI_G, luego v2 con SOLO
+  // DNI_F: el documento v1 de DNI_F debe quedar 'reemplazado' (sí está en la
+  // v2) y el de DNI_G debe seguir 'vigente' (no está en la v2).
+  let loteParcialV1 = null;
+  await prueba("publicar_lote_pdf: lote parcial v2 (1 de 2 boletas) NO reemplaza la boleta vigente del trabajador ausente", async () => {
+    const boletasV1 = boletasJson([
+      { dni: DNI_F, nombre: "VERIFICACION PDF PARCIAL EN V2", neto: 1000,
+        hash: "hashParcialF1", archivo_url: "https://storage.test/hashParcialF1.pdf" },
+      { dni: DNI_G, nombre: "VERIFICACION PDF PARCIAL FUERA DE V2", neto: 1100,
+        hash: "hashParcialG1", archivo_url: "https://storage.test/hashParcialG1.pdf" },
+    ]);
+    const [filaV1] = await sql(
+      `select publicar_lote_pdf('${EMPRESA_PDF}','${TIPO_PDF}','${PERIODO_PARCIAL}','${POR_PDF}','${boletasV1}'::jsonb) as r`
+    );
+    igual(filaV1.r.version, 1, "versión inicial del lote parcial");
+    loteParcialV1 = filaV1.r.lote_id;
+
+    // v2 SOLO trae a DNI_F (boleta corregida); DNI_G queda fuera del lote.
+    const boletasV2 = boletasJson([
+      { dni: DNI_F, nombre: "VERIFICACION PDF PARCIAL EN V2", neto: 1050,
+        hash: "hashParcialF2", archivo_url: "https://storage.test/hashParcialF2.pdf" },
+    ]);
+    const [filaV2] = await sql(
+      `select publicar_lote_pdf('${EMPRESA_PDF}','${TIPO_PDF}','${PERIODO_PARCIAL}','${POR_PDF}','${boletasV2}'::jsonb) as r`
+    );
+    igual(filaV2.r.version, 2, "versión 2 del lote parcial");
+    igual(filaV2.r.documentos, 1, "la v2 solo publica 1 documento (lote parcial)");
+
+    const [docF] = await sql(
+      `select estado from documentos d join vinculos v on v.id = d.vinculo_id
+       where d.lote_id = '${loteParcialV1}' and v.persona_dni = '${DNI_F}'`
+    );
+    igual(docF.estado, "reemplazado", "el documento v1 de DNI_F (sí está en v2) debe quedar 'reemplazado'");
+    const [docG] = await sql(
+      `select estado from documentos d join vinculos v on v.id = d.vinculo_id
+       where d.lote_id = '${loteParcialV1}' and v.persona_dni = '${DNI_G}'`
+    );
+    igual(docG.estado, "vigente", "el documento v1 de DNI_G (NO está en v2) debe seguir 'vigente'");
+  });
+
   await prueba("motor documental (documentos/lotes) no tiene columnas de cuentas bancarias ni CUSPP", async () => {
     const [r] = await sql(
       `select count(*)::int n from information_schema.columns
@@ -330,7 +382,7 @@ try {
 await prueba("limpieza de datos de prueba de publicar_lote_pdf queda completa", async () => {
   const [r] = await sql(`select count(*)::int n from personas where dni in (${DNIS_PDF.map((d) => `'${d}'`).join(",")})`);
   igual(r.n, 0, "no deben quedar personas de prueba");
-  const [l] = await sql(`select count(*)::int n from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in ('${PERIODO_PDF}','${PERIODO_EXTRA}')`);
+  const [l] = await sql(`select count(*)::int n from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")})`);
   igual(l.n, 0, "no deben quedar lotes de prueba");
   const [s] = await sql(`select count(*)::int n from sedes where id in ('${SEDE_PDF_ID}','${SEDE_TRUNC_ID}')`);
   igual(s.n, 0, "no deben quedar sedes de prueba");
