@@ -177,9 +177,19 @@ const SEDE_TRUNC_ID = "lamericana-sede-pdf-trunc-e2e";
 const SEDE_TRUNC_CORTA = "SEDE PRUEBA TRUN";
 const SEDE_TRUNC_COMPLETA = "SEDE PRUEBA TRUNCADA";
 const TIPO_PDF = "Boleta de pago";
-const PERIODO_PDF = "2026-06";
-const PERIODO_EXTRA = "2026-07"; // periodo propio para no interferir con el versionado de PERIODO_PDF
-const PERIODO_PARCIAL = "2099-12"; // periodo propio (sintético, jamás real) para la prueba de lote parcial
+// CORRECCIÓN CRITICAL post-revisión (privacidad de documentos, 2026-08-16):
+// PERIODO_PDF era '2026-06', el MISMO empresa_id + periodo que el lote REAL
+// de boletas de lamericana (BOL-L.-202606-001) — limpiarDatosPruebaPdf()
+// filtraba solo por empresa_id + periodo y borró ese lote real la primera vez
+// que corrió esta suite. Se mueven los tres periodos sintéticos a 1999
+// (imposible que el grupo tenga planillas reales de esa fecha) como
+// cinturón extra, y la limpieza además exige publicado_por = POR_PDF (ver
+// abajo): un lote real jamás tiene ese valor, así que aunque un periodo
+// futuro volviera a coincidir por accidente, el filtro por publicado_por lo
+// protegería igual.
+const PERIODO_PDF = "1999-01";
+const PERIODO_EXTRA = "1999-02"; // periodo propio para no interferir con el versionado de PERIODO_PDF
+const PERIODO_PARCIAL = "1999-03"; // periodo propio (sintético, jamás real) para la prueba de lote parcial
 const POR_PDF = "verificacion-lote-pdf";
 
 function boletasJson(items) {
@@ -193,10 +203,17 @@ async function limpiarDatosPruebaPdf() {
   // Sin filtro por tipo: la prueba de sedes.nombre publica con tipo
   // 'Gratificación' en PERIODO_EXTRA para no compartir versión con la de
   // avisos ('Boleta de pago'), así que el barrido debe cubrir cualquier tipo.
+  //
+  // CORRECCIÓN CRITICAL post-revisión: además de empresa_id + periodo, el
+  // barrido de lotes/documentos exige publicado_por = POR_PDF. Un lote real
+  // (publicado desde el BackOffice) NUNCA tiene ese publicado_por sintético
+  // ('verificacion-lote-pdf'), así que aunque algún periodo real llegara a
+  // coincidir con uno de los PERIODOS_PDF, este filtro por sí solo ya evita
+  // tocarlo. Ver PERIODOS_PDF arriba para el detalle del incidente.
   await sql(`delete from documentos where lote_id in (
-    select id from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")})
+    select id from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")}) and publicado_por = '${POR_PDF}'
   )`);
-  await sql(`delete from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")})`);
+  await sql(`delete from lotes where empresa_id = '${EMPRESA_PDF}' and periodo in (${PERIODOS_PDF.map((p) => `'${p}'`).join(",")}) and publicado_por = '${POR_PDF}'`);
   await sql(`delete from vinculos where persona_dni in (${DNIS_PDF.map((d) => `'${d}'`).join(",")}) and empresa_id = '${EMPRESA_PDF}'`);
   await sql(`delete from personas where dni in (${DNIS_PDF.map((d) => `'${d}'`).join(",")})`);
   await sql(`delete from sedes where id in ('${SEDE_PDF_ID}','${SEDE_TRUNC_ID}')`);

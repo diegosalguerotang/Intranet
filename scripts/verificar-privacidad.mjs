@@ -37,13 +37,18 @@ await prueba("documentos sin política demo y con política admin", async () => 
 await prueba("una URL pública antigua de boleta ya no responde 200", async () => {
   // Nota: el brief original filtraba por archivo_url like 'lotes/%' (boletas
   // reales de lamericana), pero esas filas ya no existen en documentos — el
-  // lote real quedó borrado en algún momento por la limpieza de
-  // verificar-tres-ajustes.mjs (Task 13), que usa el MISMO empresa_id
-  // ('lamericana') y periodo ('2026-06') que las boletas reales para sus
-  // datos sintéticos (ver concern en task-1-report.md). Los 9 PDF reales
-  // siguen en Storage, huérfanos de fila en documentos, pero ya inaccesibles
-  // por URL pública gracias al bucket privado (paso 1 de esta migración): se
-  // prueba la misma propiedad con cualquier archivo_url existente.
+  // lote real quedó borrado por la limpieza de verificar-tres-ajustes.mjs
+  // (Task 13), que usaba el MISMO empresa_id ('lamericana') y periodo
+  // ('2026-06') que las boletas reales para sus datos sintéticos (fix
+  // CRITICAL aplicado: PERIODOS_PDF ahora usa 1999-01/02/03 + filtro
+  // publicado_por, ver task-1-report.md). Los 9 PDF reales siguen en Storage,
+  // huérfanos de fila en documentos, pero ya inaccesibles por URL pública
+  // gracias al bucket privado (paso 1 de esta migración): se prueba la misma
+  // propiedad con cualquier archivo_url existente.
+  // TODO(Task 4): cuando el lote real de lamericana se vuelva a publicar
+  // (con archivo_url como ruta, no URL — ver Boletas.jsx), volver este filtro
+  // a `where archivo_url like 'lotes/%' limit 1` para probar específicamente
+  // sobre una boleta real, tal como pedía el brief original.
   const [d] = await sql("select archivo_url from documentos where archivo_url is not null limit 1");
   igual(d != null, true, "debe existir al menos un documento con archivo_url para esta prueba");
   const r = await fetch(`https://mzpbdkrmokfxrrsotfgs.supabase.co/storage/v1/object/public/documentos/${d.archivo_url}`);
