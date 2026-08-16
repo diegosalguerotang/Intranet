@@ -1091,8 +1091,9 @@ end $$;
 do $$
 declare t text;
 begin
+  -- documentos: política admin-solo en migraciones/2026-08-16-privacidad-documentos.sql
   foreach t in array array['empresas','personas','sedes','vinculos','lotes',
-    'documentos','acuses','comunicados','memorandums','descargos','tardanzas',
+    'acuses','comunicados','memorandums','descargos','tardanzas',
     'plantillas','contratos','activos','asignaciones','lineas','epp_entregas','auditoria','cargos']
   loop
     execute format('alter table %I enable row level security', t);

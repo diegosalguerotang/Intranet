@@ -9,6 +9,7 @@
 -- ============================================================================
 
 -- 1 · Columnas nuevas en tablas existentes -----------------------------------
+-- guarda la RUTA del bucket (lotes/...), no una URL — ver migración de privacidad
 alter table documentos add column if not exists archivo_url text;
 
 -- 2 · Tablas -----------------------------------------------------------------
