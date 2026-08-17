@@ -167,6 +167,35 @@ await prueba("auditoría: queda la razón social confirmada, el archivo y quién
   igual(a.d.por, "verificacion", "quién");
 });
 
+await prueba("editar_activo: corrige campos y renombrar limpia por_corregir", async () => {
+  await importar("promant", act("ZZPRUEBA-EDIT", { repetido: true }));
+  await sql(`select editar_activo('ZZPRUEBA-EDIT', 'ZZPRUEBA-EDIT2', 'PC', 'HP', '840 G8', 'SER1234567', 'LOGISTICA', 'NUEVO USUARIO', 'nota manual')`);
+  const [a] = await sql("select codigo, tipo, marca, por_corregir from activos where codigo='ZZPRUEBA-EDIT2'");
+  igual(a.tipo, "PC", "tipo");
+  igual(a.marca, "HP", "marca");
+  igual(a.por_corregir, false, "por_corregir limpio al renombrar");
+  const [viejo] = await sql("select count(*)::int n from activos where codigo='ZZPRUEBA-EDIT'");
+  igual(viejo.n, 0, "código viejo fuera");
+});
+
+await prueba("editar_activo: renombrar arrastra la asignación vigente (cascade)", async () => {
+  const [p] = await sql("select dni from personas limit 1");
+  await sql(`insert into asignaciones (activo_codigo, persona_dni) values ('ZZPRUEBA-EDIT2', '${p.dni}')`);
+  await sql(`select editar_activo('ZZPRUEBA-EDIT2', 'ZZPRUEBA-EDIT3', 'PC', 'HP', '840 G8', 'SER1234567', 'LOGISTICA', 'NUEVO USUARIO', 'nota manual')`);
+  const [n] = await sql("select count(*)::int n from asignaciones where activo_codigo='ZZPRUEBA-EDIT3'");
+  igual(n.n, 1, "asignación arrastrada");
+  await sql("delete from asignaciones where activo_codigo='ZZPRUEBA-EDIT3'");
+});
+
+await prueba("editar_activo: renombrar a un código existente se rechaza", async () => {
+  await importar("promant", act("ZZPRUEBA-OCUPADO"));
+  let error = null;
+  try {
+    await sql(`select editar_activo('ZZPRUEBA-EDIT3', 'ZZPRUEBA-OCUPADO', 'PC', '', '', '', '', '', '')`);
+  } catch (e) { error = e.message; }
+  igual(error !== null && error.includes("Ya existe"), true, `error (${error})`);
+});
+
 // --- Canal real (--proxy): el MISMO camino que usa la pantalla ADQ-08 -------
 // /api/supa con JWT admin en x-sesion, contra producción. Requiere
 // SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD_INICIAL.

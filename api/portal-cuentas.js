@@ -1,8 +1,11 @@
 // Cuentas del Portal del Trabajador (service key; nunca en el navegador).
 // El llamador es un usuario del BackOffice (JWT en x-sesion) con nivel >= 2
 // en el módulo personal. La cuenta técnica es {dni}@portal.grupoer.pe y el
-// trabajador solo teclea su DNI. Claves provisionales NUMÉRICAS de 8 dígitos
-// (el operario las tipea en un celular de gama baja).
+// trabajador solo teclea su DNI. La clave inicial es FIJA (111111): no hay
+// medio de contacto para repartir claves aleatorias (decisión de Diego,
+// 2026-08-17; Supabase no admite menos de 6 caracteres, por eso no es 1111).
+// El primer ingreso del portal OBLIGA a crear una clave propia y declarar el
+// celular antes de poder usar nada.
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const DOMINIO = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
@@ -14,10 +17,7 @@ const cabService = {
   "content-type": "application/json",
 };
 
-function claveNumerica() {
-  const n = crypto.getRandomValues(new Uint32Array(1))[0];
-  return String(10000000 + (n % 90000000)); // 8 dígitos, sin cero inicial
-}
+const CLAVE_INICIAL = "111111";
 
 async function rest(ruta, opciones = {}) {
   const r = await fetch(`${SUPABASE}${ruta}`, { ...opciones, headers: { ...cabService, ...opciones.headers } });
@@ -38,7 +38,7 @@ async function crearCuenta(dni, creadoPor) {
   const persona = (await rest(`/rest/v1/personas?dni=eq.${dni}&select=dni&limit=1`, { method: "GET" })).json?.[0];
   if (!persona) return { dni, error: "La persona no existe en el maestro." };
   const correo = `${dni}@${DOMINIO}`;
-  const clave = claveNumerica();
+  const clave = CLAVE_INICIAL;
   const alta = await rest("/auth/v1/admin/users", {
     method: "POST",
     body: JSON.stringify({ email: correo, password: clave, email_confirm: true }),
@@ -60,7 +60,7 @@ async function restablecerCuenta(dni) {
   const correo = `${dni}@${DOMINIO}`;
   const cuenta = await buscarCuenta(correo);
   if (!cuenta) return { dni, error: "La cuenta del portal no existe: usa Crear cuenta." };
-  const clave = claveNumerica();
+  const clave = CLAVE_INICIAL;
   const cambio = await rest(`/auth/v1/admin/users/${cuenta.id}`, {
     method: "PUT",
     body: JSON.stringify({ password: clave }),

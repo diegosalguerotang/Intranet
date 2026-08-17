@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PackagePlus, Upload } from "lucide-react";
 import { useApp } from "../../state";
 import {
@@ -15,12 +15,13 @@ const ESTADOS = {
 
 // ADQ-01 — Inventario de activos
 export default function Inventario() {
-  const { empresaId, db, persona, asignarActivo, devolverActivo } = useApp();
+  const { empresaId, db, persona, asignarActivo, devolverActivo, editarActivo } = useApp();
   const [q, setQ] = useState("");
   const [fCat, setFCat] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [alta, setAlta] = useState(false);
   const [importar, setImportar] = useState(false);
+  const [editar, setEditar] = useState(null); // activo a editar
   const [asignar, setAsignar] = useState(null); // activo a asignar
   const [devolver, setDevolver] = useState(null); // activo a devolver
   const [aviso, setAviso] = useState(null);
@@ -135,6 +136,7 @@ export default function Inventario() {
                 <Td className="font-mono text-[12px]">{a.valor.toLocaleString()}</Td>
                 <Td><Badge tone={est.tone}>{est.label}</Badge></Td>
                 <Td>
+                  <Button variant="ghost" size="sm" onClick={() => setEditar(a)}>Editar</Button>
                   {a.estado === "disponible" && (
                     <Button variant="ghost" size="sm" onClick={() => setAsignar(a)}>Asignar</Button>
                   )}
@@ -149,10 +151,100 @@ export default function Inventario() {
       </Card>
 
       <AltaActivo open={alta} onClose={() => setAlta(false)} />
+      <EditarActivo activo={editar} onClose={() => setEditar(null)} editarActivo={editarActivo} onListo={setAviso} />
       <ImportarInventario open={importar} onClose={() => setImportar(false)} />
       <AsignarActivo activo={asignar} onClose={() => setAsignar(null)} onAsignar={ejecutarAsignacion} />
       <DevolucionActivo activo={devolver} onClose={() => setDevolver(null)} onDevolver={ejecutarDevolucion} />
     </>
+  );
+}
+
+// Edición manual de un activo: corregir el código (caso «falta corregir» de la
+// importación) y los datos del equipo. Renombrar el código arrastra el
+// historial de asignaciones y las líneas, y quita la marca de repetido.
+function EditarActivo({ activo, onClose, editarActivo, onListo }) {
+  const [form, setForm] = useState(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    if (!activo) { setForm(null); setError(null); return; }
+    setForm({
+      codigo: activo.codigo, tipo: activo.tipo ?? "", marca: activo.marca ?? "",
+      modelo: activo.modelo ?? "", serie: activo.serie ?? "", area: activo.area ?? "",
+      asignadoSinConfirmar: activo.asignado_sin_confirmar ?? "",
+      observaciones: activo.observaciones ?? "",
+    });
+  }, [activo]);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    if (ocupado) return;
+    setError(null);
+    setOcupado(true);
+    try {
+      await editarActivo(activo.codigo, form);
+      onListo(
+        form.codigo !== activo.codigo
+          ? `Activo ${activo.codigo} corregido: ahora es ${form.codigo}. Su historial de asignaciones lo siguió.`
+          : `Activo ${activo.codigo} actualizado.`
+      );
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  return (
+    <Modal open={!!activo} onClose={onClose} title={`Editar activo ${activo?.codigo ?? ""}`} wide>
+      {form && (
+        <form onSubmit={guardar} className="space-y-4">
+          {activo.por_corregir && (
+            <Note tone="pend">
+              Este activo quedó marcado <b>«repetido — falta corregir»</b> en la importación: al guardarlo
+              con un código nuevo la marca se quita sola.
+            </Note>
+          )}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Código" required hint="La identidad del activo: renombrarlo arrastra su historial.">
+              <Input value={form.codigo} onChange={set("codigo")} required />
+            </Field>
+            <Field label="Tipo">
+              <Input value={form.tipo} onChange={set("tipo")} placeholder="LAPTOP, PC, IMPRESORA…" />
+            </Field>
+            <Field label="Área">
+              <Input value={form.area} onChange={set("area")} placeholder="RRHH, LOGISTICA…" />
+            </Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Marca">
+              <Input value={form.marca} onChange={set("marca")} />
+            </Field>
+            <Field label="Modelo">
+              <Input value={form.modelo} onChange={set("modelo")} />
+            </Field>
+            <Field label="Número de serie">
+              <Input value={form.serie} onChange={set("serie")} />
+            </Field>
+          </div>
+          <Field label="Asignado a (sin confirmar)" hint="Texto del inventario; la asignación real se hace con «Asignar».">
+            <Input value={form.asignadoSinConfirmar} onChange={set("asignadoSinConfirmar")} />
+          </Field>
+          <Field label="Observaciones">
+            <Input value={form.observaciones} onChange={set("observaciones")} />
+          </Field>
+          {error && <Note tone="alerta">{error}</Note>}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={ocupado || !form.codigo.trim()}>
+              {ocupado ? "Guardando…" : "Guardar cambios"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={ocupado}>Cancelar</Button>
+          </div>
+        </form>
+      )}
+    </Modal>
   );
 }
 

@@ -114,7 +114,7 @@ export default function Personal() {
             <EmptyState title="Sin resultados" body="Ningún trabajador coincide con los filtros aplicados." />
           </div>
         ) : (
-          <Table head={["DNI", "Trabajador", "Cargo", "Sede", "Ingreso", "Portal", ""]}>
+          <Table head={["DNI", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", ""]}>
             {filas.map((p) => {
               const pb = PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo;
               return (
@@ -128,10 +128,21 @@ export default function Personal() {
                   </Td>
                   <Td className="text-gris">{p.cargo}</Td>
                   <Td className="text-gris">{sede(p.sede)?.cliente ?? "—"}</Td>
+                  <Td className="font-mono text-[12px] text-gris">
+                    {/* Se completa solo cuando el trabajador declara su número
+                        en el primer ingreso del portal. */}
+                    {p.celular ?? <span className="text-gris-cl">—</span>}
+                  </Td>
                   <Td className="font-mono text-[12px] text-gris">{p.ingreso}</Td>
                   <Td><Badge tone={pb.tone}>{pb.label}</Badge></Td>
                   <Td>
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        to={`/rrhh/personal/${p.dni}`}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-[12px] font-semibold text-petroleo hover:bg-papel"
+                      >
+                        Ver detalle
+                      </Link>
                       <Button variant="ghost" size="sm" onClick={() => { setCuenta(p); setCuentaResultado(null); }}>
                         <Smartphone size={12} /> Portal
                       </Button>
@@ -155,16 +166,16 @@ export default function Personal() {
         {cuenta && (
           <div className="space-y-4">
             <p className="text-[13px] leading-relaxed text-gris">
-              El trabajador entra al portal con su <b>DNI {cuenta.dni}</b> y una clave numérica de 8 dígitos.
-              La clave se muestra una sola vez: entrégala en persona (el envío automático llega con el motor de
-              mensajería).
+              El trabajador entra al portal con su <b>DNI {cuenta.dni}</b> y la clave inicial <b>111111</b>
+              (igual para todos: no hay medio de contacto para repartir claves). En su primer ingreso el
+              portal lo obliga a crear una clave propia y declarar su celular antes de poder usar nada.
             </p>
             {cuentaResultado?.clave && (
               <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
                 <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
                 <div className="font-mono text-[26px] font-bold tracking-[0.25em] text-tinta">{cuentaResultado.clave}</div>
                 <div className="mt-1 text-[11.5px] text-gris-cl">
-                  Clave de un solo uso para {cuenta.nombre}. Deberá crear la suya en su primer ingreso.
+                  Clave inicial de {cuenta.nombre}. Deberá crear la suya y declarar su celular en el primer ingreso.
                 </div>
               </div>
             )}

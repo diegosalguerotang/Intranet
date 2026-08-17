@@ -368,6 +368,19 @@ export function AppProvider({ children }) {
       await recargar("sedes");
       return data; // { id, codigo }
     },
+    // ADQ — Edición manual de un activo: corregir el código (caso «falta
+    // corregir» de la importación) y los datos del equipo. Lo escrito MANDA.
+    editarActivo: async (codigo, cambios) => {
+      if (!supabaseListo) throw new Error("La edición real requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("editar_activo", {
+        p_codigo: codigo, p_nuevo_codigo: cambios.codigo, p_tipo: cambios.tipo,
+        p_marca: cambios.marca, p_modelo: cambios.modelo, p_serie: cambios.serie,
+        p_area: cambios.area, p_asignado_sin_confirmar: cambios.asignadoSinConfirmar,
+        p_observaciones: cambios.observaciones, p_por: user?.nombre ?? "Administración",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("activos");
+    },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es
     // un único RPC transaccional. Los bloqueos (duplicado, otra empresa)
