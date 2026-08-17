@@ -7,9 +7,10 @@
 //  · recuperacion : PÚBLICA («olvidé mi clave»): si el DNI tiene correo
 //                   VERIFICADO se envía un enlace de restablecimiento; la
 //                   respuesta es SIEMPRE la misma (no revela si existe).
-// Proveedor: Resend (env RESEND_API_KEY + CORREO_REMITENTE). Sin llave, las
-// acciones responden 503 con un mensaje claro — el circuito queda cableado y
-// el proveedor se enchufa cuando Diego cree la cuenta.
+// Proveedores (en orden): Resend (env RESEND_API_KEY) o SMTP (env SMTP_USER +
+// SMTP_PASS, por defecto Gmail: basta una «contraseña de aplicación» del
+// propio Gmail de Diego, sin crear cuentas nuevas — ~500 correos/día).
+// Sin ninguno, las acciones responden 503 con un mensaje claro.
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
@@ -17,7 +18,11 @@ const CLAVE_INICIAL = "111111";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 const RESEND = limpiar(process.env.RESEND_API_KEY) || "";
-const REMITENTE = limpiar(process.env.CORREO_REMITENTE) || "GrupoER <onboarding@resend.dev>";
+const SMTP_USER = limpiar(process.env.SMTP_USER) || "";
+const SMTP_PASS = limpiar(process.env.SMTP_PASS) || "";
+const SMTP_HOST = limpiar(process.env.SMTP_HOST) || "smtp.gmail.com";
+const REMITENTE = limpiar(process.env.CORREO_REMITENTE) ||
+  (SMTP_USER ? `GrupoER <${SMTP_USER}>` : "GrupoER <onboarding@resend.dev>");
 const cabService = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };
 
 async function rest(ruta, opciones = {}) {
@@ -29,14 +34,29 @@ async function rest(ruta, opciones = {}) {
 }
 
 async function enviar(destino, asunto, html) {
-  if (!RESEND) return { error: "El motor de correo aún no está configurado (falta RESEND_API_KEY)." };
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${RESEND}`, "content-type": "application/json" },
-    body: JSON.stringify({ from: REMITENTE, to: [destino], subject: asunto, html }),
-  });
-  if (!r.ok) return { error: `El proveedor de correo respondió ${r.status}: ${(await r.text()).slice(0, 200)}` };
-  return {};
+  if (RESEND) {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: REMITENTE, to: [destino], subject: asunto, html }),
+    });
+    if (!r.ok) return { error: `El proveedor de correo respondió ${r.status}: ${(await r.text()).slice(0, 200)}` };
+    return {};
+  }
+  if (SMTP_USER && SMTP_PASS) {
+    try {
+      const { default: nodemailer } = await import("nodemailer");
+      const transporte = nodemailer.createTransport({
+        host: SMTP_HOST, port: 465, secure: true,
+        auth: { user: SMTP_USER, pass: SMTP_PASS },
+      });
+      await transporte.sendMail({ from: REMITENTE, to: destino, subject: asunto, html });
+      return {};
+    } catch (e) {
+      return { error: `El envío SMTP falló: ${String(e.message).slice(0, 200)}` };
+    }
+  }
+  return { error: "El motor de correo aún no está configurado (falta RESEND_API_KEY o SMTP_USER/SMTP_PASS)." };
 }
 
 const plantilla = (titulo, cuerpo) => `
