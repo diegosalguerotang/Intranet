@@ -109,7 +109,15 @@ export default function Inventario() {
             const est = ESTADOS[a.estado];
             return (
               <tr key={a.codigo} className="hover:bg-papel/60">
-                <Td className="font-mono text-[12px] font-semibold">{a.codigo}</Td>
+                <Td className="font-mono text-[12px] font-semibold">
+                  {a.codigo}
+                  {a.por_corregir && (
+                    // Código repetido en el inventario importado: identidad
+                    // pendiente de corrección (se limpia reimportando el
+                    // archivo ya corregido).
+                    <span className="ml-1.5"><Badge tone="pend">Falta corregir</Badge></span>
+                  )}
+                </Td>
                 <Td className="text-gris">{a.categoria}</Td>
                 <Td className="font-semibold">{a.marca} {a.modelo}</Td>
                 <Td className="font-mono text-[11.5px] text-gris">{a.serie}{a.imei ? ` · ${a.imei}` : ""}</Td>

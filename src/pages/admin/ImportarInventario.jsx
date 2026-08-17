@@ -60,13 +60,12 @@ export default function ImportarInventario({ open, onClose }) {
     }
   };
 
-  // "Sí, subir a X": recién aquí se procesa contra el sistema. Si el archivo
-  // trae duplicados internos, la vista previa del servidor los bloquearía con
-  // excepción: se muestran directamente sin llamar a la RPC.
+  // "Sí, subir a X": recién aquí se procesa contra el sistema. Los códigos
+  // repetidos del archivo ya llegan sufijados por el parser (PROLT51-R2) y
+  // marcados repetido=true: no bloquean, entran «falta corregir».
   const confirmarEmpresa = async () => {
     const sesion = sesionRef.current;
     setError(null);
-    if (analisis.duplicados.length > 0) { setPaso(3); return; }
     setOcupado(true);
     try {
       const p = await previsualizarImportacionActivos(
@@ -106,7 +105,12 @@ export default function ImportarInventario({ open, onClose }) {
     return a.asignado ?? a.asignado_sin_confirmar ?? null;
   };
 
-  const bloqueado = (analisis?.duplicados.length ?? 0) > 0;
+  // Código provisional asignado a cada repetición de un código del archivo.
+  const provisionales = (codigo) =>
+    (analisis?.activos ?? [])
+      .filter((a) => a.repetido && a.codigoArchivo === codigo && a.codigo !== codigo)
+      .map((a) => `la fila ${a.fila} entra como ${a.codigo}`)
+      .join("; ");
 
   return (
     <Modal open={open} onClose={cerrar} title="ADQ-08 · Importar inventario" wide>
@@ -162,7 +166,7 @@ export default function ImportarInventario({ open, onClose }) {
 
         {paso === 3 && analisis && (
           <>
-            {!bloqueado && previa && (
+            {previa && (
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{previa.altas.length}</div><div className="font-mono text-[10px] uppercase text-gris">Altas</div></div>
                 <div className="rounded-md bg-pend-bg py-4"><div className="text-[22px] font-bold text-pend">{previa.actualizaciones.length}</div><div className="font-mono text-[10px] uppercase text-gris">A actualizar</div></div>
@@ -170,17 +174,18 @@ export default function ImportarInventario({ open, onClose }) {
               </div>
             )}
 
-            {bloqueado && (
-              <Note tone="alerta">
-                <b>{analisis.duplicados.length} código{analisis.duplicados.length === 1 ? "" : "s"} duplicado{analisis.duplicados.length === 1 ? "" : "s"} dentro del archivo.</b>{" "}
-                No se importa ningún activo hasta corregir el archivo: el código es la identidad del
-                activo y dos filas con el mismo código son dos equipos indistinguibles.
+            {analisis.duplicados.length > 0 && (
+              <Note tone="pend">
+                <b>{analisis.duplicados.length} código{analisis.duplicados.length === 1 ? "" : "s"} repetido{analisis.duplicados.length === 1 ? "" : "s"} dentro del archivo.</b>{" "}
+                Se importan TODOS marcados «repetido — falta corregir»; cada repetición recibe un
+                código provisional hasta que se corrija el definitivo:
                 <ul className="mt-2 list-disc space-y-1 pl-4">
                   {analisis.duplicados.map((d) => (
                     <li key={d.codigo}>
                       <b>{d.codigo}</b> — filas {d.filas.join(" y ")} del archivo, asignado a{" "}
                       {d.usuarios.map((u) => u || "(sin usuario)").join(" / ")}
                       {quienLoTiene(d.codigo) ? `; en el sistema hoy lo tiene ${quienLoTiene(d.codigo)}` : ""}
+                      {provisionales(d.codigo) ? `; ${provisionales(d.codigo)}` : ""}
                     </li>
                   ))}
                 </ul>
@@ -232,7 +237,7 @@ export default function ImportarInventario({ open, onClose }) {
               </Note>
             )}
 
-            {!bloqueado && previa && previa.actualizaciones.length > 0 && (
+            {previa && previa.actualizaciones.length > 0 && (
               <div className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-borde bg-papel/40 p-3 text-[12.5px]">
                 <div className="font-mono text-[10px] uppercase text-gris">Qué cambia, campo por campo</div>
                 {previa.actualizaciones.map((a) => (
@@ -248,14 +253,10 @@ export default function ImportarInventario({ open, onClose }) {
 
             {error && <Note tone="alerta">{error}</Note>}
             <div className="flex gap-2">
-              {!bloqueado && (
-                <Button onClick={confirmarImportacion} disabled={ocupado}>
-                  {ocupado ? "Importando…" : `Importar a ${analisis.empresa.corto}`}
-                </Button>
-              )}
-              <Button variant="secondary" onClick={cerrar} disabled={ocupado}>
-                {bloqueado ? "Cerrar (corregir el archivo)" : "Cancelar"}
+              <Button onClick={confirmarImportacion} disabled={ocupado}>
+                {ocupado ? "Importando…" : `Importar a ${analisis.empresa.corto}`}
               </Button>
+              <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
             </div>
           </>
         )}
@@ -265,6 +266,8 @@ export default function ImportarInventario({ open, onClose }) {
             <Note tone="conf">
               Inventario importado a {analisis.empresa.nombre}: {resultado.altas.length} altas,{" "}
               {resultado.actualizaciones.length} actualizaciones, {resultado.sin_cambio.length} sin cambio.
+              {analisis.duplicados.length > 0 &&
+                ` ${analisis.activos.filter((a) => a.repetido).length} activos quedaron marcados «repetido — falta corregir».`}{" "}
               La vinculación de cada equipo a un trabajador del maestro se hace desde la pantalla de
               activos (el archivo no trae DNI y los nombres no son confiables).
             </Note>

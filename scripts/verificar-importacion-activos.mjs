@@ -100,6 +100,21 @@ await prueba("un prefijo más corto no degrada el valor guardado", async () => {
   igual(a.asignado_sin_confirmar, "PRUEBA PRUEBA", "no degradado");
 });
 
+await prueba("una repetición importa con repetido=true y queda por_corregir", async () => {
+  const [{ r }] = await importar("promant", act("ZZPRUEBA-REP", { repetido: true }));
+  igual(r.altas.length, 1, "alta");
+  const [a] = await sql("select por_corregir from activos where codigo='ZZPRUEBA-REP'");
+  igual(a.por_corregir, true, "por_corregir");
+});
+
+await prueba("reimportar corregido (repetido=false) limpia el estado por_corregir", async () => {
+  const [{ r }] = await importar("promant", act("ZZPRUEBA-REP", { repetido: false }));
+  igual(r.actualizaciones.length, 1, "aparece como actualización");
+  igual(r.actualizaciones[0].cambios.por_corregir.despues, false, "diff del estado");
+  const [a] = await sql("select por_corregir from activos where codigo='ZZPRUEBA-REP'");
+  igual(a.por_corregir, false, "estado limpio");
+});
+
 await prueba("actualización real: diff campo por campo con antes y después", async () => {
   const [{ r }] = await importar("promant", act("ZZPRUEBA-A", { modelo: "20999" }));
   igual(r.actualizaciones.length, 1, "actualizaciones");

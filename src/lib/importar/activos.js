@@ -188,20 +188,35 @@ export function parsearActivos(filas, { recodificarImpresoras = true } = {}) {
     }
   }
 
-  // 6 · Duplicados dentro del archivo (bloqueantes): mismo código 2+ veces.
+  // 6 · Códigos repetidos dentro del archivo (decisión de Diego, 2026-08-17):
+  // ya NO bloquean — entran TODOS marcados «repetido, falta corregir». Como el
+  // código es la identidad, las repeticiones reciben un código provisional con
+  // sufijo -R2, -R3… (determinista por orden de aparición: reimportar el mismo
+  // archivo produce los mismos códigos). El aviso se sigue reportando con
+  // filas y usuarios para que quien corrige sepa cuál de las filas está mal.
   const porCodigo = new Map();
   for (const a of r.activos) {
+    a.repetido = false;
     if (!porCodigo.has(a.codigo)) porCodigo.set(a.codigo, []);
     porCodigo.get(a.codigo).push(a);
   }
   for (const [codigo, grupo] of porCodigo) {
-    if (grupo.length > 1) {
-      r.duplicados.push({
-        codigo,
-        filas: grupo.map((a) => a.fila),
-        usuarios: grupo.map((a) => a.usuario),
-      });
-    }
+    if (grupo.length < 2) continue;
+    r.duplicados.push({
+      codigo,
+      filas: grupo.map((a) => a.fila),
+      usuarios: grupo.map((a) => a.usuario),
+    });
+    grupo.forEach((a, i) => {
+      a.repetido = true;
+      if (i > 0) {
+        a.codigoArchivo = a.codigoArchivo ?? a.codigo;
+        a.codigo = `${codigo}-R${i + 1}`;
+      }
+      a.observaciones = [a.observaciones,
+        `Código ${codigo} repetido en el archivo (filas ${grupo.map((x) => x.fila).join(", ")}): falta corregir.`]
+        .filter(Boolean).join(" · ");
+    });
   }
 
   // 7 · Serie repetida (advertencia): dos códigos DISTINTOS con la misma serie

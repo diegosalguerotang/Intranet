@@ -26,7 +26,9 @@ describe("parsearActivos con el fixture real", () => {
 
   it("detecta 72 filas de activo y 65 códigos únicos (archivo tal cual)", () => {
     expect(crudo.activos.length).toBe(72);
-    expect(new Set(crudo.activos.map((a) => a.codigo)).size).toBe(65);
+    // El código DEL ARCHIVO: los sufijos -R2 de las repeticiones son del
+    // sistema, no del archivo (codigoArchivo conserva el original).
+    expect(new Set(crudo.activos.map((a) => a.codigoArchivo ?? a.codigo)).size).toBe(65);
   });
 
   it("reporta los cinco códigos duplicados del archivo tal cual", () => {
@@ -126,7 +128,7 @@ describe("recodificación de impresoras por número de serie", () => {
     expect(imp.observaciones).toContain("EPSON2018");
   });
 
-  it("los duplicados de impresoras quedan resueltos: solo PROLT51 sigue bloqueando", () => {
+  it("los duplicados de impresoras quedan resueltos: solo PROLT51 sigue repetido", () => {
     expect(r.duplicados.map((d) => d.codigo)).toEqual(["PROLT51"]);
   });
 
@@ -140,8 +142,35 @@ describe("recodificación de impresoras por número de serie", () => {
     expect(r.activos.find((a) => a.fila === 88).codigo).toBe("KONIKA COLOR");
   });
 
-  it("los códigos únicos suben a 71 (72 filas menos el par PROLT51)", () => {
-    expect(new Set(r.activos.map((a) => a.codigo)).size).toBe(71);
+});
+
+// Decisión de Diego (2026-08-17, segunda): un código repetido dentro del
+// archivo ya NO bloquea la importación — entra marcado «repetido, falta
+// corregir». Como el código es la identidad, las repeticiones reciben un
+// código provisional con sufijo -R2, -R3… hasta la corrección definitiva.
+describe("códigos repetidos entran marcados «falta corregir»", () => {
+  it("las dos filas PROLT51 se importan: la primera con su código, la segunda con sufijo", () => {
+    const f20 = r.activos.find((a) => a.fila === 20);
+    const f67 = r.activos.find((a) => a.fila === 67);
+    expect(f20.codigo).toBe("PROLT51");
+    expect(f67.codigo).toBe("PROLT51-R2");
+    expect(f67.codigoArchivo).toBe("PROLT51");
+  });
+  it("ambas ocurrencias quedan marcadas como repetido", () => {
+    expect(r.activos.find((a) => a.fila === 20).repetido).toBe(true);
+    expect(r.activos.find((a) => a.fila === 67).repetido).toBe(true);
+    expect(r.activos.filter((a) => a.repetido).length).toBe(2);
+  });
+  it("tras el sufijo no queda ningún código duplicado en el resultado", () => {
+    expect(new Set(r.activos.map((a) => a.codigo)).size).toBe(r.activos.length);
+  });
+  it("el aviso de duplicado sigue reportándose con las filas y usuarios", () => {
+    const d = r.duplicados.find((x) => x.codigo === "PROLT51");
+    expect(d.filas).toEqual([20, 67]);
+    expect(d.usuarios).toEqual(["FABRIZZIO NUEVA", "CHRISTIAN CHAMBI"]);
+  });
+  it("las filas no repetidas no llevan la marca", () => {
+    expect(r.activos.find((a) => a.codigo === "PROLT01").repetido).toBe(false);
   });
 });
 

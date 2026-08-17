@@ -286,6 +286,7 @@ create table activos (
   asignado_sin_confirmar text,               -- texto USUARIO del archivo: NO vincula al maestro
   usuario_anterior text,                     -- historial textual del archivo
   observaciones text,
+  por_corregir  boolean not null default false, -- código repetido en el archivo: falta corregir
   constraint imei_solo_telefonia check (imei is null or categoria = 'Telefonía')
 );
 
@@ -636,7 +637,8 @@ select ac.codigo, ac.categoria, ac.marca, ac.modelo, ac.serie, ac.imei,
        coalesce(vi.sede_id, ac.sede_id) as sede,
        ac.empresa_id as empresa, ac.valor,
        to_char(ac.compra, 'YYYY-MM-DD') as compra,
-       ac.tipo, ac.area, ac.asignado_sin_confirmar, ac.usuario_anterior, ac.observaciones
+       ac.tipo, ac.area, ac.asignado_sin_confirmar, ac.usuario_anterior, ac.observaciones,
+       ac.por_corregir
 from activos ac
 left join asignaciones asg on asg.activo_codigo = ac.codigo and asg.devuelto_en is null
 left join vinculos vi on vi.persona_dni = asg.persona_dni and vi.fecha_fin is null;
@@ -1114,18 +1116,20 @@ declare
   v_altas text[] := '{}'; v_sin text[] := '{}'; v_acts jsonb := '[]'::jsonb;
   v_cambios jsonb; j_antes jsonb; j_despues jsonb;
   v_campos text[] := array['marca','modelo','serie','tipo','area',
-    'asignado_sin_confirmar','usuario_anterior','observaciones'];
+    'asignado_sin_confirmar','usuario_anterior','observaciones','por_corregir'];
 begin
   if (select estado from empresas where id = p_empresa) is distinct from 'activa' then
     raise exception 'La empresa % no está activa: importación rechazada completa.', p_empresa;
   end if;
 
+  -- Los repetidos del ARCHIVO ya llegan sufijados por el parser (PROLT51-R2)
+  -- y marcados repetido=true; un duplicado en el payload es señal de error.
   select d.codigo into v_codigo from (
     select trim(x->>'codigo') as codigo
     from jsonb_array_elements(p_activos) x
     group by 1 having count(*) > 1 limit 1) d;
   if v_codigo is not null then
-    raise exception 'El código % aparece más de una vez en el archivo: no se importa ningún activo hasta corregirlo.', v_codigo;
+    raise exception 'El código % aparece más de una vez en el lote recibido: no se importa ningún activo.', v_codigo;
   end if;
 
   for a in select * from jsonb_array_elements(p_activos) loop
@@ -1141,7 +1145,8 @@ begin
 
     if v_otra is null then
       insert into activos (codigo, categoria, empresa_id, marca, modelo, serie,
-                           tipo, area, asignado_sin_confirmar, usuario_anterior, observaciones)
+                           tipo, area, asignado_sin_confirmar, usuario_anterior, observaciones,
+                           por_corregir)
       values (v_codigo, 'Cómputo', p_empresa,
               nullif(trim(coalesce(a->>'marca', '')), ''),
               nullif(trim(coalesce(a->>'modelo', '')), ''),
@@ -1150,7 +1155,8 @@ begin
               nullif(trim(coalesce(a->>'area', '')), ''),
               nullif(trim(coalesce(a->>'usuario', '')), ''),
               nullif(trim(coalesce(a->>'usuarioAnterior', '')), ''),
-              nullif(trim(coalesce(a->>'observaciones', '')), ''));
+              nullif(trim(coalesce(a->>'observaciones', '')), ''),
+              coalesce((a->>'repetido')::boolean, false));
       v_altas := v_altas || v_codigo;
     else
       select to_jsonb(ac) into j_antes from activos ac where codigo = v_codigo;
@@ -1162,7 +1168,10 @@ begin
         area = fn_valor_importado(a->>'area', area),
         asignado_sin_confirmar = fn_valor_importado(a->>'usuario', asignado_sin_confirmar),
         usuario_anterior = fn_valor_importado(a->>'usuarioAnterior', usuario_anterior),
-        observaciones = fn_valor_importado(a->>'observaciones', observaciones)
+        observaciones = fn_valor_importado(a->>'observaciones', observaciones),
+        -- Estado, no dato: true al importar una repetición y false cuando el
+        -- archivo corregido ya no repite el código.
+        por_corregir = coalesce((a->>'repetido')::boolean, false)
       where codigo = v_codigo;
       select to_jsonb(ac) into j_despues from activos ac where codigo = v_codigo;
 

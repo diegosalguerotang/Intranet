@@ -65,7 +65,18 @@ serie.** Implementado como comportamiento por defecto del parser
 (`recodificarImpresoras: true`): impresora + serie con forma real → código =
 serie; el código del archivo queda en observaciones y en `codigoArchivo`, y la
 vista previa lista cada recodificación. En el archivo real: 11 de 14
-impresoras recodificadas, los 4 choques EPSON+año resueltos, códigos únicos
-72→71. PENDIENTE DE DIEGO: **PROLT51 sigue duplicado** (dos laptops, filas 20
-y 67, usuarios FABRIZZIO NUEVA y CHRISTIAN CHAMBI; sus series son basura de
-procesador) — hay que corregirlo en el archivo antes de poder importarlo.
+impresoras recodificadas, los 4 choques EPSON+año resueltos.
+
+SEGUNDA DECISIÓN DE DIEGO (2026-08-17): **un código repetido dentro del
+archivo ya NO bloquea la importación — entra marcado «repetido, falta
+corregir».** Implementado: el parser marca `repetido` en todas las ocurrencias
+y sufija las repeticiones con un código provisional determinista (-R2, -R3…);
+la BD guarda el estado en `activos.por_corregir` (el RPC lo escribe SIEMPRE:
+true al importar una repetición, false cuando el archivo corregido ya no
+repite el código — reimportar corrige el estado solo); ADQ-01 muestra el badge
+«Falta corregir» junto al código; la vista previa lista código, filas,
+usuarios, quién lo tiene en el sistema y el provisional asignado. Con esto el
+archivo real de PROMANT importa COMPLETO: PROLT51 (filas 20/67) entra como
+PROLT51 + PROLT51-R2, ambos marcados. Migración
+`2026-08-17-activos-repetidos.sql` aplicada; verificación 18/18 en producción
+(incluye limpieza del estado al reimportar corregido); vitest 76/76.
