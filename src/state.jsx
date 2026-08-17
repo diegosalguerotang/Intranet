@@ -356,6 +356,18 @@ export function AppProvider({ children }) {
       await recargar("personal");
       return data;
     },
+    // RRH-21 — Alta manual de sede: el código S-NNNN lo asigna la BD (misma
+    // secuencia que usa la importación de personal al crear sedes).
+    crearSede: async ({ empresaId: empresaIdArg, nombre, cliente, direccion }) => {
+      if (!supabaseListo) throw new Error("El alta real de sedes requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("crear_sede", {
+        p_empresa: empresaIdArg, p_nombre: nombre, p_cliente: cliente || null,
+        p_direccion: direccion || null, p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("sedes");
+      return data; // { id, codigo }
+    },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es
     // un único RPC transaccional. Los bloqueos (duplicado, otra empresa)

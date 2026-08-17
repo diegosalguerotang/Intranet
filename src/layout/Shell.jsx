@@ -3,7 +3,7 @@ import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, PieChart, LogOut, Building2,
-  UserCog, ShieldCheck, KeyRound, ScrollText,
+  UserCog, ShieldCheck, KeyRound, ScrollText, MapPin,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -14,6 +14,7 @@ import CambioClave from "../pages/CambioClave";
 const NAV_RRHH = [
   { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true, modulo: MODULOS_RRHH },
   { to: "/rrhh/personal", icon: Users, label: "Personal", code: "RRH-02", modulo: "personal" },
+  { to: "/rrhh/sedes", icon: MapPin, label: "Sedes", code: "RRH-21", modulo: "personal" },
   { to: "/rrhh/boletas", icon: FileText, label: "Carga de boletas", code: "RRH-06", modulo: "boletas" },
   { to: "/rrhh/acuses", icon: CheckSquare, label: "Acuses", code: "RRH-11", modulo: "acuses" },
   { to: "/rrhh/comunicados", icon: Megaphone, label: "Comunicados", code: "RRH-16", modulo: "comunicados" },

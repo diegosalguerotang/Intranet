@@ -6,6 +6,7 @@ import Shell from "./layout/Shell";
 import AdminLogin from "./pages/AdminLogin";
 import Tablero from "./pages/rrhh/Tablero";
 import Personal from "./pages/rrhh/Personal";
+import Sedes from "./pages/rrhh/Sedes";
 import Legajo from "./pages/rrhh/Legajo";
 import Boletas from "./pages/rrhh/Boletas";
 import Acuses, { Constancia } from "./pages/rrhh/Acuses";
@@ -65,6 +66,7 @@ export default function App() {
             <Route path="/rrhh" element={<RequiereModulo modulo={MODULOS_RRHH}><Tablero /></RequiereModulo>} />
             <Route path="/rrhh/personal" element={<RequiereModulo modulo="personal"><Personal /></RequiereModulo>} />
             <Route path="/rrhh/personal/:dni" element={<RequiereModulo modulo="personal"><Legajo /></RequiereModulo>} />
+            <Route path="/rrhh/sedes" element={<RequiereModulo modulo="personal"><Sedes /></RequiereModulo>} />
             <Route path="/rrhh/boletas" element={<RequiereModulo modulo="boletas"><Boletas /></RequiereModulo>} />
             <Route path="/rrhh/acuses" element={<RequiereModulo modulo="acuses"><Acuses /></RequiereModulo>} />
             <Route path="/rrhh/acuses/:dni" element={<RequiereModulo modulo="acuses"><Constancia /></RequiereModulo>} />

@@ -24,7 +24,7 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   registrar_epp, publicar_comunicado, fn_solo_empresa_activa,
   fn_es_prefijo_truncado, fn_sede_para_importacion, importar_planilla,
   previsualizar_importacion, publicar_lote_pdf, fn_valor_importado,
-  importar_activos, previsualizar_importacion_activos cascade;
+  importar_activos, previsualizar_importacion_activos, crear_sede cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -55,8 +55,10 @@ create table personas (
   creado_en             timestamptz not null default now()
 );
 
+create sequence if not exists seq_sede_codigo;
 create table sedes (
   id             text primary key,
+  codigo         text unique,               -- S-0001, S-0002… (crear_sede / importación)
   empresa_id     text not null references empresas(id),
   nombre         text not null,
   cliente        text not null,
@@ -387,6 +389,16 @@ insert into sedes (id, empresa_id, nombre, cliente, supervisor_dni) values
   ('essalud',     'bremco',  'ESSALUD — Jesús María',     'ESSALUD',     '45098234'),
   ('ucv',         'promant', 'UCV — Lima Norte',          'UCV',         '46654387');
 
+-- Código de sede para el seed (mismo backfill idempotente de la migración).
+do $$
+declare s record;
+begin
+  for s in select id from sedes where codigo is null order by creado_en, id loop
+    update sedes set codigo = 'S-' || lpad(nextval('seq_sede_codigo')::text, 4, '0')
+    where id = s.id;
+  end loop;
+end $$;
+
 insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio, fecha_fin) values
   ('45231876', 'negliaf', 'sunat',       'Operario de limpieza',     '2023-03-01', null),
   ('41887203', 'negliaf', 'migraciones', 'Operario de limpieza',     '2022-01-15', null),
@@ -542,7 +554,8 @@ end $$;
 -- VISTAS DE LECTURA (contrato de datos con la interfaz)
 -- ---------------------------------------------------------------------------
 create view v_sedes as
-select s.id, s.empresa_id as empresa, s.nombre, s.cliente, p.nombre as supervisor
+select s.id, s.empresa_id as empresa, s.nombre, s.cliente, p.nombre as supervisor,
+       s.codigo, s.direccion, s.estado
 from sedes s left join personas p on p.dni = s.supervisor_dni;
 
 create view v_personal as
@@ -980,10 +993,44 @@ begin
   order by length(nombre) desc limit 1;
   if v_id is not null then return v_id; end if;
   v_id := p_empresa || '-' || lower(regexp_replace(trim(p_sede), '\s+', '-', 'g'));
-  insert into sedes (id, empresa_id, nombre, cliente)
-  values (v_id, p_empresa, trim(p_sede), coalesce(p_cliente, 'Por asignar'))
+  insert into sedes (id, empresa_id, nombre, cliente, codigo)
+  values (v_id, p_empresa, trim(p_sede), coalesce(p_cliente, 'Por asignar'),
+          'S-' || lpad(nextval('seq_sede_codigo')::text, 4, '0'))
   on conflict (id) do nothing;
   return v_id;
+end $$;
+
+-- Alta manual de sede (RRH-21): id slug estable + código de secuencia.
+create function crear_sede(
+  p_empresa text, p_nombre text, p_cliente text,
+  p_direccion text default null, p_por text default 'RRHH'
+) returns jsonb language plpgsql security definer as $$
+declare v_id text; v_codigo text;
+begin
+  if (select estado from empresas where id = p_empresa) is distinct from 'activa' then
+    raise exception 'La empresa % no está activa.', p_empresa;
+  end if;
+  if trim(coalesce(p_nombre, '')) = '' then
+    raise exception 'La sede necesita un nombre.';
+  end if;
+  if exists (select 1 from sedes
+             where empresa_id = p_empresa and upper(trim(nombre)) = upper(trim(p_nombre))) then
+    raise exception 'Ya existe una sede «%» en esa empresa.', trim(p_nombre);
+  end if;
+  v_id := p_empresa || '-' || lower(regexp_replace(trim(p_nombre), '\s+', '-', 'g'));
+  if exists (select 1 from sedes where id = v_id) then
+    raise exception 'Ya existe una sede con ese identificador (%).', v_id;
+  end if;
+  v_codigo := 'S-' || lpad(nextval('seq_sede_codigo')::text, 4, '0');
+  insert into sedes (id, empresa_id, nombre, cliente, direccion, codigo)
+  values (v_id, p_empresa, trim(p_nombre),
+          coalesce(nullif(trim(p_cliente), ''), 'Por asignar'),
+          nullif(trim(coalesce(p_direccion, '')), ''), v_codigo);
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('CREAR_SEDE', 'sedes', null, jsonb_build_object(
+    'id', v_id, 'codigo', v_codigo, 'empresa', p_empresa,
+    'nombre', trim(p_nombre), 'por', p_por));
+  return jsonb_build_object('id', v_id, 'codigo', v_codigo);
 end $$;
 
 create function importar_planilla(p_empresa text, p_filas jsonb, p_por text)
