@@ -45,7 +45,7 @@ create table empresas (
 create table personas (
   dni                   text primary key check (dni ~ '^[0-9]{8}$'),
   nombre                text not null,
-  celular               text check (celular is null or celular ~ '^[0-9]{9}$'),
+  celular               text,  -- LIBRE: puede venir con +51 o espacios (Excels de planilla)
   direccion             text,
   banco                 text,
   cuenta                text,

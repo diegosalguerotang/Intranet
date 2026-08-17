@@ -6,6 +6,7 @@ import {
   PageHeader, Card, Table, Td, Badge, Button, Input, Select, Field, Modal, Note, EmptyState,
 } from "../../components/ui";
 import { CARGOS } from "../../data/mock";
+import { soloDigitos } from "../../lib/campos";
 
 const PORTAL_BADGE = {
   activo: { tone: "conf", label: "Activo" },
@@ -244,7 +245,7 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
       <form onSubmit={guardar} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="DNI" required hint="Si el DNI ya existe como Persona, se agrega un vínculo sin duplicarla.">
-            <Input inputMode="numeric" maxLength={8} value={form.dni} onChange={(e) => setForm((f) => ({ ...f, dni: e.target.value.replace(/\D/g, "") }))} />
+            <Input inputMode="numeric" value={form.dni} onChange={(e) => setForm((f) => ({ ...f, dni: soloDigitos(e.target.value, 8) }))} />
           </Field>
           <Field label="Nombres y apellidos" required>
             <Input placeholder="Como figura en el DNI" value={form.nombre} onChange={set("nombre")} />
@@ -257,7 +258,9 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
         )}
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Celular" hint="Sin celular queda marcado para acuse asistido.">
-            <Input inputMode="numeric" maxLength={9} placeholder="9 dígitos" value={form.celular} onChange={(e) => setForm((f) => ({ ...f, celular: e.target.value.replace(/\D/g, "") }))} />
+            {/* Campo LIBRE (2026-08-17): puede venir con +51 o espacios, igual
+                que en los Excels de planilla. Se guarda tal cual. */}
+            <Input placeholder="987 654 321 o +51 987 654 321" value={form.celular} onChange={set("celular")} />
           </Field>
           <Field label="Sede" required>
             <Select value={form.sede} onChange={set("sede")}>

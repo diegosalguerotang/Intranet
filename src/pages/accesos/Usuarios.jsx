@@ -90,7 +90,12 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
                       <button
                         key={p.dni}
                         className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-papel"
-                        onClick={() => setPersonaSel(p)}
+                        onClick={() => {
+                          setPersonaSel(p);
+                          // Los datos ya registrados en Personal se jalan al
+                          // formulario; siguen siendo editables aquí.
+                          setCelular((c) => c || p.celular || "");
+                        }}
                       >
                         <span className="text-[13px] text-tinta">{p.nombre}</span>
                         <span className="font-mono text-[11.5px] text-gris-cl">{p.dni}</span>
@@ -177,7 +182,8 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
             <Input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="usuario@grupoer.pe" />
           </Field>
           <Field label="Celular de contacto">
-            <Input value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="9 dígitos" maxLength={9} />
+            {/* Campo LIBRE: acepta +51 y espacios, se guarda tal cual. */}
+            <Input value={celular} onChange={(e) => setCelular(e.target.value)} placeholder="987 654 321 o +51 987 654 321" />
           </Field>
         </div>
 

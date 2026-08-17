@@ -4,6 +4,7 @@ import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Modal, Field, Input, Select, Note,
 } from "../../components/ui";
+import { normalizarCelular } from "../../lib/campos";
 
 // ADQ-05 — Líneas móviles
 export default function Lineas() {
@@ -85,7 +86,7 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
       <form onSubmit={guardar} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Número" required>
-            <Input inputMode="numeric" maxLength={9} value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value.replace(/\D/g, "") }))} />
+            <Input inputMode="numeric" value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: normalizarCelular(e.target.value) }))} />
           </Field>
           <Field label="Operador" required>
             <Select value={form.operador} onChange={set("operador")}>

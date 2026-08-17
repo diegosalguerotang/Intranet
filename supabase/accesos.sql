@@ -104,7 +104,7 @@ create table usuarios_admin (
   perfil_id      text not null,
   perfil_version integer not null,
   correo         text,
-  celular        text check (celular is null or celular ~ '^[0-9]{9}$'),
+  celular        text,  -- LIBRE: puede venir con +51 o espacios
   estado         text not null default 'activo' check (estado in ('activo','suspendido')),
   clave_provisional text,
   clave_entregada   text check (clave_entregada in ('correo','pantalla')),
