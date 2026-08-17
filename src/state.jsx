@@ -347,6 +347,28 @@ export function AppProvider({ children }) {
       await recargar("personal");
       return data;
     },
+    // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
+    // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es
+    // un único RPC transaccional. Los bloqueos (duplicado, otra empresa)
+    // llegan como error del RPC y detienen todo.
+    previsualizarImportacionActivos: async (empresaIdArg, activos, razonSocial, archivo) => {
+      if (!supabaseListo) throw new Error("La importación de inventario requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("previsualizar_importacion_activos", {
+        p_empresa: empresaIdArg, p_activos: activos, p_razon_social: razonSocial, p_archivo: archivo,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    importarActivos: async (empresaIdArg, activos, razonSocial, archivo) => {
+      if (!supabaseListo) throw new Error("La importación de inventario requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_activos", {
+        p_empresa: empresaIdArg, p_activos: activos, p_razon_social: razonSocial,
+        p_archivo: archivo, p_por: user?.nombre ?? user?.correo ?? "Administración",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("activos");
+      return data;
+    },
     // RRH-06→10 — Carga real de boletas desde PDF consolidado (Task 14). El
     // análisis/división/hash/subida a Storage ocurren en la pantalla (Boletas.jsx,
     // necesita progreso y reintento por archivo); esta acción es solo la

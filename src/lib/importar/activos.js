@@ -24,6 +24,25 @@ export function normalizarRazonSocial(s) {
   return n;
 }
 
+// Resuelve la razón social del archivo contra el catálogo dentro del alcance
+// del usuario. La del archivo MANDA (no es un selector). Fuera del catálogo y
+// fuera del alcance producen EXACTAMENTE el mismo rechazo: no se revela si la
+// empresa existe. Retirada dentro del alcance sí se dice (no filtra nada).
+const RECHAZO_GENERICO = (razon) =>
+  `La razón social del archivo («${razon}») no corresponde a ninguna empresa disponible. Importación rechazada: ningún activo se aplica.`;
+
+export function resolverEmpresaArchivo(razonSocial, empresas, acceso) {
+  const objetivo = normalizarRazonSocial(razonSocial);
+  const empresa = empresas.find((e) => normalizarRazonSocial(e.nombre) === objetivo);
+  if (!empresa) return { rechazo: RECHAZO_GENERICO(razonSocial) };
+  const alcanzada = acceso?.esSuperadmin || (acceso?.empresas ?? []).includes(empresa.id);
+  if (!alcanzada) return { rechazo: RECHAZO_GENERICO(razonSocial) };
+  if ((empresa.estado ?? "activa") === "retirada") {
+    return { rechazo: `${empresa.nombre} está retirada del grupo: no admite importaciones.` };
+  }
+  return { empresa };
+}
+
 // "Forma de número de serie": la columna trae sobre todo procesadores y
 // fabricantes (INTEL CORE I3, AMD RYZEN…). Solo se cruza serie repetida cuando
 // el valor parece una serie de verdad: largo, con varios dígitos y sin

@@ -4,6 +4,7 @@ import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Input, Select, Field, Modal, Note,
 } from "../../components/ui";
+import ImportarInventario from "./ImportarInventario";
 
 const ESTADOS = {
   disponible: { tone: "conf", label: "Disponible" },
@@ -19,6 +20,7 @@ export default function Inventario() {
   const [fCat, setFCat] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [alta, setAlta] = useState(false);
+  const [importar, setImportar] = useState(false);
   const [asignar, setAsignar] = useState(null); // activo a asignar
   const [devolver, setDevolver] = useState(null); // activo a devolver
   const [aviso, setAviso] = useState(null);
@@ -33,7 +35,7 @@ export default function Inventario() {
           (!fEstado || a.estado === fEstado) &&
           (!q ||
             a.codigo.toLowerCase().includes(q.toLowerCase()) ||
-            a.serie.toLowerCase().includes(q.toLowerCase()) ||
+            (a.serie ?? "").toLowerCase().includes(q.toLowerCase()) ||
             (a.imei ?? "").includes(q))
       ),
     [activos, empresaId, q, fCat, fEstado]
@@ -68,7 +70,9 @@ export default function Inventario() {
         subtitle="El estado de un activo y su asignación son cosas distintas: un activo puede estar operativo y sin asignar."
         actions={
           <>
-            <Button variant="secondary" size="sm"><Upload size={13} /> Importar</Button>
+            <Button variant="secondary" size="sm" onClick={() => setImportar(true)}>
+              <Upload size={13} /> Importar inventario
+            </Button>
             <Button size="sm" onClick={() => setAlta(true)}><PackagePlus size={13} /> Nuevo activo</Button>
           </>
         }
@@ -109,7 +113,17 @@ export default function Inventario() {
                 <Td className="text-gris">{a.categoria}</Td>
                 <Td className="font-semibold">{a.marca} {a.modelo}</Td>
                 <Td className="font-mono text-[11.5px] text-gris">{a.serie}{a.imei ? ` · ${a.imei}` : ""}</Td>
-                <Td>{a.asignado ? persona(a.asignado)?.nombre : <span className="text-gris-cl">—</span>}</Td>
+                <Td>
+                  {a.asignado ? (
+                    persona(a.asignado)?.nombre
+                  ) : a.asignado_sin_confirmar ? (
+                    // Texto importado del inventario: NO es un vínculo al
+                    // maestro; la vinculación real se hace con "Asignar".
+                    <span className="text-gris">{a.asignado_sin_confirmar} <span className="font-mono text-[10px] uppercase text-pend">sin confirmar</span></span>
+                  ) : (
+                    <span className="text-gris-cl">—</span>
+                  )}
+                </Td>
                 <Td className="font-mono text-[12px]">{a.valor.toLocaleString()}</Td>
                 <Td><Badge tone={est.tone}>{est.label}</Badge></Td>
                 <Td>
@@ -127,6 +141,7 @@ export default function Inventario() {
       </Card>
 
       <AltaActivo open={alta} onClose={() => setAlta(false)} />
+      <ImportarInventario open={importar} onClose={() => setImportar(false)} />
       <AsignarActivo activo={asignar} onClose={() => setAsignar(null)} onAsignar={ejecutarAsignacion} />
       <DevolucionActivo activo={devolver} onClose={() => setDevolver(null)} onDevolver={ejecutarDevolucion} />
     </>

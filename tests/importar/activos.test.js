@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { leerXlsx } from "../../src/lib/importar/xlsx.js";
-import { parsearActivos, normalizarRazonSocial } from "../../src/lib/importar/activos.js";
+import { parsearActivos, normalizarRazonSocial, resolverEmpresaArchivo } from "../../src/lib/importar/activos.js";
 
 // Criterios de aceptación de Importacion_Activos.docx, verificados contra el
 // archivo de muestra real (Formato 7.1 SUNAT usado como inventario).
@@ -137,5 +137,43 @@ describe("normalizarRazonSocial", () => {
   it("dos razones sociales distintas no se confunden", () => {
     expect(normalizarRazonSocial("PROMANT SERVICIOS"))
       .not.toBe(normalizarRazonSocial("NEGLIAF S.R.L."));
+  });
+});
+
+describe("resolverEmpresaArchivo", () => {
+  const CATALOGO = [
+    { id: "promant", nombre: "PROMANT SERVICIOS", estado: "activa" },
+    { id: "negliaf", nombre: "NEGLIAF S.R.L.", estado: "activa" },
+    { id: "bremco", nombre: "BREMCO S.C.R.L.", estado: "retirada" },
+  ];
+  const DENOMINACION = "PROMANT SERVICIOS SOCIEDAD COMERCIAL DE RESPONSABILIDAD LIMITADA";
+  const superadmin = { esSuperadmin: true, empresas: [] };
+
+  it("la denominación completa del archivo resuelve a la empresa del catálogo", () => {
+    const r = resolverEmpresaArchivo(DENOMINACION, CATALOGO, superadmin);
+    expect(r.empresa.id).toBe("promant");
+  });
+  it("una razón social fuera del catálogo se rechaza entera", () => {
+    const r = resolverEmpresaArchivo("EMPRESA FANTASMA S.A.C.", CATALOGO, superadmin);
+    expect(r.rechazo).toBeTruthy();
+    expect(r.empresa).toBeUndefined();
+  });
+  it("fuera del alcance del usuario se deniega con EL MISMO mensaje, sin revelar si existe", () => {
+    const limitado = { esSuperadmin: false, empresas: ["negliaf"] };
+    const fueraAlcance = resolverEmpresaArchivo(DENOMINACION, CATALOGO, limitado);
+    const noExiste = resolverEmpresaArchivo("EMPRESA FANTASMA S.A.C.", CATALOGO, limitado);
+    // El mensaje solo puede hacer eco de lo que el usuario subió (la razón del
+    // archivo): quitada esa parte, ambos rechazos son EL MISMO texto.
+    const plantilla = (m) => m.replace(/«[^»]*»/, "«…»");
+    expect(plantilla(fueraAlcance.rechazo)).toBe(plantilla(noExiste.rechazo));
+    expect(fueraAlcance.empresa).toBeUndefined();
+  });
+  it("dentro del alcance no superadmin sí resuelve", () => {
+    const limitado = { esSuperadmin: false, empresas: ["promant"] };
+    expect(resolverEmpresaArchivo(DENOMINACION, CATALOGO, limitado).empresa.id).toBe("promant");
+  });
+  it("una empresa retirada dentro del alcance se rechaza diciéndolo", () => {
+    const r = resolverEmpresaArchivo("BREMCO S.C.R.L.", CATALOGO, superadmin);
+    expect(r.rechazo).toMatch(/retirada/i);
   });
 });
