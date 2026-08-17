@@ -132,15 +132,23 @@ begin
 end $$;
 
 -- 6 · RPCs con sesión (el dni sale del JWT, jamás de un parámetro) -------------
+-- Desde 2026-08-17 también captura el correo (opcional): con correo
+-- verificado el trabajador puede recuperar su clave por enlace.
+drop function if exists portal_primer_ingreso(text, boolean, integer);
 create or replace function portal_primer_ingreso(
-  p_celular text, p_sin_celular boolean, p_politica_version integer
+  p_celular text, p_sin_celular boolean, p_politica_version integer,
+  p_correo text default null
 ) returns void language plpgsql security definer as $$
-declare v_dni text;
+declare v_dni text; v_correo text;
 begin
   v_dni := portal_dni();
   if v_dni is null then raise exception 'Sesión del portal requerida.'; end if;
   if not p_sin_celular and (p_celular is null or p_celular !~ '^[0-9]{9}$') then
     raise exception 'El celular debe tener 9 dígitos, o marca «No tengo celular».';
+  end if;
+  v_correo := nullif(lower(trim(coalesce(p_correo, ''))), '');
+  if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'El correo no tiene un formato válido.';
   end if;
   if not exists (select 1 from declaraciones where id = 'politica-datos' and version = p_politica_version) then
     raise exception 'Versión de la política de datos desconocida.';
@@ -155,7 +163,10 @@ begin
   if not found then raise exception 'La cuenta del portal no existe.'; end if;
   update personas
   set celular = coalesce(case when p_sin_celular then null else p_celular end, celular),
-      portal  = case when p_sin_celular then 'sin_celular' else 'activo' end
+      portal  = case when p_sin_celular then 'sin_celular' else 'activo' end,
+      correo = coalesce(v_correo, correo),
+      correo_verificado = case when v_correo is not null and v_correo is distinct from correo
+                               then false else correo_verificado end
   where dni = v_dni;
 end $$;
 

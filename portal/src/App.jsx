@@ -4,6 +4,7 @@ import { RouterProvider, useRouter } from "./router";
 import Marco from "./layout/Marco";
 import Ingreso from "./pages/Ingreso";
 import OlvideClave from "./pages/OlvideClave";
+import Restablecer from "./pages/Restablecer";
 import PrimerIngreso from "./pages/PrimerIngreso";
 import Inicio from "./pages/Inicio";
 import Boletas from "./pages/Boletas";
@@ -27,6 +28,7 @@ function Pantallas() {
   }, [perfil, ruta]);
 
   if (ruta === "/olvide-clave") return <OlvideClave />;
+  if (ruta === "/restablecer") return <Restablecer />; // llega desde el correo, sin sesión
   if (perfil === undefined) return <Cargando />;
   if (!perfil || perfil.expulsado) return <Ingreso />;
   if (perfil.primerIngresoPendiente) return <PrimerIngreso />;

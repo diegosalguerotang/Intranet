@@ -15,7 +15,7 @@ const PORTAL_BADGE = {
 };
 
 export default function Personal() {
-  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal } = useApp();
+  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal, enviarAccesoPortal } = useApp();
   const [q, setQ] = useState("");
   const [fSede, setFSede] = useState("");
   const [fPortal, setFPortal] = useState("");
@@ -129,9 +129,10 @@ export default function Personal() {
                   <Td className="text-gris">{p.cargo}</Td>
                   <Td className="text-gris">{sede(p.sede)?.cliente ?? "—"}</Td>
                   <Td className="font-mono text-[12px] text-gris">
-                    {/* Se completa solo cuando el trabajador declara su número
-                        en el primer ingreso del portal. */}
-                    {p.celular ?? <span className="text-gris-cl">—</span>}
+                    {/* Se completan solos cuando el trabajador los declara en
+                        el primer ingreso del portal. */}
+                    <div>{p.celular ?? <span className="text-gris-cl">—</span>}</div>
+                    {p.correo && <div className="text-[11px] text-gris-cl">{p.correo}{p.correoVerificado ? " ✓" : ""}</div>}
                   </Td>
                   <Td className="font-mono text-[12px] text-gris">{p.ingreso}</Td>
                   <Td><Badge tone={pb.tone}>{pb.label}</Badge></Td>
@@ -179,9 +180,29 @@ export default function Personal() {
                 </div>
               </div>
             )}
+            {cuentaResultado?.enviado && (
+              <Note tone="conf">Acceso enviado por correo a <b>{cuentaResultado.enviado}</b>.</Note>
+            )}
             {cuentaResultado?.error && <Note tone="alerta">{cuentaResultado.error}</Note>}
-            <div className="flex justify-end gap-2 border-t border-borde pt-4">
+            {cuenta.correo ? (
+              <Note tone="neutral">
+                Tiene correo registrado (<b>{cuenta.correo}</b>): puedes enviarle su acceso por ahí en vez de
+                entregarlo en mano.
+              </Note>
+            ) : (
+              <Note tone="neutral">Sin correo registrado: la clave se entrega en mano. El correo se captura en el alta o cuando el trabajador lo declare en su primer ingreso.</Note>
+            )}
+            <div className="flex flex-wrap justify-end gap-2 border-t border-borde pt-4">
               <Button variant="secondary" onClick={() => setCuenta(null)}>Cerrar</Button>
+              {cuenta.correo && (
+                <Button variant="secondary" disabled={cuentaOcupado} onClick={async () => {
+                  setCuentaOcupado(true);
+                  setCuentaResultado(await enviarAccesoPortal(cuenta.dni));
+                  setCuentaOcupado(false);
+                }}>
+                  {cuentaOcupado ? "Procesando…" : "Enviar acceso por correo"}
+                </Button>
+              )}
               <Button variant="secondary" disabled={cuentaOcupado} onClick={() => accionCuenta("restablecer")}>
                 {cuentaOcupado ? "Procesando…" : "Restablecer clave"}
               </Button>
@@ -220,7 +241,7 @@ export default function Personal() {
 
 // RRH-04 — Alta de trabajador
 function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
-  const vacio = { dni: "", nombre: "", celular: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "" };
+  const vacio = { dni: "", nombre: "", celular: "", correo: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "" };
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -240,6 +261,7 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
       sede: form.sede,
       ingreso: form.ingreso,
       celular: form.celular || null,
+      correo: form.correo.trim().toLowerCase() || null,
       portal: form.celular ? "nunca_ingreso" : "sin_celular",
       estado: "vigente",
       banco: form.banco,
@@ -272,6 +294,9 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
             {/* Campo LIBRE (2026-08-17): puede venir con +51 o espacios, igual
                 que en los Excels de planilla. Se guarda tal cual. */}
             <Input placeholder="987 654 321 o +51 987 654 321" value={form.celular} onChange={set("celular")} />
+          </Field>
+          <Field label="Correo (opcional)" hint="Si lo registras, podrás enviarle su acceso al portal por correo.">
+            <Input type="email" placeholder="persona@correo.com" value={form.correo} onChange={set("correo")} />
           </Field>
           <Field label="Sede" required>
             <Select value={form.sede} onChange={set("sede")}>

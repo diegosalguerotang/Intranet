@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Download } from "lucide-react";
-import { PageHeader, Card, Badge, Button, Table, Td, EmptyState, Note } from "../../components/ui";
+import { ArrowLeft, Download, Pencil } from "lucide-react";
+import { PageHeader, Card, Badge, Button, Table, Td, EmptyState, Note, Modal, Field, Input, Select } from "../../components/ui";
 import { useApp } from "../../state";
 import { AUDITORIA } from "../../data/mock";
+import { nivelDe } from "../../data/modulos";
 
 const TABS = ["Datos personales", "Vínculos", "Documentos", "Disciplina", "Activos", "Actividad"];
 
@@ -17,8 +18,12 @@ const ESTADO_ACUSE = {
 export default function Legajo() {
   const { dni } = useParams();
   const [tab, setTab] = useState(0);
-  const { db, persona, sede, empresaPor } = useApp();
+  const [editar, setEditar] = useState(false);
+  const [aviso, setAviso] = useState(null);
+  const { db, persona, sede, empresaPor, user, editarTrabajador } = useApp();
   const p = persona(dni);
+  // Editar exige nivel de ACCIÓN en Personal (el RPC lo vuelve a validar).
+  const puedeEditar = nivelDe(user?.acceso ?? (user ? { esSuperadmin: user.esSuperadmin } : null), "personal") >= 2;
 
   if (!p) {
     return <EmptyState title="Trabajador no encontrado" body={`No existe un registro con DNI ${dni}.`} />;
@@ -44,11 +49,16 @@ export default function Legajo() {
         subtitle={`${p.cargo} · ${s?.nombre} · ${e?.nombre}`}
         actions={
           <>
+            {puedeEditar && (
+              <Button size="sm" onClick={() => setEditar(true)}><Pencil size={13} /> Editar datos</Button>
+            )}
             <Button variant="secondary" size="sm"><Download size={13} /> Descargar legajo</Button>
             <Button variant="secondary" size="sm"><Download size={13} /> Constancias</Button>
           </>
         }
       />
+
+      {aviso && <div className="mb-4"><Note tone="conf">{aviso}</Note></div>}
 
       <div className="mb-5 flex flex-wrap gap-4">
         {[
@@ -86,6 +96,7 @@ export default function Legajo() {
               ["Nombre completo", p.nombre],
               ["DNI", p.dni],
               ["Celular", p.celular ?? "Sin registrar"],
+              ["Correo", p.correo ? `${p.correo}${p.correoVerificado ? " ✓ verificado" : " (sin verificar)"}` : "Sin registrar"],
               ["Banco de haberes", p.banco],
               ["Cuenta", p.cuenta],
               ["Estado del portal", { activo: "Activo", nunca_ingreso: "Nunca ingresó", sin_celular: "Sin celular" }[p.portal]],
@@ -211,6 +222,15 @@ export default function Legajo() {
         </Card>
       )}
 
+      {editar && (
+        <EditarDatos
+          persona={p}
+          onClose={() => setEditar(false)}
+          editarTrabajador={editarTrabajador}
+          onListo={() => { setEditar(false); setAviso("Datos actualizados. El cambio quedó en auditoría."); }}
+        />
+      )}
+
       {tab === 5 && (
         <Card pad={false}>
           <Table head={["Fecha", "Usuario", "Acción", "Entidad", "IP"]}>
@@ -227,5 +247,69 @@ export default function Legajo() {
         </Card>
       )}
     </>
+  );
+}
+
+// Edición de datos personales: lo escrito manda (vaciar sí borra), el nombre
+// no puede quedar vacío (corregirlo limpia «por confirmar») y cambiar el
+// correo lo deja pendiente de verificación. El RPC valida el nivel de nuevo.
+function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
+  const [form, setForm] = useState({
+    nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
+    banco: p.banco ?? "", cuenta: p.cuenta ?? "",
+  });
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    if (ocupado) return;
+    setError(null);
+    setOcupado(true);
+    try {
+      await editarTrabajador(p.dni, form);
+      onListo();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Editar datos — ${p.nombre}`} wide>
+      <form onSubmit={guardar} className="space-y-4">
+        <Field label="Nombres y apellidos" required hint="Corregirlo quita la marca «por confirmar» de la importación.">
+          <Input value={form.nombre} onChange={set("nombre")} required />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Celular" hint="Libre: acepta +51 y espacios. Vaciarlo lo borra.">
+            <Input value={form.celular} onChange={set("celular")} placeholder="987 654 321 o +51 987 654 321" />
+          </Field>
+          <Field label="Correo" hint="Cambiarlo lo deja pendiente de verificación.">
+            <Input type="email" value={form.correo} onChange={set("correo")} placeholder="persona@correo.com" />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Banco de haberes">
+            <Select value={form.banco} onChange={set("banco")}>
+              <option value="">Sin banco</option>
+              <option>BCP</option><option>BBVA</option><option>Interbank</option><option>Scotiabank</option>
+            </Select>
+          </Field>
+          <Field label="Cuenta (CCI)" hint="Dato sensible: el cambio queda en auditoría sin guardar el número en claro.">
+            <Input value={form.cuenta} onChange={set("cuenta")} />
+          </Field>
+        </div>
+        {error && <Note tone="alerta">{error}</Note>}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={ocupado || !form.nombre.trim()}>
+            {ocupado ? "Guardando…" : "Guardar cambios"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={ocupado}>Cancelar</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

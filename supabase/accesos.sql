@@ -15,7 +15,7 @@ drop view if exists v_perfiles, v_perfil_versiones, v_usuarios_admin,
 drop table if exists registro_accesos, usuarios_admin, politica_acceso,
   perfil_empresas, perfil_permisos, perfiles cascade;
 drop sequence if exists seq_usuario_codigo;
-drop function if exists guardar_perfil, desactivar_perfil, eliminar_perfil, fn_nivel_memorandums, crear_usuario_admin,
+drop function if exists guardar_perfil, desactivar_perfil, eliminar_perfil, fn_nivel_memorandums, fn_nivel_modulo, crear_usuario_admin,
   actualizar_usuario_admin, suspender_usuario_admin, reactivar_usuario_admin,
   eliminar_usuario_admin, reenviar_clave, guardar_politica, puede,
   verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
@@ -285,6 +285,29 @@ end $$;
 -- valida server-side quién puede imponer qué sanción. Vive aquí y no en
 -- schema.sql porque depende de usuarios_admin/perfiles. Sin JWT (llamadas de
 -- servicio) devuelve 99.
+-- Nivel del llamador en CUALQUIER módulo (edición de Personal, etc.).
+create function fn_nivel_modulo(p_modulo text)
+returns int language plpgsql stable security definer as $$
+declare v_correo text; v_nivel int;
+begin
+  begin
+    v_correo := nullif(auth.jwt() ->> 'email', '');
+  exception when others then
+    v_correo := null;
+  end;
+  if v_correo is null then return 99; end if;
+  select case when p.es_superadmin then 99
+              else coalesce((select pp.nivel from perfil_permisos pp
+                             where pp.perfil_id = u.perfil_id
+                               and pp.perfil_version = u.perfil_version
+                               and pp.modulo = p_modulo), 0) end
+  into v_nivel
+  from usuarios_admin u
+  join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
+  where lower(u.correo) = lower(v_correo) and u.estado = 'activo';
+  return coalesce(v_nivel, 0);
+end $$;
+
 create function fn_nivel_memorandums()
 returns int language plpgsql stable security definer as $$
 declare v_correo text; v_nivel int;

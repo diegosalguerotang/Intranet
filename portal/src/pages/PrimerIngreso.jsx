@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { auth, rpc, vista } from "../lib/api";
+import { auth, rpc, vista, tokenSesion } from "../lib/api";
 import { usePortal } from "../state";
 import { Boton, Nota, Tarjeta } from "../components/ui";
 
@@ -38,6 +38,7 @@ export default function PrimerIngreso() {
   const [verClave2, setVerClave2] = useState(false);
   const [celular, setCelular] = useState("");
   const [sinCelular, setSinCelular] = useState(false);
+  const [correo, setCorreo] = useState("");
   const [acepta, setAcepta] = useState(false);
   const [politica, setPolitica] = useState(null); // { version, texto }
   const [error, setError] = useState(null);
@@ -68,8 +69,18 @@ export default function PrimerIngreso() {
         p_celular: sinCelular ? null : celular,
         p_sin_celular: sinCelular,
         p_politica_version: politica?.version ?? 1,
+        p_correo: correo.trim() || null,
       });
       if (rRpc.error) { setError(rRpc.error.message); return; }
+      // Si declaró correo, se dispara el enlace de verificación (mejor
+      // esfuerzo: si el motor de correo no está configurado, no bloquea).
+      if (correo.trim()) {
+        fetch(`${window.location.origin}/api/enviar-correo`, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-sesion": tokenSesion() ?? "" },
+          body: JSON.stringify({ accion: "verificacion" }),
+        }).catch(() => {});
+      }
       await refrescarPerfil(); // el guard central pasa al inicio
     } finally {
       setCargando(false);
@@ -127,6 +138,19 @@ export default function PrimerIngreso() {
               <Nota tono="pend">Sin celular no recibirás avisos; tu supervisor podrá ayudarte con las confirmaciones.</Nota>
             </div>
           )}
+
+          <div className="mt-4 border-t border-borde pt-4">
+            <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu correo (opcional)</span>
+            <p className="mb-2 text-[12px] leading-snug text-gris-cl">
+              Con un correo confirmado podrás recuperar tu clave tú mismo si la olvidas.
+            </p>
+            <input
+              type="email" inputMode="email" autoComplete="email" placeholder="tucorreo@gmail.com"
+              value={correo}
+              onInput={(e) => setCorreo(e.currentTarget.value)}
+              className="w-full rounded-caja border border-borde-f px-4 py-3 text-[16px] focus:border-petroleo focus:outline-none"
+            />
+          </div>
         </Tarjeta>
 
         <Tarjeta>

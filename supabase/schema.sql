@@ -19,7 +19,7 @@ drop view if exists v_personal, v_sedes, v_acuses, v_lotes, v_activos,
 drop table if exists auditoria, epp_entregas, lineas, asignaciones, activos,
   contratos, plantillas, tardanzas, descargos, memorandums, comunicados,
   acuses, documentos, lotes, vinculos, personas, sedes, empresas, cargos,
-  rit_faltas, tipos_sancion, feriados, rits cascade;
+  rit_faltas, tipos_sancion, feriados, rits, correo_tokens cascade;
 drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   eliminar_trabajador, publicar_lote, registrar_acuse_asistido,
   emitir_memorandum, resolver_memorandum, asignar_activo, devolver_activo,
@@ -27,7 +27,7 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   fn_es_prefijo_truncado, fn_sede_para_importacion, importar_planilla,
   previsualizar_importacion, publicar_lote_pdf, fn_valor_importado,
   importar_activos, previsualizar_importacion_activos, crear_sede,
-  editar_activo, fn_sumar_dias, notificar_memorandum cascade;
+  editar_activo, fn_sumar_dias, notificar_memorandum, editar_trabajador cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -60,6 +60,8 @@ create table personas (
   dni                   text primary key check (dni ~ '^[0-9]{8}$'),
   nombre                text not null,
   celular               text,  -- LIBRE: puede venir con +51 o espacios (Excels de planilla)
+  correo                text,  -- opcional: lo declara el trabajador o RRHH (motor de correo)
+  correo_verificado     boolean not null default false,
   direccion             text,
   banco                 text,
   cuenta                text,
@@ -70,6 +72,20 @@ create table personas (
 );
 
 create sequence if not exists seq_sede_codigo;
+-- Tokens de un solo uso del motor de correo (verificación / recuperación).
+-- Los emite y consume SOLO el servidor (endpoints con service key).
+create table correo_tokens (
+  token     text primary key,
+  dni       text not null references personas(dni),
+  proposito text not null check (proposito in ('verificacion','recuperacion')),
+  correo    text not null,
+  creado_en timestamptz not null default now(),
+  expira_en timestamptz not null,
+  usado_en  timestamptz
+);
+create index idx_correo_tokens_dni on correo_tokens (dni);
+revoke select, insert, update, delete on correo_tokens from anon, authenticated;
+
 create table sedes (
   id             text primary key,
   codigo         text unique,               -- S-0001, S-0002… (crear_sede / importación)
@@ -746,7 +762,8 @@ select p.dni, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
        case when v.fecha_fin is null then 'vigente' else 'cesado' end as estado,
        p.banco, p.cuenta,
        to_char(v.fecha_fin, 'YYYY-MM-DD') as cese,
-       v.id as vinculo_id
+       v.id as vinculo_id,
+       p.correo, p.correo_verificado as "correoVerificado"
 from vinculos v join personas p on p.dni = v.persona_dni;
 
 create view v_acuses as
@@ -879,16 +896,18 @@ order by entrega desc;
 create function alta_trabajador(
   p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text,
   p_ingreso date, p_celular text default null,
-  p_banco text default null, p_cuenta text default null
+  p_banco text default null, p_cuenta text default null, p_correo text default null
 ) returns void language plpgsql security definer as $$
 begin
-  insert into personas (dni, nombre, celular, banco, cuenta, portal)
+  insert into personas (dni, nombre, celular, banco, cuenta, portal, correo)
   values (p_dni, p_nombre, p_celular, p_banco, p_cuenta,
-          case when p_celular is null then 'sin_celular' else 'nunca_ingreso' end)
+          case when p_celular is null then 'sin_celular' else 'nunca_ingreso' end,
+          nullif(lower(trim(coalesce(p_correo, ''))), ''))
   on conflict (dni) do update
     set celular = coalesce(excluded.celular, personas.celular),
         banco   = coalesce(excluded.banco, personas.banco),
-        cuenta  = coalesce(excluded.cuenta, personas.cuenta);
+        cuenta  = coalesce(excluded.cuenta, personas.cuenta),
+        correo  = coalesce(excluded.correo, personas.correo);
 
   if exists (select 1 from vinculos where persona_dni = p_dni
              and empresa_id = p_empresa and fecha_fin is null) then
@@ -897,6 +916,45 @@ begin
 
   insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio)
   values (p_dni, p_empresa, p_sede, p_cargo, p_ingreso);
+end $$;
+
+-- Edición desde el legajo (2026-08-17): superadmin o nivel >=2 en Personal.
+-- Lo escrito MANDA (vaciar sí borra); corregir el nombre limpia «por
+-- confirmar»; cambiar el correo lo deja pendiente de verificar. La cuenta
+-- bancaria no se guarda en claro en la auditoría.
+create function editar_trabajador(
+  p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text
+) returns void language plpgsql security definer as $$
+declare j_antes jsonb; j_despues jsonb; v_correo text;
+begin
+  if fn_nivel_modulo('personal') < 2 then
+    raise exception 'Tu categoría no permite editar datos de Personal.';
+  end if;
+  if not exists (select 1 from personas where dni = p_dni) then
+    raise exception 'La persona % no existe.', p_dni;
+  end if;
+  if nullif(trim(coalesce(p_nombre, '')), '') is null then
+    raise exception 'El nombre no puede quedar vacío.';
+  end if;
+  v_correo := nullif(lower(trim(coalesce(p_correo, ''))), '');
+  if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'El correo no tiene un formato válido.';
+  end if;
+
+  select to_jsonb(p) - 'cuenta' into j_antes from personas p where dni = p_dni;
+  update personas set
+    nombre = trim(p_nombre),
+    nombre_por_confirmar = false,
+    celular = nullif(trim(coalesce(p_celular, '')), ''),
+    banco = nullif(trim(coalesce(p_banco, '')), ''),
+    cuenta = nullif(trim(coalesce(p_cuenta, '')), ''),
+    correo_verificado = case when v_correo is distinct from correo then false else correo_verificado end,
+    correo = v_correo
+  where dni = p_dni;
+  select to_jsonb(p) - 'cuenta' into j_despues from personas p where dni = p_dni;
+
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);
 end $$;
 
 -- Eliminación: solo para registros creados por error. Si la persona ya tiene

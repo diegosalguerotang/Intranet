@@ -202,6 +202,7 @@ export function AppProvider({ children }) {
         p_dni: row.dni, p_nombre: row.nombre, p_cargo: row.cargo,
         p_sede: row.sede, p_empresa: row.empresa, p_ingreso: row.ingreso,
         p_celular: row.celular, p_banco: row.banco, p_cuenta: row.cuenta,
+        p_correo: row.correo ?? null,
       }, "personal");
     },
     deletePersonal: (dni) => {
@@ -361,6 +362,21 @@ export function AppProvider({ children }) {
       if (!r.error) await recargar("personal");
       return r;
     },
+    // RRH-03 — Edición del trabajador desde el legajo (superadmin o nivel de
+    // acción en Personal; el servidor lo valida de nuevo).
+    editarTrabajador: async (dni, cambios) => {
+      if (!supabaseListo) throw new Error("La edición real requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("editar_trabajador", {
+        p_dni: dni, p_nombre: cambios.nombre, p_celular: cambios.celular,
+        p_correo: cambios.correo, p_banco: cambios.banco, p_cuenta: cambios.cuenta,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("personal");
+    },
+    // Motor de correo: enviar el acceso del portal al correo declarado
+    // (opcional; si el motor no está configurado devuelve el error claro).
+    enviarAccesoPortal: async (dni) =>
+      llamarServerless("/api/enviar-correo", { accion: "credenciales", dni }),
     suspenderUsuarioAdmin: (id) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
       rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");

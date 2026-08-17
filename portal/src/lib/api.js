@@ -64,6 +64,9 @@ async function pedir(ruta, { metodo = "GET", cuerpo, conSesion = true, reintento
   return { data: json };
 }
 
+// Token actual para los endpoints propios (/api/*) que van FUERA de /api/supa.
+export const tokenSesion = () => sesion?.access_token ?? null;
+
 export const auth = {
   haySesion: () => !!sesion?.access_token,
   async entrar(dni, clave) {
