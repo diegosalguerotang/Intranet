@@ -26,6 +26,8 @@ const FUENTES = {
   usuariosAdmin: "v_usuarios_admin",
   politica: "v_politica_acceso",
   registroAccesos: "v_registro_accesos",
+  tiposSancion: "v_tipos_sancion",
+  ritFaltas: "v_rit_faltas",
 };
 
 const LOCAL = {
@@ -47,6 +49,8 @@ const LOCAL = {
   usuariosAdmin: MOCK.USUARIOS_ADMIN,
   politica: MOCK.POLITICA_ACCESO,
   registroAccesos: MOCK.REGISTRO_ACCESOS,
+  tiposSancion: [],  // catálogos del RIT: solo existen con conexión real
+  ritFaltas: [],
 };
 
 // MODO DEMO: entra directo como superadministrador sin pasar por
@@ -224,12 +228,26 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       return data ?? [];
     },
-    addMemo: (m) => {
-      local("memorandums", (xs) => [m, ...xs]);
-      rpc("emitir_memorandum", {
-        p_dni: m.dni, p_tipo: m.tipo, p_motivo: m.motivo,
-        p_articulo: m.articulo, p_plazo: m.plazoDias,
-      }, "memorandums");
+    // RRH-18 v2 — Emisión parametrizada por RIT: el servidor valida tipo,
+    // falta, nivel del emisor y tope de suspensión; congela antecedentes y el
+    // texto literal de la falta. Los errores se muestran tal cual.
+    emitirMemorandum: async ({ dni, tipoSancion, faltaId, motivo, suspensionDias }) => {
+      if (!supabaseListo) throw new Error("La emisión real requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("emitir_memorandum", {
+        p_dni: dni, p_tipo_sancion: tipoSancion, p_falta_id: faltaId ?? null,
+        p_motivo: motivo, p_suspension_dias: suspensionDias ?? null,
+        p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("memorandums");
+      return data; // correlativo asignado
+    },
+    // Registrar la notificación: recién aquí empieza a correr el plazo.
+    notificarMemorandum: async (id) => {
+      if (!supabaseListo) throw new Error("La notificación real requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("notificar_memorandum", { p_id: id });
+      if (error) throw new Error(error.message);
+      await recargar("memorandums");
     },
     resolverMemo: (id, resolucion) => {
       local("memorandums", (xs) => xs.map((m) => (m.id === id ? { ...m, estado: "resuelto", resolucion } : m)));

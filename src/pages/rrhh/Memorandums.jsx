@@ -12,6 +12,7 @@ const ESTADOS = {
   descargo_presentado: { tone: "tinta", label: "Descargo presentado" },
   vencido: { tone: "alerta", label: "Vencido sin descargo" },
   resuelto: { tone: "neutral", label: "Resuelto" },
+  registro_interno: { tone: "neutral", label: "Registro interno" },
 };
 
 // Encabezado ordenable: la flechita indica el orden activo y el click lo
@@ -32,13 +33,26 @@ function OrdenTh({ etiqueta, campo, orden, setOrden }) {
 
 // RRH-18 / RRH-19 — Emisión y bandeja de memorándums
 export default function Memorandums() {
-  const { db, persona, addMemo, resolverMemo } = useApp();
+  const { db, persona, resolverMemo, notificarMemorandum } = useApp();
   const [emitir, setEmitir] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [filtro, setFiltro] = useState("");
   const [busca, setBusca] = useState("");
   const [orden, setOrden] = useState({ campo: null, dir: 1 });
+  const [aviso, setAviso] = useState(null);
+  const [errorNotificar, setErrorNotificar] = useState(null);
   const memos = db.memorandums;
+
+  const notificar = async (id) => {
+    setErrorNotificar(null);
+    try {
+      await notificarMemorandum(id);
+      setDetalle(null);
+      setAviso(`Notificación de ${id} registrada: el plazo de descargo empezó a correr hoy.`);
+    } catch (e) {
+      setErrorNotificar(e.message);
+    }
+  };
 
   const filas = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -59,16 +73,6 @@ export default function Memorandums() {
     });
   }, [memos, filtro, busca, orden, persona]);
 
-  const emitirMemo = (datos) => {
-    const correlativo = `01${43 + memos.length}-2026`;
-    addMemo({
-      id: correlativo, ...datos,
-      emitido: new Date().toISOString().slice(0, 10),
-      notificado: null, vence: null, estado: "emitido_sin_notificar", descargo: null, resolucion: null,
-    });
-    setEmitir(false);
-  };
-
   const resolver = (id, decision) => {
     resolverMemo(id, { fecha: new Date().toISOString().slice(0, 10), decision });
     setDetalle(null);
@@ -84,11 +88,13 @@ export default function Memorandums() {
       />
 
       <div className="mb-5 flex flex-wrap gap-4">
-        <Stat label="Procesos abiertos" value={memos.filter((m) => m.estado !== "resuelto").length} />
+        <Stat label="Procesos abiertos" value={memos.filter((m) => !["resuelto", "registro_interno"].includes(m.estado)).length} />
         <Stat label="Esperan resolución" value={memos.filter((m) => m.estado === "descargo_presentado").length} tone="pend" />
         <Stat label="Sin notificar" value={memos.filter((m) => m.estado === "emitido_sin_notificar").length} tone="alerta" hint="Considerar notificación física" />
-        <Stat label="Resueltos (año)" value={memos.filter((m) => m.estado === "resuelto").length} />
+        <Stat label="Preavisos vencidos" value={memos.filter((m) => m.preavisoVencido).length} tone="alerta" hint="Proceder con notificación notarial" />
       </div>
+
+      {aviso && <div className="mb-4"><Note tone="conf">{aviso}</Note></div>}
 
       <Card pad={false}>
         <div className="flex flex-wrap gap-2.5 border-b border-borde bg-papel/50 p-3.5">
@@ -124,7 +130,11 @@ export default function Memorandums() {
         </Table>
       </Card>
 
-      <EmitirMemo open={emitir} onClose={() => setEmitir(false)} onEmitir={emitirMemo} />
+      <EmitirMemo
+        open={emitir}
+        onClose={() => setEmitir(false)}
+        onEmitido={(id, tipoNombre) => { setEmitir(false); setAviso(`${tipoNombre} ${id} emitido.`); }}
+      />
 
       <Modal open={!!detalle} onClose={() => setDetalle(null)} title={`Expediente ${detalle?.id ?? ""}`} wide>
         {detalle && (
@@ -132,11 +142,14 @@ export default function Memorandums() {
             <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
               {[
                 ["Trabajador", persona(detalle.dni)?.nombre],
-                ["Tipo", detalle.tipo],
-                ["Artículo invocado", detalle.articulo],
+                ["Tipo", detalle.tipo + (detalle.suspensionDias ? ` (${detalle.suspensionDias} día${detalle.suspensionDias === 1 ? "" : "s"})` : "")],
                 ["Emitido", detalle.emitido],
-                ["Notificado (acuse)", detalle.notificado ?? "Pendiente de notificación"],
-                ["Plazo", detalle.vence ? `${detalle.plazoDias} días hábiles — vence ${detalle.vence}` : `${detalle.plazoDias} días hábiles — aún no corre`],
+                ["Notificado", detalle.notificado ?? (detalle.estado === "registro_interno" ? "No aplica (registro interno)" : "Pendiente de notificación")],
+                ["Plazo", detalle.estado === "registro_interno" ? "No aplica" :
+                  detalle.vence
+                    ? `${detalle.plazoDias} días ${detalle.naturaleza === "imputacion" ? "naturales" : "hábiles"} — vence ${detalle.vence}`
+                    : `${detalle.plazoDias || "—"} días ${detalle.naturaleza === "imputacion" ? "naturales" : "hábiles"} — aún no corre`],
+                ["Reincidencia (art. 58)", detalle.reincidencia ? "Sí — agravante" : "No"],
               ].map(([k, v]) => (
                 <div key={k}>
                   <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-gris">{k}</div>
@@ -144,10 +157,34 @@ export default function Memorandums() {
                 </div>
               ))}
             </div>
+            {(detalle.faltaTexto ?? detalle.articulo) && (
+              <div>
+                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-gris">Falta invocada (texto del RIT)</div>
+                <div className="mt-1 text-[13px] leading-relaxed text-tinta">{detalle.faltaTexto ?? detalle.articulo}</div>
+              </div>
+            )}
             <div>
               <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-gris">Hechos imputados</div>
               <div className="mt-1 text-[13px] leading-relaxed text-tinta">{detalle.motivo}</div>
             </div>
+            {(detalle.antecedentes ?? []).length > 0 && (
+              <div className="rounded-md border border-borde bg-papel/60 p-3.5">
+                <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-gris">
+                  Antecedentes al momento de emitir (art. 54)
+                </div>
+                <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-[12.5px] text-tinta-2">
+                  {detalle.antecedentes.map((a) => (
+                    <li key={a.id}>{a.emitido} · {a.tipo} ({a.id}) — {ESTADOS[a.estado]?.label ?? a.estado}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {detalle.preavisoVencido && (
+              <Note tone="alerta">
+                <b>Preaviso vencido sin acuse.</b> Proceder con la notificación notarial (vía subsidiaria con
+                fecha computable): sin ella el procedimiento se congela y se rompe la inmediatez.
+              </Note>
+            )}
 
             {detalle.descargo ? (
               <div className="rounded-md border border-borde bg-papel/60 p-4">
@@ -177,10 +214,14 @@ export default function Memorandums() {
                 <p className="text-[11.5px] text-gris">La resolución se notifica al trabajador por el portal y genera su propio acuse.</p>
               </div>
             ) : detalle.estado === "emitido_sin_notificar" ? (
-              <Note tone="alerta">
-                El trabajador aún no confirma la recepción. Si no lo hace en un plazo razonable, proceder con
-                notificación física por la vía tradicional: el sistema acompaña el procedimiento legal, no lo reemplaza.
-              </Note>
+              <div className="space-y-2">
+                <Note tone="alerta">
+                  Aún sin notificar: el memorándum no produce efectos y el plazo no corre. Registra aquí la
+                  notificación cuando se entregue (electrónica con acuse o física con cargo).
+                </Note>
+                {errorNotificar && <Note tone="alerta">{errorNotificar}</Note>}
+                <Button size="sm" onClick={() => notificar(detalle.id)}>Registrar notificación (el plazo corre desde hoy)</Button>
+              </div>
             ) : null}
 
             <Button variant="secondary" size="sm"><FileDown size={13} /> Exportar expediente completo</Button>
@@ -191,19 +232,52 @@ export default function Memorandums() {
   );
 }
 
-// RRH-18 — Emitir memorándum
-function EmitirMemo({ open, onClose, onEmitir, precarga }) {
-  const { db } = useApp();
-  const [dni, setDni] = useState(precarga?.dni ?? "");
-  const [tipo, setTipo] = useState("Llamada de atención");
-  const [motivo, setMotivo] = useState(precarga?.motivo ?? "");
-  const [articulo, setArticulo] = useState("Art. 12 RIT");
-  const [plazoDias, setPlazoDias] = useState(5);
+// RRH-18 — Emitir memorándum, parametrizado por el RIT vigente: tipos del
+// art. 53, falta invocada con TEXTO LITERAL (art. 20 conc. 56.1 / art. 56),
+// antecedentes a la vista (art. 54), tope de suspensión (art. 53 c). La
+// amonestación verbal no genera carta: es un registro interno con reporte a
+// RR.HH. dentro de 24 horas.
+function EmitirMemo({ open, onClose, onEmitido }) {
+  const { db, emitirMemorandum } = useApp();
+  const [dni, setDni] = useState("");
+  const [tipoId, setTipoId] = useState("amonestacion-escrita");
+  const [faltaId, setFaltaId] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [suspensionDias, setSuspensionDias] = useState(1);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
 
   const vigentes = db.personal.filter((p) => p.estado === "vigente");
+  const tipo = db.tiposSancion.find((t) => t.id === tipoId);
+  const falta = db.ritFaltas.find((f) => String(f.id) === String(faltaId));
+  const antecedentes = dni ? db.memorandums.filter((m) => m.dni === dni) : [];
+  const faltaRequerida = tipo?.notificable ?? true;
+
+  const cerrar = () => {
+    setDni(""); setTipoId("amonestacion-escrita"); setFaltaId(""); setMotivo("");
+    setSuspensionDias(1); setError(null);
+    onClose();
+  };
+
+  const emitir = async () => {
+    setError(null);
+    setOcupado(true);
+    try {
+      const id = await emitirMemorandum({
+        dni, tipoSancion: tipoId, faltaId: faltaId ? Number(faltaId) : null, motivo,
+        suspensionDias: tipo?.topeSuspension ? suspensionDias : null,
+      });
+      onEmitido(id, tipo?.nombre ?? "Memorándum");
+      cerrar();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
 
   return (
-    <Modal open={open} onClose={onClose} title="RRH-18 · Emitir memorándum" wide>
+    <Modal open={open} onClose={cerrar} title="RRH-18 · Emitir medida disciplinaria" wide>
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Trabajador" required>
@@ -214,38 +288,93 @@ function EmitirMemo({ open, onClose, onEmitir, precarga }) {
               ))}
             </Select>
           </Field>
-          <Field label="Tipo de proceso" required>
-            <Select value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option>Llamada de atención</option>
-              <option>Amonestación escrita</option>
-              <option>Preaviso de despido</option>
+          <Field label="Tipo de proceso (art. 53 del RIT)" required>
+            <Select value={tipoId} onChange={(e) => setTipoId(e.target.value)}>
+              {db.tiposSancion.map((t) => (
+                <option key={t.id} value={t.id}>{t.nombre}</option>
+              ))}
             </Select>
           </Field>
         </div>
-        <Field label="Hechos imputados" required hint="Con fechas concretas. Se imprimen en el documento generado desde plantilla.">
+
+        {tipo && !tipo.notificable && (
+          <Note tone="neutral">
+            La amonestación verbal es un <b>registro interno</b>: no genera carta al trabajador. El RIT exige
+            reportarla a RR.HH. dentro de las 24 horas (art. 53 a) — este registro ES ese reporte.
+          </Note>
+        )}
+        {tipo?.naturaleza === "imputacion" && (
+          <Note tone="pend">
+            El preaviso es una <b>imputación</b>, no una sanción: plazo de <b>{tipo.plazoDias} días NATURALES</b>{" "}
+            (art. 31 LPCL, imperativo) y notificación <b>notarial obligatoria</b>.
+          </Note>
+        )}
+
+        <Field label={`Falta invocada${faltaRequerida ? "" : " (opcional)"}`} required={faltaRequerida}
+               hint="El documento imprime el texto literal de la obligación, no solo el número.">
+          <Select value={faltaId} onChange={(e) => setFaltaId(e.target.value)}>
+            <option value="">Elegir del RIT…</option>
+            <optgroup label="Art. 20 — Prohibiciones (concordadas con el art. 56.1)">
+              {db.ritFaltas.filter((f) => f.articulo === 20).map((f) => (
+                <option key={f.id} value={f.id}>20 {f.item}) {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Art. 56 — Causales de medida disciplinaria">
+              {db.ritFaltas.filter((f) => f.articulo === 56).map((f) => (
+                <option key={f.id} value={f.id}>56.{f.item} {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
+              ))}
+            </optgroup>
+          </Select>
+        </Field>
+        {falta && (
+          <Note tone="neutral">
+            <b>Art. {falta.articulo} {falta.articulo === 20 ? "inciso" : "numeral"} {falta.item}):</b>{" "}
+            «{falta.texto}»{falta.articulo === 20 && " — se imprime concordado con el art. 56 numeral 1."}
+          </Note>
+        )}
+
+        {tipo?.topeSuspension && (
+          <Field label={`Días de suspensión sin goce (tope ${tipo.topeSuspension} laborables — art. 53 c)`} required>
+            <Select value={suspensionDias} onChange={(e) => setSuspensionDias(+e.target.value)} style={{ maxWidth: 160 }}>
+              {Array.from({ length: tipo.topeSuspension }, (_, i) => (
+                <option key={i + 1} value={i + 1}>{i + 1} día{i ? "s" : ""}</option>
+              ))}
+            </Select>
+          </Field>
+        )}
+
+        <Field label="Hechos imputados" required hint="Con fechas concretas. Se imprimen en el documento generado.">
           <Textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Describe los hechos con fechas…" />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Artículo del RIT invocado">
-            <Input value={articulo} onChange={(e) => setArticulo(e.target.value)} />
-          </Field>
-          <Field label="Plazo de descargo (días hábiles)" hint="Se calcula excluyendo domingos y feriados del calendario administrado.">
-            <Select value={plazoDias} onChange={(e) => setPlazoDias(+e.target.value)}>
-              <option value={3}>3 días hábiles</option>
-              <option value={5}>5 días hábiles</option>
-              <option value={6}>6 días hábiles</option>
-            </Select>
-          </Field>
-        </div>
-        <Note tone="neutral">
-          La numeración es correlativa por empresa y año, sin huecos ni reutilización. El plazo empezará a correr recién
-          cuando el trabajador confirme la recepción.
-        </Note>
+
+        {antecedentes.length > 0 ? (
+          <Note tone="pend">
+            <b>Antecedentes de este trabajador ({antecedentes.length}) — se congelan en el expediente (art. 54);
+            la reincidencia es agravante (art. 58):</b>
+            <ul className="mt-1 list-disc pl-4">
+              {antecedentes.map((a) => (
+                <li key={a.id}>{a.emitido} · {a.tipo} ({a.id}) — {ESTADOS[a.estado]?.label ?? a.estado}</li>
+              ))}
+            </ul>
+          </Note>
+        ) : dni ? (
+          <Note tone="neutral">Sin antecedentes disciplinarios registrados.</Note>
+        ) : null}
+
+        {tipo?.notificable && tipo?.plazoDias && tipo?.naturaleza !== "imputacion" && (
+          <Note tone="neutral">
+            Plazo de descargo: <b>{tipo.plazoDias} días hábiles</b> (el sábado cuenta; domingos y feriados no).
+            Corre desde la notificación, no desde la emisión. {tipo.fuentePlazo === "Parámetro (RIT por modificar)" &&
+            "El plazo es un parámetro del sistema mientras el RIT no lo fije."}
+          </Note>
+        )}
+
+        {error && <Note tone="alerta">{error}</Note>}
         <div className="flex gap-2">
-          <Button disabled={!dni || !motivo} onClick={() => onEmitir({ dni, tipo, motivo, articulo, plazoDias })}>
-            Emitir y notificar
+          <Button disabled={ocupado || !dni || !motivo || (faltaRequerida && !faltaId)} onClick={emitir}>
+            {ocupado ? "Emitiendo…" : tipo?.notificable ? "Emitir (luego se registra la notificación)" : "Registrar amonestación verbal"}
           </Button>
-          <Button variant="secondary" onClick={onClose}>Guardar borrador</Button>
+          <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
         </div>
       </div>
     </Modal>

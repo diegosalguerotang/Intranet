@@ -1,6 +1,13 @@
-# Módulo disciplinario parametrizado por RIT — Plan propuesto (2026-08-17)
+# Módulo disciplinario parametrizado por RIT — Plan (2026-08-17)
 
-**PENDIENTE DE APROBACIÓN DE DIEGO.**
+**APROBADO POR DIEGO (2026-08-17) con estas decisiones:**
+1. Plazos de descargo: seguir la línea del documento — 3 días hábiles (amonestación
+   escrita) y 5 (suspensión), como PARÁMETRO editable mientras se modifica el RIT.
+2. **El sábado ES día hábil**; se excluyen domingos y feriados.
+3. La suspensión la imponen **Gerencia General / Recursos Humanos / Administración**
+   (en el sistema: categorías con nivel de aprobación en el módulo memorandums).
+4. **El RIT de CLEAN rige para TODAS las razones sociales por ahora** (el modelo queda
+   preparado para un RIT por empresa: `empresas.rit_id`).
 
 **Spec:** `Tareas 17-08/parametrizacion_disciplinario_1.md` (documento de trabajo de
 Diego) + `REGLAMENTO INTERNO CLEAN.pdf` (RIT CONSORCIO CLEAN 2025, 24 páginas —
@@ -39,7 +46,22 @@ parametrizarse POR EMPRESA desde su RIT.
 - [ ] **Fase 4 — Verificación** (suite BD + E2E del flujo completo con el RIT real) y
   actualización de expedientes demo mal tipificados (0141-2026 → art. 20 c) conc. 56.1).
 
-## Decisiones que necesita tomar Diego ANTES de ejecutar
+## Estado final (2026-08-17)
+
+CICLO EJECUTADO COMPLETO (fases 1–4 en una sesión). Migración
+`2026-08-17-disciplinario.sql` aplicada; catálogo literal sembrado (19+31
+faltas); 6 tipos de proceso; feriados Perú 2026; motor `fn_sumar_dias`
+(sábado hábil); `emitir_memorandum` v2 (congela texto/antecedentes,
+reincidencia, tope suspensión, nivel del emisor vía `fn_nivel_memorandums` en
+accesos.sql) + `notificar_memorandum`; v_memorandums con vencimiento derivado
+y alerta de preaviso; pantalla RRH-18/19 parametrizada; expediente 0141-2026
+corregido a art. 20 c) conc. 56.1. Verificación:
+`verificar-disciplinario.mjs` 10/10 en producción; vitest 84/84. Canónicos
+schema.sql y accesos.sql sincronizados. PENDIENTE FUTURO: TRB-09/10 (descargo
+del trabajador desde el portal con fotos), generación del documento PDF desde
+plantilla, y carga de RIT propio por empresa cuando existan.
+
+## Decisiones que Diego tomó antes de ejecutar (registradas arriba)
 
 1. **Plazos de descargo** para amonestación escrita y suspensión: el RIT NO los fija
    (hallazgo principal del doc). Sugeridos: 3 y 5 días hábiles. ¿Se ejecuta con esos
