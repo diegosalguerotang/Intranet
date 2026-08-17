@@ -237,11 +237,15 @@ export default function Memorandums() {
 // antecedentes a la vista (art. 54), tope de suspensión (art. 53 c). La
 // amonestación verbal no genera carta: es un registro interno con reporte a
 // RR.HH. dentro de 24 horas.
+// Sin acentos y en minúsculas, para que "autorizacion" encuentre «autorización».
+const plano = (s) => String(s ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
 function EmitirMemo({ open, onClose, onEmitido }) {
   const { db, emitirMemorandum } = useApp();
   const [dni, setDni] = useState("");
   const [tipoId, setTipoId] = useState("amonestacion-escrita");
   const [faltaId, setFaltaId] = useState("");
+  const [buscaFalta, setBuscaFalta] = useState("");
   const [motivo, setMotivo] = useState("");
   const [suspensionDias, setSuspensionDias] = useState(1);
   const [ocupado, setOcupado] = useState(false);
@@ -253,9 +257,22 @@ function EmitirMemo({ open, onClose, onEmitido }) {
   const antecedentes = dni ? db.memorandums.filter((m) => m.dni === dni) : [];
   const faltaRequerida = tipo?.notificable ?? true;
 
+  // El catálogo trae 50 faltas: el buscador filtra las opciones del select por
+  // texto o por número ("20 c", "56.2", "abandono"...). La falta ya elegida
+  // nunca desaparece de la lista aunque no coincida con el filtro.
+  const q = plano(buscaFalta.trim());
+  const coincide = (f) =>
+    !q ||
+    plano(f.texto).includes(q) ||
+    `${f.articulo} ${f.item}`.includes(q) ||
+    `${f.articulo}.${f.item}`.includes(q) ||
+    String(f.id) === String(faltaId);
+  const faltas20 = db.ritFaltas.filter((f) => f.articulo === 20 && coincide(f));
+  const faltas56 = db.ritFaltas.filter((f) => f.articulo === 56 && coincide(f));
+
   const cerrar = () => {
-    setDni(""); setTipoId("amonestacion-escrita"); setFaltaId(""); setMotivo("");
-    setSuspensionDias(1); setError(null);
+    setDni(""); setTipoId("amonestacion-escrita"); setFaltaId(""); setBuscaFalta("");
+    setMotivo(""); setSuspensionDias(1); setError(null);
     onClose();
   };
 
@@ -312,19 +329,34 @@ function EmitirMemo({ open, onClose, onEmitido }) {
 
         <Field label={`Falta invocada${faltaRequerida ? "" : " (opcional)"}`} required={faltaRequerida}
                hint="El documento imprime el texto literal de la obligación, no solo el número.">
-          <Select value={faltaId} onChange={(e) => setFaltaId(e.target.value)}>
-            <option value="">Elegir del RIT…</option>
-            <optgroup label="Art. 20 — Prohibiciones (concordadas con el art. 56.1)">
-              {db.ritFaltas.filter((f) => f.articulo === 20).map((f) => (
-                <option key={f.id} value={f.id}>20 {f.item}) {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Art. 56 — Causales de medida disciplinaria">
-              {db.ritFaltas.filter((f) => f.articulo === 56).map((f) => (
-                <option key={f.id} value={f.id}>56.{f.item} {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
-              ))}
-            </optgroup>
-          </Select>
+          <div className="space-y-1.5">
+            <Input
+              placeholder={`Buscar entre las ${db.ritFaltas.length} faltas del RIT… (ej. «abandono», «20 c», «tardanza»)`}
+              value={buscaFalta}
+              onChange={(e) => setBuscaFalta(e.target.value)}
+            />
+            <Select value={faltaId} onChange={(e) => setFaltaId(e.target.value)}>
+              <option value="">
+                {faltas20.length + faltas56.length === 0
+                  ? "Sin coincidencias — ajusta la búsqueda"
+                  : `Elegir del RIT… (${faltas20.length + faltas56.length} opción${faltas20.length + faltas56.length === 1 ? "" : "es"})`}
+              </option>
+              {faltas20.length > 0 && (
+                <optgroup label="Art. 20 — Prohibiciones (concordadas con el art. 56.1)">
+                  {faltas20.map((f) => (
+                    <option key={f.id} value={f.id}>20 {f.item}) {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
+                  ))}
+                </optgroup>
+              )}
+              {faltas56.length > 0 && (
+                <optgroup label="Art. 56 — Causales de medida disciplinaria">
+                  {faltas56.map((f) => (
+                    <option key={f.id} value={f.id}>56.{f.item} {f.texto.slice(0, 90)}{f.texto.length > 90 ? "…" : ""}</option>
+                  ))}
+                </optgroup>
+              )}
+            </Select>
+          </div>
         </Field>
         {falta && (
           <Note tone="neutral">
