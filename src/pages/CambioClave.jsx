@@ -1,8 +1,25 @@
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
 import { supabase } from "../lib/supabase";
 import { Card, Button, Field, Input, Note } from "../components/ui";
+
+// Campo de clave con ojito de mostrar/ocultar (mismo patrón del login).
+function CampoClave({ ver, setVer, ...props }) {
+  return (
+    <div className="relative">
+      <Input type={ver ? "text" : "password"} style={{ paddingRight: 38 }} {...props} />
+      <button
+        type="button"
+        onClick={() => setVer((v) => !v)}
+        aria-label={ver ? "Ocultar clave" : "Mostrar clave"}
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-gris-cl hover:text-tinta"
+      >
+        {ver ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  );
+}
 
 // Cambio de clave obligatorio en el primer ingreso (Cierre de Acceso v1.0):
 // hasta reemplazar la clave provisional no se puede operar ninguna pantalla.
@@ -12,6 +29,8 @@ export default function CambioClave() {
   const minimo = Math.max(12, db.politica[0]?.claveLongitudMinBackoffice ?? 12);
   const [clave, setClave] = useState("");
   const [confirmar, setConfirmar] = useState("");
+  const [ver, setVer] = useState(false);
+  const [verConfirmar, setVerConfirmar] = useState(false);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
 
@@ -44,10 +63,10 @@ export default function CambioClave() {
         </div>
         <form onSubmit={guardar} className="space-y-4">
           <Field label="Clave nueva" required hint={`Mínimo ${minimo} caracteres. No se guarda en texto plano en ningún entorno.`}>
-            <Input type="password" autoComplete="new-password" autoFocus value={clave} onChange={(e) => setClave(e.target.value)} />
+            <CampoClave ver={ver} setVer={setVer} autoComplete="new-password" autoFocus value={clave} onChange={(e) => setClave(e.target.value)} />
           </Field>
           <Field label="Confirmar clave nueva" required>
-            <Input type="password" autoComplete="new-password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
+            <CampoClave ver={verConfirmar} setVer={setVerConfirmar} autoComplete="new-password" value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
           </Field>
           {error && <Note tone="alerta">{error}</Note>}
           <Button className="w-full" disabled={cargando || !clave || !confirmar}>

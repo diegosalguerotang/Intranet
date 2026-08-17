@@ -1,7 +1,31 @@
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { auth, rpc, vista } from "../lib/api";
 import { usePortal } from "../state";
 import { Boton, Nota, Tarjeta } from "../components/ui";
+
+// Campo de clave con ojito (mismo patrón del ingreso): en un celular de obra
+// equivocarse tecleando es lo normal — poder VER lo que escribes evita
+// bloqueos al crear la clave definitiva.
+function CampoClave({ ver, setVer, ...props }) {
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        type={ver ? "text" : "password"}
+        className="w-full rounded-caja border border-borde-f px-4 py-3 pr-12 text-[16px] focus:border-petroleo focus:outline-none"
+      />
+      <button
+        type="button"
+        onClick={() => setVer(!ver)}
+        aria-label={ver ? "Ocultar clave" : "Mostrar clave"}
+        className="absolute inset-y-0 right-0 flex items-center px-3.5 text-gris-cl"
+      >
+        {ver ? <EyeOff size={19} /> : <Eye size={19} />}
+      </button>
+    </div>
+  );
+}
 
 // TRB-03 · Primer ingreso: obligatoria y no salteable (el guard central solo
 // deja esta pantalla). Reemplaza la clave provisional, registra el celular y
@@ -10,6 +34,8 @@ export default function PrimerIngreso() {
   const { perfil, refrescarPerfil } = usePortal();
   const [clave, setClave] = useState("");
   const [clave2, setClave2] = useState("");
+  const [verClave, setVerClave] = useState(false);
+  const [verClave2, setVerClave2] = useState(false);
   const [celular, setCelular] = useState("");
   const [sinCelular, setSinCelular] = useState(false);
   const [acepta, setAcepta] = useState(false);
@@ -63,19 +89,19 @@ export default function PrimerIngreso() {
         <Tarjeta>
           <label className="mb-4 block">
             <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu clave nueva</span>
-            <input
-              type="password" autoComplete="new-password" value={clave}
+            <CampoClave
+              ver={verClave} setVer={setVerClave}
+              autoComplete="new-password" value={clave}
               onInput={(e) => setClave(e.currentTarget.value)}
-              className="w-full rounded-caja border border-borde-f px-4 py-3 text-[16px] focus:border-petroleo focus:outline-none"
             />
             <span className="mt-1 block text-[12px] text-gris-cl">Mínimo 6 caracteres. Elige algo que recuerdes y no compartas.</span>
           </label>
           <label className="block">
             <span className="mb-1 block text-[13px] font-semibold text-tinta">Repite tu clave nueva</span>
-            <input
-              type="password" autoComplete="new-password" value={clave2}
+            <CampoClave
+              ver={verClave2} setVer={setVerClave2}
+              autoComplete="new-password" value={clave2}
               onInput={(e) => setClave2(e.currentTarget.value)}
-              className="w-full rounded-caja border border-borde-f px-4 py-3 text-[16px] focus:border-petroleo focus:outline-none"
             />
           </label>
         </Tarjeta>
