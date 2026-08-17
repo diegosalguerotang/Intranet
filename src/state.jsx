@@ -87,7 +87,17 @@ const cuentaAdmin = (accion, usuarioId) => llamarServerless("/api/admin-usuarios
 export function AppProvider({ children }) {
   // undefined = verificando sesión · null = sin sesión · objeto = autenticado
   const [user, setUser] = useState(MODO_DEMO ? USUARIO_DEMO : supabaseListo ? undefined : null);
-  const [empresaId, setEmpresaId] = useState("negliaf");
+  // La razón social seleccionada sobrevive al refresco (localStorage). El
+  // guard del Shell la corrige sola si el usuario ya no la tiene en su alcance.
+  const CLAVE_EMPRESA = "backoffice-empresa";
+  const [empresaId, setEmpresaIdEstado] = useState(() => {
+    try { return localStorage.getItem(CLAVE_EMPRESA) ?? "negliaf"; }
+    catch { return "negliaf"; }
+  });
+  const setEmpresaId = (id) => {
+    try { localStorage.setItem(CLAVE_EMPRESA, id); } catch { /* modo privado */ }
+    setEmpresaIdEstado(id);
+  };
   const [db, setDb] = useState(LOCAL);
   const [origen, setOrigen] = useState("local"); // "supabase" | "local"
 
