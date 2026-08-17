@@ -84,6 +84,20 @@ export const auth = {
   },
 };
 
+// URL firmada para ver/descargar un documento (el bucket es privado; Ley
+// 29733). El endpoint vive FUERA de /api/supa — solo existe en el portal
+// desplegado, no en dev local. Mismo reintento ante 401 que `pedir`.
+export async function urlDocumento(id, reintento = true) {
+  if (!mismoOrigen) return { error: "La vista previa del PDF solo está disponible en el portal desplegado." };
+  const r = await fetch(`${window.location.origin}/api/descargar-documento?id=${encodeURIComponent(id)}`, {
+    headers: sesion?.access_token ? { "x-sesion": sesion.access_token } : {},
+  });
+  if (r.status === 401 && reintento && (await refrescar())) return urlDocumento(id, false);
+  const json = await r.json().catch(() => null);
+  if (!r.ok) return { error: json?.error ?? `Error ${r.status}` };
+  return { url: json.url };
+}
+
 // Lectura de vistas: vista("v_portal_boletas", "select=*") → { data: [...] }
 export const vista = (nombre, filtro = "select=*") =>
   pedir(`/rest/v1/${nombre}?${filtro}`);

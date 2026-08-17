@@ -159,9 +159,9 @@ export default function Boletas() {
           .from("documentos")
           .upload(ruta, actuales[i].bytes, { contentType: "application/pdf", upsert: true });
         if (errSubida) throw new Error(errSubida.message);
-        const { data: pub } = supabase.storage.from("documentos").getPublicUrl(ruta);
+        // El bucket es privado: archivo_url guarda la RUTA interna, no una URL.
         actuales = actuales.map((p, j) =>
-          j === i ? { ...p, estado: "ok", hash, url: pub.publicUrl, error: null } : p
+          j === i ? { ...p, estado: "ok", hash, url: ruta, error: null } : p
         );
         if (sesionRef.current === sesion) setPiezas(actuales);
       } catch (e) {

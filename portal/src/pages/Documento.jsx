@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Download, ShieldCheck, RefreshCw } from "lucide-react";
-import { vista, rpc } from "../lib/api";
+import { vista, rpc, urlDocumento } from "../lib/api";
 import { usePortal } from "../state";
 import { Enlace } from "../router";
 import { Tarjeta, Boton, Nota, Etiqueta, Cargando, Vacio } from "../components/ui";
@@ -11,7 +11,8 @@ import HojaDeclaracion from "../components/HojaDeclaracion";
 export default function Documento({ id }) {
   const { soloLectura } = usePortal();
   const [doc, setDoc] = useState(undefined);
-  const [archivo, setArchivo] = useState("cargando"); // cargando | ok | fallo | sin-archivo
+  // "cargando" | "sin-archivo" | "error:<mensaje>" | URL firmada (https://…)
+  const [archivo, setArchivo] = useState("cargando");
   const [hoja, setHoja] = useState(false);
   const [declaracion, setDeclaracion] = useState(null);
   const [ocupado, setOcupado] = useState(false);
@@ -24,15 +25,30 @@ export default function Documento({ id }) {
   useEffect(() => { cargar(); }, [id]);
 
   // El archivo se valida ANTES de mostrar el visor: el botón de confirmar
-  // depende de que el documento se haya podido mostrar de verdad.
+  // depende de que el documento se haya podido mostrar de verdad. El bucket es
+  // privado: el endpoint verifica la identidad y firma una URL de 10 minutos.
+  const pedirUrl = async () => {
+    setArchivo("cargando");
+    const r = await urlDocumento(id);
+    setArchivo(r.url ?? `error:${r.error}`);
+  };
   useEffect(() => {
     if (doc === undefined || doc === null) return;
     if (!doc.archivo_url) { setArchivo("sin-archivo"); return; }
-    setArchivo("cargando");
-    fetch(doc.archivo_url, { method: "HEAD" })
-      .then((r) => setArchivo(r.ok ? "ok" : "fallo"))
-      .catch(() => setArchivo("fallo"));
+    pedirUrl();
   }, [doc?.archivo_url]);
+
+  const seMuestra = archivo.startsWith("http");
+
+  // La URL firmada expira: la descarga pide una fresca en el momento del clic.
+  const descargarPdf = async () => {
+    const r = await urlDocumento(id);
+    if (r.error) { setArchivo(`error:${r.error}`); return; }
+    const a = document.createElement("a");
+    a.href = r.url;
+    a.download = "";
+    a.click();
+  };
 
   useEffect(() => {
     vista("v_declaraciones_vigentes", "select=version,texto&id=eq.recepcion-documento&limit=1")
@@ -96,25 +112,25 @@ export default function Documento({ id }) {
       {archivo === "sin-archivo" && (
         <Nota tono="pend">El archivo de este documento aún no está disponible. Avisa a Recursos Humanos.</Nota>
       )}
-      {archivo === "fallo" && (
+      {archivo.startsWith("error:") && (
         <Nota tono="alerta">
           <div className="flex items-center justify-between gap-3">
-            <span>No se pudo cargar el documento. Revisa tu conexión.</span>
-            <button className="inline-flex items-center gap-1 font-semibold" onClick={() => setDoc({ ...doc })}>
+            <span>{archivo.slice(6) || "No se pudo cargar el documento. Revisa tu conexión."}</span>
+            <button className="inline-flex items-center gap-1 font-semibold" onClick={pedirUrl}>
               <RefreshCw size={13} /> Reintentar
             </button>
           </div>
         </Nota>
       )}
-      {archivo === "ok" && (
+      {seMuestra && (
         <div className="overflow-hidden rounded-caja border border-borde bg-white shadow-[0_2px_10px_rgba(29,63,114,0.06)]">
-          <iframe title={doc.titulo} src={doc.archivo_url} className="h-[46dvh] w-full" />
-          <a
-            href={doc.archivo_url} download
-            className="flex items-center justify-center gap-2 border-t border-borde py-3 text-[14px] font-semibold text-petroleo"
+          <iframe title={doc.titulo} src={archivo} className="h-[46dvh] w-full" />
+          <button
+            type="button" onClick={descargarPdf}
+            className="flex w-full items-center justify-center gap-2 border-t border-borde py-3 text-[14px] font-semibold text-petroleo"
           >
             <Download size={16} /> Descargar PDF
-          </a>
+          </button>
         </div>
       )}
 
@@ -141,10 +157,10 @@ export default function Documento({ id }) {
             Al confirmar dejas constancia de que <b>recibiste</b> este documento — reemplaza la firma del cargo en
             papel. No significa estar de acuerdo con el contenido: si algo no cuadra, avisa a Recursos Humanos.
           </Nota>
-          <Boton onClick={() => setHoja(true)} disabled={archivo !== "ok" || !declaracion}>
+          <Boton onClick={() => setHoja(true)} disabled={!seMuestra || !declaracion}>
             Confirmar recepción
           </Boton>
-          {archivo !== "ok" && (
+          {!seMuestra && (
             <p className="text-center text-[11.5px] text-gris-cl">Podrás confirmar cuando el documento se muestre correctamente.</p>
           )}
         </div>
