@@ -23,7 +23,8 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   emitir_memorandum, resolver_memorandum, asignar_activo, devolver_activo,
   registrar_epp, publicar_comunicado, fn_solo_empresa_activa,
   fn_es_prefijo_truncado, fn_sede_para_importacion, importar_planilla,
-  previsualizar_importacion, publicar_lote_pdf cascade;
+  previsualizar_importacion, publicar_lote_pdf, fn_valor_importado,
+  importar_activos, previsualizar_importacion_activos cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -264,12 +265,15 @@ create table contratos (
 -- La asignación es un historial, no un campo.
 -- ---------------------------------------------------------------------------
 create table activos (
-  codigo        text primary key,
+  codigo        text primary key,            -- identidad del activo (global)
   categoria     text not null
     check (categoria in ('Telefonía','Cómputo','Comunicaciones','Maquinaria')),
-  marca         text not null,
-  modelo        text not null,
-  serie         text not null,
+  -- marca/modelo/serie opcionales desde la importación de inventario (el
+  -- Formato 7.1 real trae vacíos y procesadores en la columna de serie); la
+  -- serie repetida se vigila como advertencia del parser, no por unicidad.
+  marca         text,
+  modelo        text,
+  serie         text,
   imei          text unique,                 -- único en todo el sistema
   estado_fisico text not null default 'operativo'
     check (estado_fisico in ('operativo','mantenimiento','baja')),
@@ -277,8 +281,12 @@ create table activos (
   empresa_id    text not null references empresas(id),  -- propietaria (costeo/contabilidad)
   valor         numeric(12,2) not null default 0,
   compra        date,
-  constraint imei_solo_telefonia check (imei is null or categoria = 'Telefonía'),
-  unique (categoria, serie)                  -- serie única por categoría
+  tipo          text,                        -- LAPTOP/PC/IMPRESORA/… (detalle del archivo)
+  area          text,                        -- separadora de área del inventario
+  asignado_sin_confirmar text,               -- texto USUARIO del archivo: NO vincula al maestro
+  usuario_anterior text,                     -- historial textual del archivo
+  observaciones text,
+  constraint imei_solo_telefonia check (imei is null or categoria = 'Telefonía')
 );
 
 create table asignaciones (
@@ -627,7 +635,8 @@ select ac.codigo, ac.categoria, ac.marca, ac.modelo, ac.serie, ac.imei,
        asg.persona_dni as asignado,
        coalesce(vi.sede_id, ac.sede_id) as sede,
        ac.empresa_id as empresa, ac.valor,
-       to_char(ac.compra, 'YYYY-MM-DD') as compra
+       to_char(ac.compra, 'YYYY-MM-DD') as compra,
+       ac.tipo, ac.area, ac.asignado_sin_confirmar, ac.usuario_anterior, ac.observaciones
 from activos ac
 left join asignaciones asg on asg.activo_codigo = ac.codigo and asg.devuelto_en is null
 left join vinculos vi on vi.persona_dni = asg.persona_dni and vi.fecha_fin is null;
@@ -1077,6 +1086,118 @@ returns jsonb language plpgsql security definer as $$
 declare v jsonb;
 begin
   v := importar_planilla(p_empresa, p_filas, '(vista previa)');
+  raise exception using errcode = 'PV999', message = v::text; -- revertir TODO
+exception when sqlstate 'PV999' then
+  return sqlerrm::jsonb;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- IMPORTACIÓN DE INVENTARIO DE ACTIVOS (ADQ-08): Formato 7.1 SUNAT como
+-- inventario. Identidad = código (PK global); código en OTRA empresa =
+-- bloqueo (traslado, operación aparte). Vacío no borra; prefijo no degrada;
+-- jamás baja por ausencia; reimportar = sin_cambio; todo-o-nada.
+-- ---------------------------------------------------------------------------
+
+create function fn_valor_importado(p_nuevo text, p_actual text)
+returns text language sql immutable as $$
+  select case
+    when p_nuevo is null or trim(p_nuevo) = '' then p_actual
+    when fn_es_prefijo_truncado(p_nuevo, p_actual) then p_actual
+    else trim(p_nuevo) end;
+$$;
+
+create function importar_activos(
+  p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text, p_por text
+) returns jsonb language plpgsql security definer as $$
+declare
+  a jsonb; v_codigo text; v_otra text; c text;
+  v_altas text[] := '{}'; v_sin text[] := '{}'; v_acts jsonb := '[]'::jsonb;
+  v_cambios jsonb; j_antes jsonb; j_despues jsonb;
+  v_campos text[] := array['marca','modelo','serie','tipo','area',
+    'asignado_sin_confirmar','usuario_anterior','observaciones'];
+begin
+  if (select estado from empresas where id = p_empresa) is distinct from 'activa' then
+    raise exception 'La empresa % no está activa: importación rechazada completa.', p_empresa;
+  end if;
+
+  select d.codigo into v_codigo from (
+    select trim(x->>'codigo') as codigo
+    from jsonb_array_elements(p_activos) x
+    group by 1 having count(*) > 1 limit 1) d;
+  if v_codigo is not null then
+    raise exception 'El código % aparece más de una vez en el archivo: no se importa ningún activo hasta corregirlo.', v_codigo;
+  end if;
+
+  for a in select * from jsonb_array_elements(p_activos) loop
+    v_codigo := trim(coalesce(a->>'codigo', ''));
+    if v_codigo = '' then
+      raise exception 'Hay una fila sin código: no se importa ningún activo.';
+    end if;
+
+    select empresa_id into v_otra from activos where codigo = v_codigo;
+    if v_otra is not null and v_otra <> p_empresa then
+      raise exception 'El código % ya está registrado en la empresa %. Puede ser un traslado entre empresas: es una operación distinta y no se resuelve importando.', v_codigo, v_otra;
+    end if;
+
+    if v_otra is null then
+      insert into activos (codigo, categoria, empresa_id, marca, modelo, serie,
+                           tipo, area, asignado_sin_confirmar, usuario_anterior, observaciones)
+      values (v_codigo, 'Cómputo', p_empresa,
+              nullif(trim(coalesce(a->>'marca', '')), ''),
+              nullif(trim(coalesce(a->>'modelo', '')), ''),
+              nullif(trim(coalesce(a->>'serie', '')), ''),
+              nullif(trim(coalesce(a->>'tipo', '')), ''),
+              nullif(trim(coalesce(a->>'area', '')), ''),
+              nullif(trim(coalesce(a->>'usuario', '')), ''),
+              nullif(trim(coalesce(a->>'usuarioAnterior', '')), ''),
+              nullif(trim(coalesce(a->>'observaciones', '')), ''));
+      v_altas := v_altas || v_codigo;
+    else
+      select to_jsonb(ac) into j_antes from activos ac where codigo = v_codigo;
+      update activos set
+        marca = fn_valor_importado(a->>'marca', marca),
+        modelo = fn_valor_importado(a->>'modelo', modelo),
+        serie = fn_valor_importado(a->>'serie', serie),
+        tipo = fn_valor_importado(a->>'tipo', tipo),
+        area = fn_valor_importado(a->>'area', area),
+        asignado_sin_confirmar = fn_valor_importado(a->>'usuario', asignado_sin_confirmar),
+        usuario_anterior = fn_valor_importado(a->>'usuarioAnterior', usuario_anterior),
+        observaciones = fn_valor_importado(a->>'observaciones', observaciones)
+      where codigo = v_codigo;
+      select to_jsonb(ac) into j_despues from activos ac where codigo = v_codigo;
+
+      v_cambios := '{}'::jsonb;
+      foreach c in array v_campos loop
+        if j_antes->c is distinct from j_despues->c then
+          v_cambios := v_cambios ||
+            jsonb_build_object(c, jsonb_build_object('antes', j_antes->c, 'despues', j_despues->c));
+        end if;
+      end loop;
+      if v_cambios = '{}'::jsonb then
+        v_sin := v_sin || v_codigo;
+      else
+        v_acts := v_acts || jsonb_build_object('codigo', v_codigo, 'cambios', v_cambios);
+      end if;
+    end if;
+  end loop;
+
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('IMPORTAR_ACTIVOS', 'importar_activos', null,
+    jsonb_build_object('por', p_por, 'empresa', p_empresa,
+      'razon_social_confirmada', p_razon_social, 'archivo', p_archivo,
+      'altas', to_jsonb(v_altas), 'actualizaciones', v_acts, 'sin_cambio', to_jsonb(v_sin)));
+
+  return jsonb_build_object('altas', to_jsonb(v_altas),
+    'actualizaciones', v_acts, 'sin_cambio', to_jsonb(v_sin));
+end $$;
+
+-- Vista previa sin rastro: mismo patrón PV999 que previsualizar_importacion.
+create function previsualizar_importacion_activos(
+  p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text
+) returns jsonb language plpgsql security definer as $$
+declare v jsonb;
+begin
+  v := importar_activos(p_empresa, p_activos, p_razon_social, p_archivo, '(vista previa)');
   raise exception using errcode = 'PV999', message = v::text; -- revertir TODO
 exception when sqlstate 'PV999' then
   return sqlerrm::jsonb;
