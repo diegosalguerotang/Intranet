@@ -152,6 +152,56 @@ await prueba("auditoría: queda la razón social confirmada, el archivo y quién
   igual(a.d.por, "verificacion", "quién");
 });
 
+// --- Canal real (--proxy): el MISMO camino que usa la pantalla ADQ-08 -------
+// /api/supa con JWT admin en x-sesion, contra producción. Requiere
+// SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD_INICIAL.
+if (process.argv.includes("--proxy")) {
+  const APP = "https://intranet-general.vercel.app";
+  const { SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD_INICIAL } = process.env;
+  if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD_INICIAL) {
+    console.log("(sin SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD_INICIAL — se salta el canal real)");
+  } else {
+    const login = await fetch(`${APP}/api/supa/auth/v1/token?grant_type=password`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: SUPERADMIN_EMAIL, password: SUPERADMIN_PASSWORD_INICIAL }),
+    });
+    const sesion = await login.json();
+    if (!sesion.access_token) {
+      fallos++; console.error(`✗ proxy: login admin — HTTP ${login.status}`);
+    } else {
+      const rpcProxy = (nombre, args) => fetch(`${APP}/api/supa/rest/v1/rpc/${nombre}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-sesion": sesion.access_token },
+        body: JSON.stringify(args),
+      });
+      await prueba("proxy: previsualizar_importacion_activos clasifica por el canal del navegador", async () => {
+        const r = await rpcProxy("previsualizar_importacion_activos", {
+          p_empresa: "promant",
+          p_activos: [{ codigo: "ZZPRUEBA-PROXY", tipo: "LAPTOP", marca: "LENOVO", modelo: "20392",
+            serie: "", usuario: "PRUEBA", usuarioAnterior: "", area: "RRHH", observaciones: "" }],
+          p_razon_social: "RAZON DE PRUEBA", p_archivo: "prueba.xlsx",
+        });
+        igual(r.status, 200, `status (${await r.clone().text()})`);
+        const cuerpo = await r.json();
+        igual(cuerpo.altas.length, 1, "clasifica el alta");
+        const [n] = await sql("select count(*)::int n from activos where codigo='ZZPRUEBA-PROXY'");
+        igual(n.n, 0, "sin rastro");
+      });
+      await prueba("proxy: el bloqueo por duplicado viaja como error legible", async () => {
+        const dup = { codigo: "ZZPRUEBA-DUP", tipo: "PC", marca: "", modelo: "", serie: "",
+          usuario: "", usuarioAnterior: "", area: "", observaciones: "" };
+        const r = await rpcProxy("importar_activos", {
+          p_empresa: "promant", p_activos: [dup, dup],
+          p_razon_social: "RAZON DE PRUEBA", p_archivo: "prueba.xlsx", p_por: "verificacion",
+        });
+        igual(r.status >= 400, true, `status ${r.status}`);
+        const cuerpo = await r.json();
+        igual((cuerpo.message ?? "").includes("ZZPRUEBA-DUP"), true, `mensaje (${JSON.stringify(cuerpo)})`);
+      });
+    }
+  }
+}
+
 await limpiar();
 console.log(fallos ? `\n${fallos} PRUEBAS FALLARON` : "\nTODAS LAS PRUEBAS PASARON");
 process.exit(fallos ? 1 : 0);

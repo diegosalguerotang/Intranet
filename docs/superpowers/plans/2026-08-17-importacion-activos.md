@@ -24,7 +24,7 @@ el campo nuevo `tipo` (propuesto y aprobado con el plan).
 
 ## Fases
 
-- [ ] **Fase 1 — Parser con TDD contra el fixture.** `leerXlsx` con hoja por nombre
+- [x] **Fase 1 — Parser con TDD contra el fixture.** `leerXlsx` con hoja por nombre
   (workbook.xml + rels; error claro si la hoja no existe). `src/lib/importar/activos.js`:
   validación Formato 7.1, razón social de cabecera (fila DENOMINACIÓN, por contenido),
   encabezados por contenido en 4 filas apiladas, trim universal, separadoras de área como
@@ -33,17 +33,33 @@ el campo nuevo `tipo` (propuesto y aprobado con el plan).
   completos (código, filas, usuario de cada una), serie "real" solo si ≥8 caracteres con
   dígitos, validación cruzada prefijo PROLT/PROPC vs detalle. Pruebas = los 14 criterios
   de aceptación del doc, contra el fixture real.
-- [ ] **Fase 2 — BD.** Migración `activos`: columnas nuevas (`tipo`, `area`,
+- [x] **Fase 2 — BD.** Migración `activos`: columnas nuevas (`tipo`, `area`,
   `asignado_sin_confirmar`, `usuario_anterior`, `observaciones`), `serie`/`marca`/
   `modelo` opcionales, unique(categoria,serie) revisado. RPCs transaccionales
   `previsualizar_importacion_activos` / `importar_activos` (idempotentes, nunca baja por
   ausencia, nunca sobrescribir con vacío ni con prefijo más corto, auditoría con razón
   social confirmada + archivo + total + quién). Canónico `schema.sql` sincronizado.
-- [ ] **Fase 3 — Pantalla ADQ-08.** Flujo: archivo → confirmación bloqueante (razón
+- [x] **Fase 3 — Pantalla ADQ-08.** Flujo: archivo → confirmación bloqueante (razón
   social en grande, botón "Sí, subir a PROMANT") → vista previa (altas / actualizaciones
   campo a campo / duplicados / a revisar) → importación transaccional. La razón social
   del archivo manda (no es selector); fuera del catálogo → rechazo total; fuera del
   alcance del usuario → denegación estándar sin revelar existencia.
-- [ ] **Fase 4 — Verificación y cierre.** `npm test` completo, script
+- [x] **Fase 4 — Verificación y cierre.** `npm test` completo, script
   `verificar-importacion-activos.mjs` contra producción, suites previas verdes, commit →
   push → deploy, estado final documentado.
+
+## Estado final (2026-08-17)
+
+CICLO EJECUTADO COMPLETO. Verificación: vitest 66/66 (18 del parser + 6 de
+`resolverEmpresaArchivo` contra el fixture real: 72 activos, 65 códigos, los 5
+duplicados exactos, 3 contradicciones prefijo/tipo, serie repetida solo
+LNVNB161216); `verificar-importacion-activos.mjs --proxy` 16/16 en producción
+(migración, RPCs con datos ZZPRUEBA- acotados, y el canal real /api/supa);
+`verificar-tres-ajustes.mjs` sigue verde. La regla de serie con forma real
+quedó como ≥8 caracteres + ≥2 dígitos + sin espacios (la literal del doc, ≥8 y
+con dígitos, dejaba pasar INTEL CORE I3 y 12TH GEN INTEL — sus propios
+contraejemplos).
+
+PENDIENTE DE DIEGO: el archivo real NO se puede importar completo hasta
+recodificar las impresoras (los 5 duplicados bloquean por diseño; la corrección
+natural es por número de serie). La pantalla lo lista con filas y usuarios.
