@@ -148,9 +148,9 @@ for (let i = 0; i < lote.boletas.length; i++) {
   boletasConHash.push({
     dni: b.dni, correlativo: b.correlativo, nombre: b.nombre, cargo: b.cargo, sede: b.sede,
     centroCosto: b.centroCosto, ingreso: b.ingreso, neto: b.neto, hash,
-    // URL pública SERVIDA POR EL MISMO PROXY (idéntica a supabase.storage.getPublicUrl()
-    // en el navegador, que usa /api/supa como baseUrl — ver src/lib/supabase.js).
-    archivo_url: `${APP}/api/supa/storage/v1/object/public/documentos/${ruta}`,
+    // El bucket es privado (Ley 29733): archivo_url guarda la RUTA interna,
+    // igual que Boletas.jsx; la lectura pasa por /api/descargar-documento.
+    archivo_url: ruta,
   });
 }
 
@@ -161,13 +161,25 @@ caso("publicar_lote_pdf (vía proxy): lote publicado con 9 documentos", publicad
   publicado.ok ? `lote_id=${rp.lote_id} version=${rp.version} documentos=${rp.documentos}`
     : `HTTP ${publicado.status} ${JSON.stringify(publicado.cuerpo)}`);
 
+// Descarga por el ÚNICO camino de lectura del mundo privado: el endpoint
+// verifica la identidad (admin activo) y devuelve una URL firmada de 10 min.
 const b1 = boletasConHash.find((b) => b.correlativo === 1);
-const descarga = await fetch(b1.archivo_url); // pública: no necesita x-sesion, pero sigue siendo /api/supa
-const bajado = new Uint8Array(await descarga.arrayBuffer());
-const hashBajado = descarga.ok ? await sha256Hex(bajado) : null;
-caso("el archivo público de la boleta No 1 (vía proxy) tiene el mismo SHA-256 enviado",
-  descarga.ok && hashBajado === b1.hash,
-  descarga.ok ? `enviado=${b1.hash.slice(0, 12)}… bajado=${hashBajado?.slice(0, 12)}…` : `HTTP ${descarga.status}`);
+const docR = await supa(`rest/v1/documentos?hash_sha256=eq.${b1.hash}&select=id&limit=1`, { sesion: TOKEN });
+const docB1 = (await json(docR))?.[0];
+caso("la boleta No 1 tiene fila en documentos (por hash, vía proxy)", docR.ok && !!docB1?.id,
+  docR.ok ? `id=${docB1?.id}` : `HTTP ${docR.status}`);
+const firmaR = await fetch(`${APP}/api/descargar-documento?id=${docB1?.id}`, { headers: { "x-sesion": TOKEN } });
+const firma = await json(firmaR);
+const descarga = firma.url ? await fetch(firma.url) : firmaR;
+const bajado = firma.url && descarga.ok ? new Uint8Array(await descarga.arrayBuffer()) : null;
+const hashBajado = bajado ? await sha256Hex(bajado) : null;
+caso("la boleta No 1 baja por URL firmada del endpoint con el mismo SHA-256 enviado",
+  !!firma.url && descarga.ok && hashBajado === b1.hash,
+  firma.url ? `enviado=${b1.hash.slice(0, 12)}… bajado=${hashBajado?.slice(0, 12) ?? "?"}…` : `HTTP ${firmaR.status} ${JSON.stringify(firma)}`);
+// La URL pública vieja tiene que estar MUERTA: bucket privado.
+const publicaVieja = await fetch(`${APP}/api/supa/storage/v1/object/public/documentos/${b1.archivo_url}`);
+caso("la URL pública antigua de esa boleta ya no responde 200 (bucket privado)", publicaVieja.status !== 200,
+  `HTTP ${publicaVieja.status}`);
 
 // --- 4) Resumen para Diego ----------------------------------------------------
 console.log("\n4 · Resumen\n");

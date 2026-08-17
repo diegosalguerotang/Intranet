@@ -68,3 +68,26 @@ CUSPP impresos, y el bucket `documentos` era público con `documentos.archivo_ur
 - El Portal es Preact con presupuesto <60KB: el cambio es un fetch más, sin dependencias.
 - Las cuentas del portal usan GoTrue igual que los admins: el endpoint distingue por el
   dominio del correo — si algún día cambia el dominio técnico, actualizar la constante.
+
+## Estado final (2026-08-17)
+
+CICLO CERRADO Y VERIFICADO EN PRODUCCIÓN. Las 4 tareas del plan ejecutadas:
+
+1. Migración aplicada: bucket `documentos` privado, `archivo_url` con rutas internas,
+   política `documentos_admin` (admin-solo) y `acceso_demo` eliminada de `documentos`.
+2. `api/descargar-documento.js` deployado: único camino de lectura (URL firmada 600 s).
+3. Consumidores migrados: Portal (`urlDocumento` + `Documento.jsx` con visor/descarga por
+   URL firmada, descarga fresca al clic) y BackOffice (`Boletas.jsx` publica rutas).
+   `verificar-e2e-produccion.mjs` adaptado al mundo privado (publica rutas y verifica por
+   el endpoint, no por URL pública).
+4. Lote real republicado por el canal real (BOL-L. -202606-001 v1, 9 boletas) y TODO verde:
+   - `verificar-privacidad.mjs --endpoint`: 9/9 — incluye caso portal real
+     (cuenta 08693165@portal.grupoer.pe creada vía `api/portal-cuentas`; su boleta → 200,
+     la de otro DNI → 403, clave temporal rotada al final).
+   - `verificar-e2e-produccion.mjs`: todos los casos (URL firmada baja el PDF con SHA-256
+     exacto; URL pública antigua → 400).
+   - `verificar-portal.mjs`, `verificar-tres-ajustes.mjs`, `verificar-e2e-login.mjs`,
+     `npm test` (40/40): todo en verde.
+
+Nota: el hash `hash_sha256` de los documentos DEMO del seed no coincide con sus PDF
+adjuntados (dato demo antiguo, sin efecto en boletas reales).
