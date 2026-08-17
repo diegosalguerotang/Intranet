@@ -187,6 +187,18 @@ export default function ImportarInventario({ open, onClose }) {
               </Note>
             )}
 
+            {analisis.recodificados.length > 0 && (
+              <Note tone="neutral">
+                {analisis.recodificados.length} impresora{analisis.recodificados.length === 1 ? "" : "s"} recodificada{analisis.recodificados.length === 1 ? "" : "s"} por número de serie
+                (la marca con el año de compra no identifica un equipo; el código del archivo queda en las observaciones):
+                <ul className="mt-1 list-disc pl-4">
+                  {analisis.recodificados.map((x) => (
+                    <li key={x.fila}>Fila {x.fila}: {x.codigoArchivo} → <b>{x.codigo}</b></li>
+                  ))}
+                </ul>
+              </Note>
+            )}
+
             {analisis.aRevisar.length > 0 && (
               <Note tone="pend">
                 {analisis.aRevisar.length} fila{analisis.aRevisar.length === 1 ? "" : "s"} para revisar (no se importa{analisis.aRevisar.length === 1 ? "" : "n"} como activo):

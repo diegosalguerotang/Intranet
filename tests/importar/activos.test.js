@@ -5,13 +5,17 @@ import { parsearActivos, normalizarRazonSocial, resolverEmpresaArchivo } from ".
 
 // Criterios de aceptación de Importacion_Activos.docx, verificados contra el
 // archivo de muestra real (Formato 7.1 SUNAT usado como inventario).
-let filas, r;
+// `crudo` = el archivo tal cual (los criterios del doc se escribieron sobre
+// él); `r` = comportamiento del producto, con la recodificación de impresoras
+// por número de serie que Diego decidió el 2026-08-17.
+let filas, r, crudo;
 beforeAll(async () => {
   filas = await leerXlsx(
     new Uint8Array(readFileSync("tests/fixtures/EQUIPOS_DE_COMPUTO_ACTIVOS_FIJOS.xlsx")),
     { hoja: "AF EQUIPO DE COMPUTO" }
   );
   r = parsearActivos(filas);
+  crudo = parsearActivos(filas, { recodificarImpresoras: false });
 });
 
 describe("parsearActivos con el fixture real", () => {
@@ -20,13 +24,13 @@ describe("parsearActivos con el fixture real", () => {
     expect(r.razonSocial).toBe("PROMANT SERVICIOS SOCIEDAD COMERCIAL DE RESPONSABILIDAD LIMITADA");
   });
 
-  it("detecta 72 filas de activo y 65 códigos únicos", () => {
-    expect(r.activos.length).toBe(72);
-    expect(new Set(r.activos.map((a) => a.codigo)).size).toBe(65);
+  it("detecta 72 filas de activo y 65 códigos únicos (archivo tal cual)", () => {
+    expect(crudo.activos.length).toBe(72);
+    expect(new Set(crudo.activos.map((a) => a.codigo)).size).toBe(65);
   });
 
-  it("reporta los cinco códigos duplicados como bloqueantes", () => {
-    const porCodigo = Object.fromEntries(r.duplicados.map((d) => [d.codigo, d]));
+  it("reporta los cinco códigos duplicados del archivo tal cual", () => {
+    const porCodigo = Object.fromEntries(crudo.duplicados.map((d) => [d.codigo, d]));
     expect(Object.keys(porCodigo).sort()).toEqual(
       ["EPSON 2025", "EPSON2018", "EPSON2019", "EPSON2024", "PROLT51"]
     );
@@ -37,7 +41,7 @@ describe("parsearActivos con el fixture real", () => {
   });
 
   it("cada duplicado trae las filas implicadas y el usuario de cada una", () => {
-    const prolt51 = r.duplicados.find((d) => d.codigo === "PROLT51");
+    const prolt51 = crudo.duplicados.find((d) => d.codigo === "PROLT51");
     expect(prolt51.filas).toEqual([20, 67]);
     expect(prolt51.usuarios).toEqual(["FABRIZZIO NUEVA", "CHRISTIAN CHAMBI"]);
   });
@@ -101,6 +105,43 @@ describe("parsearActivos con el fixture real", () => {
     const conNota = r.activos.filter((a) => a.observaciones);
     expect(conNota.length).toBeGreaterThan(0);
     expect(r.activos.every((a) => !/^\s|\s$/.test(a.observaciones))).toBe(true);
+  });
+});
+
+// Decisión de Diego (2026-08-17): las impresoras se codifican por número de
+// serie — EPSON+año no identifica un equipo. La recodificación es el
+// comportamiento por defecto del producto.
+describe("recodificación de impresoras por número de serie", () => {
+  it("recodifica las 11 impresoras con serie real y lo reporta", () => {
+    expect(r.recodificados.length).toBe(11);
+    const f79 = r.recodificados.find((x) => x.fila === 79);
+    expect(f79.codigoArchivo).toBe("EPSON2018");
+    expect(f79.codigo).toBe("S42K314023");
+  });
+
+  it("el activo recodificado usa la serie como código y conserva el del archivo en observaciones", () => {
+    const imp = r.activos.find((a) => a.fila === 79);
+    expect(imp.codigo).toBe("S42K314023");
+    expect(imp.codigoArchivo).toBe("EPSON2018");
+    expect(imp.observaciones).toContain("EPSON2018");
+  });
+
+  it("los duplicados de impresoras quedan resueltos: solo PROLT51 sigue bloqueando", () => {
+    expect(r.duplicados.map((d) => d.codigo)).toEqual(["PROLT51"]);
+  });
+
+  it("una impresora sin serie real conserva el código del archivo", () => {
+    const zebra = r.activos.find((a) => a.fila === 84);
+    expect(zebra.codigo).toBe("ZEBRA2024");
+    expect(zebra.codigoArchivo).toBeUndefined();
+  });
+
+  it("las fotocopiadoras no se recodifican", () => {
+    expect(r.activos.find((a) => a.fila === 88).codigo).toBe("KONIKA COLOR");
+  });
+
+  it("los códigos únicos suben a 71 (72 filas menos el par PROLT51)", () => {
+    expect(new Set(r.activos.map((a) => a.codigo)).size).toBe(71);
   });
 });
 

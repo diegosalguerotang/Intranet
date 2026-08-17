@@ -56,10 +56,11 @@ const formatearModelo = (s) => (/^\d+\.0+$/.test(s) ? s.split(".")[0] : s);
 const PALABRAS_ENCABEZADO = /(USUARIO|CODIGO|ACTIVO|DETALLE|DESCRIPCION|MARCA|MODELO|SERIE|PLACA|OBSERVACIO|COMPONENTE)/;
 const FILAS_ENCABEZADO = 4; // el Formato 7.1 apila los encabezados en 4 filas
 
-export function parsearActivos(filas) {
+export function parsearActivos(filas, { recodificarImpresoras = true } = {}) {
   const r = {
     razonSocial: null, errores: [], activos: [], aRevisar: [],
     duplicados: [], seriesRepetidas: [], advertenciasTipo: [], areas: [],
+    recodificados: [],
   };
   const celda = (fila, col) => (col >= 0 ? String(fila?.[col] ?? "").trim() : "");
 
@@ -171,7 +172,23 @@ export function parsearActivos(filas) {
     // Cualquier otra cosa (restos de encabezado, rótulos sueltos) se ignora.
   }
 
-  // 5 · Duplicados dentro del archivo (bloqueantes): mismo código 2+ veces.
+  // 5 · Recodificación de impresoras por número de serie (decisión de Diego,
+  // 2026-08-17): marca+año no identifica un equipo, la serie sí. Solo
+  // impresoras con serie de forma real; el código del archivo queda en
+  // observaciones y en codigoArchivo. Corre ANTES de detectar duplicados:
+  // con esto los choques EPSON+año del archivo real quedan resueltos.
+  if (recodificarImpresoras) {
+    for (const a of r.activos) {
+      if (!normalizar(a.tipo).includes("IMPRESORA") || !a.serieReal) continue;
+      r.recodificados.push({ fila: a.fila, codigoArchivo: a.codigo, codigo: a.serie });
+      a.codigoArchivo = a.codigo;
+      a.codigo = a.serie;
+      a.observaciones = [a.observaciones, `Código del archivo: ${a.codigoArchivo}`]
+        .filter(Boolean).join(" · ");
+    }
+  }
+
+  // 6 · Duplicados dentro del archivo (bloqueantes): mismo código 2+ veces.
   const porCodigo = new Map();
   for (const a of r.activos) {
     if (!porCodigo.has(a.codigo)) porCodigo.set(a.codigo, []);
@@ -187,7 +204,7 @@ export function parsearActivos(filas) {
     }
   }
 
-  // 6 · Serie repetida (advertencia): dos códigos DISTINTOS con la misma serie
+  // 7 · Serie repetida (advertencia): dos códigos DISTINTOS con la misma serie
   // con forma real. Probablemente el mismo equipo cargado dos veces.
   const porSerie = new Map();
   for (const a of r.activos) {
@@ -202,7 +219,7 @@ export function parsearActivos(filas) {
     }
   }
 
-  // 7 · Validación cruzada: el prefijo del código declara el tipo. Se advierte,
+  // 8 · Validación cruzada: el prefijo del código declara el tipo. Se advierte,
   // no se corrige: cualquiera de los dos campos puede ser el equivocado.
   for (const a of r.activos) {
     const tipo = normalizar(a.tipo);

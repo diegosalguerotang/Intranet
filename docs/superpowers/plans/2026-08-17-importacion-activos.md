@@ -60,6 +60,12 @@ quedó como ≥8 caracteres + ≥2 dígitos + sin espacios (la literal del doc, 
 con dígitos, dejaba pasar INTEL CORE I3 y 12TH GEN INTEL — sus propios
 contraejemplos).
 
-PENDIENTE DE DIEGO: el archivo real NO se puede importar completo hasta
-recodificar las impresoras (los 5 duplicados bloquean por diseño; la corrección
-natural es por número de serie). La pantalla lo lista con filas y usuarios.
+DECISIÓN DE DIEGO (2026-08-17): **las impresoras se recodifican por número de
+serie.** Implementado como comportamiento por defecto del parser
+(`recodificarImpresoras: true`): impresora + serie con forma real → código =
+serie; el código del archivo queda en observaciones y en `codigoArchivo`, y la
+vista previa lista cada recodificación. En el archivo real: 11 de 14
+impresoras recodificadas, los 4 choques EPSON+año resueltos, códigos únicos
+72→71. PENDIENTE DE DIEGO: **PROLT51 sigue duplicado** (dos laptops, filas 20
+y 67, usuarios FABRIZZIO NUEVA y CHRISTIAN CHAMBI; sus series son basura de
+procesador) — hay que corregirlo en el archivo antes de poder importarlo.
