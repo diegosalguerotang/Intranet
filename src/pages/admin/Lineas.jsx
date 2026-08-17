@@ -6,13 +6,16 @@ import {
 } from "../../components/ui";
 import { normalizarCelular } from "../../lib/campos";
 
-// ADQ-05 — Líneas móviles
+// ADQ-05 — Líneas móviles. El pago sale de una sola razón social (hoy todas
+// desde PROMANT: recibo Movistar cargado el 2026-08-17), pero cada línea se
+// DISTRIBUYE a la razón social que la usa (RS Uso, asignable aquí mismo).
 export default function Lineas() {
-  const { db, persona, empresaPor, empresasActivas, addLinea } = useApp();
+  const { db, persona, empresaPor, empresasActivas, addLinea, asignarUsoLinea } = useApp();
   const [nueva, setNueva] = useState(false);
   const LINEAS = db.lineas;
   const ACTIVOS = db.activos;
   const costoTotal = LINEAS.filter((l) => l.estado === "activa").reduce((s, l) => s + l.costo, 0);
+  const sinDistribuir = LINEAS.filter((l) => l.estado === "activa" && !l.usa).length;
 
   return (
     <>
@@ -27,10 +30,11 @@ export default function Lineas() {
         <Stat label="Líneas activas" value={LINEAS.filter((l) => l.estado === "activa").length} />
         <Stat label="Suspendidas" value={LINEAS.filter((l) => l.estado === "suspendida").length} tone="pend" />
         <Stat label="Gasto mensual" value={`S/ ${costoTotal.toFixed(2)}`} hint="Solo líneas activas" />
+        <Stat label="Sin distribuir" value={sinDistribuir} tone={sinDistribuir ? "pend" : "conf"} hint="Líneas sin RS de uso asignada" />
       </div>
 
       <Card pad={false}>
-        <Table head={["Número", "Operador", "Plan", "Costo (S/)", "Equipo vinculado", "Usuario", "Paga", "Estado"]}>
+        <Table head={["Número", "Operador", "Plan", "Costo (S/)", "Equipo vinculado", "Usuario", "RS Pago", "RS Uso", "Estado"]}>
           {LINEAS.map((l) => {
             const eq = l.equipo ? ACTIVOS.find((a) => a.codigo === l.equipo) : null;
             const usuario = eq?.asignado ? persona(eq.asignado)?.nombre : null;
@@ -43,6 +47,19 @@ export default function Lineas() {
                 <Td>{eq ? `${eq.codigo} — ${eq.modelo}` : <span className="text-gris-cl">Sin equipo</span>}</Td>
                 <Td>{usuario ?? <span className="text-gris-cl">—</span>}</Td>
                 <Td className="text-gris">{empresaPor(l.paga)?.corto}</Td>
+                <Td>
+                  {/* Distribución editable aquí mismo: el pago no cambia. */}
+                  <select
+                    value={l.usa ?? ""}
+                    onChange={(e) => asignarUsoLinea(l.numero, e.target.value)}
+                    className={`rounded border border-borde bg-white px-1.5 py-1 text-[12px] ${l.usa ? "text-tinta" : "text-pend"}`}
+                  >
+                    <option value="">Por asignar</option>
+                    {empresasActivas.map((e) => (
+                      <option key={e.id} value={e.id}>{e.corto}</option>
+                    ))}
+                  </select>
+                </Td>
                 <Td>
                   <Badge tone={l.estado === "activa" ? "conf" : l.estado === "suspendida" ? "pend" : "neutral"}>
                     {l.estado === "activa" ? "Activa" : l.estado === "suspendida" ? "Suspendida" : "De baja"}
@@ -66,7 +83,7 @@ export default function Lineas() {
 }
 
 function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
-  const vacio = { numero: "", operador: "Claro", plan: "", costo: "", equipo: "", paga: "negliaf" };
+  const vacio = { numero: "", operador: "Movistar", plan: "", costo: "", equipo: "", paga: "promant", usa: "" };
   const [form, setForm] = useState(vacio);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -75,7 +92,8 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
     if (form.numero.length !== 9 || !form.plan || !form.costo) return;
     onGuardar({
       numero: form.numero, operador: form.operador, plan: form.plan,
-      costo: parseFloat(form.costo) || 0, equipo: form.equipo || null, paga: form.paga,
+      costo: parseFloat(form.costo) || 0, equipo: form.equipo || null,
+      paga: form.paga, usa: form.usa || null,
       alta: new Date().toISOString().slice(0, 10), estado: "activa",
     });
     setForm(vacio);
@@ -107,12 +125,18 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
               ))}
             </Select>
           </Field>
-          <Field label="Empresa que paga" required>
+          <Field label="RS que paga" required hint="Hoy todas las líneas se pagan desde PROMANT.">
             <Select value={form.paga} onChange={set("paga")}>
               {empresas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
             </Select>
           </Field>
         </div>
+        <Field label="RS que la usa" hint="A qué razón social se distribuye la línea; puede asignarse después desde la tabla.">
+          <Select value={form.usa} onChange={set("usa")}>
+            <option value="">Por asignar</option>
+            {empresas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+          </Select>
+        </Field>
         <Button type="submit">Guardar</Button>
       </form>
     </Modal>

@@ -474,7 +474,8 @@ create table lineas (
   plan     text not null,
   costo    numeric(10,2) not null default 0,
   equipo   text references activos(codigo) on update cascade,
-  paga     text not null references empresas(id),
+  paga     text not null references empresas(id),  -- RS que PAGA (hoy todas: PROMANT)
+  usa      text references empresas(id),           -- RS que la USA (null = por asignar)
   alta     date not null default current_date,
   estado   text not null default 'activa' check (estado in ('activa','suspendida','baja'))
 );

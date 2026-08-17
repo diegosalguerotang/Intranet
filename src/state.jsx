@@ -270,6 +270,16 @@ export function AppProvider({ children }) {
         });
       }
     },
+    // ADQ-05 — Distribuir una línea a la razón social que la usa (el pago
+    // sigue saliendo de quien la paga; son columnas distintas).
+    asignarUsoLinea: async (numero, usa) => {
+      local("lineas", (xs) => xs.map((l) => (l.numero === numero ? { ...l, usa: usa || null } : l)));
+      if (supabaseListo) {
+        const { error } = await supabase.from("lineas").update({ usa: usa || null }).eq("numero", numero);
+        if (error) console.error("Supabase [lineas]:", error.message);
+        await recargar("lineas");
+      }
+    },
     // ---- Accesos y Roles ----
     guardarPerfil: (perfil) => {
       const previa = db.perfiles.find((p) => p.id === perfil.id);
