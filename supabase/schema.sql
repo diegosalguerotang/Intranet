@@ -474,7 +474,7 @@ create table lineas (
   plan     text not null,
   costo    numeric(10,2) not null default 0,
   equipo   text references activos(codigo) on update cascade,
-  paga     text not null references empresas(id),  -- RS que PAGA (hoy todas: PROMANT)
+  paga     text not null default 'promant' references empresas(id),  -- RS que PAGA: SIEMPRE PROMANT (regla de Diego)
   usa      text references empresas(id),           -- RS que la USA (null = por asignar)
   alta     date not null default current_date,
   estado   text not null default 'activa' check (estado in ('activa','suspendida','baja'))
@@ -701,10 +701,10 @@ insert into asignaciones (activo_codigo, persona_dni, entregado_en, condicion_en
   ('MAQ-0021', '40987654', '2025-08-15', 'Buen estado'),
   ('RAD-0002', '45098234', '2025-06-20', 'Buen estado');
 
-insert into lineas (numero, operador, plan, costo, equipo, paga, alta, estado) values
-  ('912345678', 'Claro',    'Plan Negocios 39.90', 39.90, 'TEL-0012', 'negliaf', '2026-01-20', 'activa'),
-  ('998877665', 'Entel',    'Plan Empresa 29.90',  29.90, null,       'negliaf', '2025-10-01', 'activa'),
-  ('955443322', 'Movistar', 'Plan Negocios 45.00', 45.00, null,       'bremco',  '2025-05-15', 'suspendida');
+insert into lineas (numero, operador, plan, costo, equipo, paga, usa, alta, estado) values
+  ('912345678', 'Claro',    'Plan Negocios 39.90', 39.90, 'TEL-0012', 'promant', 'negliaf', '2026-01-20', 'activa'),
+  ('998877665', 'Entel',    'Plan Empresa 29.90',  29.90, null,       'promant', 'negliaf', '2025-10-01', 'activa'),
+  ('955443322', 'Movistar', 'Plan Negocios 45.00', 45.00, null,       'promant', null,      '2025-05-15', 'suspendida');
 
 insert into epp_entregas (id, dni, items, entrega, reposicion) values
   (1, '45231876', 'Guantes de nitrilo (2), Mascarilla (5), Uniforme talla M (1)', '2026-07-01', '2026-10-01'),

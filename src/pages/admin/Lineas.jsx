@@ -83,7 +83,8 @@ export default function Lineas() {
 }
 
 function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
-  const vacio = { numero: "", operador: "Movistar", plan: "", costo: "", equipo: "", paga: "promant", usa: "" };
+  // RS de pago FIJA: todas las líneas se pagan desde PROMANT (regla de Diego).
+  const vacio = { numero: "", operador: "Movistar", plan: "", costo: "", equipo: "", usa: "" };
   const [form, setForm] = useState(vacio);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -93,7 +94,7 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
     onGuardar({
       numero: form.numero, operador: form.operador, plan: form.plan,
       costo: parseFloat(form.costo) || 0, equipo: form.equipo || null,
-      paga: form.paga, usa: form.usa || null,
+      paga: "promant", usa: form.usa || null,
       alta: new Date().toISOString().slice(0, 10), estado: "activa",
     });
     setForm(vacio);
@@ -125,10 +126,8 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
               ))}
             </Select>
           </Field>
-          <Field label="RS que paga" required hint="Hoy todas las líneas se pagan desde PROMANT.">
-            <Select value={form.paga} onChange={set("paga")}>
-              {empresas.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-            </Select>
+          <Field label="RS que paga" hint="Fija: todas las líneas se pagan desde PROMANT.">
+            <Input value="PROMANT SERVICIOS" disabled readOnly />
           </Field>
         </div>
         <Field label="RS que la usa" hint="A qué razón social se distribuye la línea; puede asignarse después desde la tabla.">
