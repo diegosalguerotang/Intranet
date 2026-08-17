@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Copy, Ban, ShieldCheck, Users as UsersIcon, Pencil } from "lucide-react";
+import { Plus, Copy, Ban, ShieldCheck, Users as UsersIcon, Pencil, Trash2 } from "lucide-react";
 import { useApp } from "../../state";
-import { PageHeader, Card, Table, Td, Badge, Button, Modal, Note } from "../../components/ui";
+import { PageHeader, Card, Table, Td, Badge, Button, Modal, Note, Field, Input } from "../../components/ui";
 import { MODULOS, NIVELES } from "../../data/modulos";
 
 // Resumen visual de la matriz: cuántos módulos hay en cada nivel.
@@ -25,9 +25,28 @@ function ResumenMatriz({ matriz }) {
 }
 
 export default function Perfiles() {
-  const { db, desactivarPerfil } = useApp();
+  const { db, desactivarPerfil, eliminarPerfil } = useApp();
   const navigate = useNavigate();
   const [confirmar, setConfirmar] = useState(null);
+  const [eliminar, setEliminar] = useState(null); // categoría a eliminar definitivamente
+  const [confirmTexto, setConfirmTexto] = useState("");
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState(null);
+
+  const cerrarEliminar = () => { setEliminar(null); setConfirmTexto(""); setErrorEliminar(null); };
+  const ejecutarEliminar = async () => {
+    if (confirmTexto !== "ELIMINAR" || eliminando) return;
+    setEliminando(true);
+    setErrorEliminar(null);
+    try {
+      await eliminarPerfil(eliminar.id);
+      cerrarEliminar();
+    } catch (e) {
+      setErrorEliminar(e.message);
+    } finally {
+      setEliminando(false);
+    }
+  };
 
   return (
     <>
@@ -85,6 +104,9 @@ export default function Perfiles() {
                   {p.estado === "activo" && !p.esSuperadmin && (
                     <Button size="sm" variant="ghost" onClick={() => setConfirmar(p)}><Ban size={12} /> Archivar</Button>
                   )}
+                  {!p.esSuperadmin && p.usuarios === 0 && (
+                    <Button size="sm" variant="ghost" onClick={() => setEliminar(p)}><Trash2 size={12} /> Eliminar</Button>
+                  )}
                 </div>
               </Td>
             </tr>
@@ -96,7 +118,8 @@ export default function Perfiles() {
         <Note tone="neutral">
           <b>Duplicar es la vía recomendada para crear variantes.</b> Crear desde cero una categoría casi idéntica a
           otra es cómo se acumulan permisos que nadie recuerda haber otorgado. Una categoría con usuarios asignados
-          no se elimina: se archiva.
+          no se elimina: se archiva. Eliminar borra la categoría con todas sus versiones (el registro de accesos
+          conserva el rastro).
         </Note>
       </div>
 
@@ -123,6 +146,28 @@ export default function Perfiles() {
               )}
               <Button variant="secondary" onClick={() => setConfirmar(null)}>Cancelar</Button>
               <Button variant="danger" onClick={() => { desactivarPerfil(confirmar.id); setConfirmar(null); }}>Archivar</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!eliminar} onClose={cerrarEliminar} title={`Eliminar «${eliminar?.nombre}»`}>
+        {eliminar && (
+          <div className="space-y-4">
+            <Note tone="alerta">
+              La eliminación es <b>definitiva</b>: borra la categoría con todas sus versiones, su matriz de
+              permisos y su alcance de razones sociales. No se puede deshacer. El registro de accesos (ACC-06)
+              conserva el rastro de los ingresos que se hicieron con ella.
+            </Note>
+            <Field label={<>Escribe <b>ELIMINAR</b> para confirmar</>}>
+              <Input value={confirmTexto} onChange={(e) => setConfirmTexto(e.target.value)} placeholder="ELIMINAR" autoFocus />
+            </Field>
+            {errorEliminar && <Note tone="alerta">{errorEliminar}</Note>}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={cerrarEliminar} disabled={eliminando}>Cancelar</Button>
+              <Button variant="danger" disabled={confirmTexto !== "ELIMINAR" || eliminando} onClick={ejecutarEliminar}>
+                {eliminando ? "Eliminando…" : "Eliminar definitivamente"}
+              </Button>
             </div>
           </div>
         )}

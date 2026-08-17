@@ -262,6 +262,15 @@ export function AppProvider({ children }) {
       local("perfiles", (xs) => xs.map((p) => (p.id === id ? { ...p, estado: "desactivado" } : p)));
       rpc("desactivar_perfil", { p_id: id }, "perfiles");
     },
+    // Eliminación definitiva de una categoría: los invariantes (jamás
+    // superadmin, jamás con usuarios) se validan en el RPC y el error se
+    // muestra tal cual en el modal — sin actualización optimista.
+    eliminarPerfil: async (id) => {
+      if (!supabaseListo) throw new Error("La eliminación real requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("eliminar_perfil", { p_id: id });
+      if (error) throw new Error(error.message);
+      await recargar("perfiles", "perfilVersiones");
+    },
     // Alta v2: la fila en BD primero (asigna código), la cuenta de ingreso
     // después (serverless con service key devuelve la clave provisional).
     crearUsuarioAdmin: async (u) => {

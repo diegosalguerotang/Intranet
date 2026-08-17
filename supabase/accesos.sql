@@ -15,7 +15,7 @@ drop view if exists v_perfiles, v_perfil_versiones, v_usuarios_admin,
 drop table if exists registro_accesos, usuarios_admin, politica_acceso,
   perfil_empresas, perfil_permisos, perfiles cascade;
 drop sequence if exists seq_usuario_codigo;
-drop function if exists guardar_perfil, desactivar_perfil, crear_usuario_admin,
+drop function if exists guardar_perfil, desactivar_perfil, eliminar_perfil, crear_usuario_admin,
   actualizar_usuario_admin, suspender_usuario_admin, reactivar_usuario_admin,
   eliminar_usuario_admin, reenviar_clave, guardar_politica, puede,
   verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
@@ -255,6 +255,30 @@ create function desactivar_perfil(p_id text) returns void
 language plpgsql security definer as $$
 begin
   update perfiles set estado = 'desactivado' where id = p_id;
+end $$;
+
+-- Eliminación definitiva (2026-08-17): jamás superadmin, jamás con usuarios
+-- asignados. Borra todas las versiones (matriz incluida; alcance cae por
+-- cascade). ACC-06 conserva el rastro (perfil_id/version son texto propio,
+-- sin FK) y queda una fila de auditoría con lo eliminado.
+create function eliminar_perfil(p_id text) returns void
+language plpgsql security definer as $$
+declare v_nombre text;
+begin
+  select nombre into v_nombre from perfiles where id = p_id order by version desc limit 1;
+  if v_nombre is null then
+    raise exception 'La categoría no existe.';
+  end if;
+  if exists (select 1 from perfiles where id = p_id and es_superadmin) then
+    raise exception 'La categoría de superadministrador no se elimina.';
+  end if;
+  if exists (select 1 from usuarios_admin where perfil_id = p_id) then
+    raise exception 'La categoría «%» tiene usuarios asignados: reasígnalos o elimínalos primero.', v_nombre;
+  end if;
+  delete from perfil_permisos where perfil_id = p_id;
+  delete from perfiles where id = p_id; -- perfil_empresas cae en cascada
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('ELIMINAR_PERFIL', 'perfiles', jsonb_build_object('id', p_id, 'nombre', v_nombre), null);
 end $$;
 
 create function crear_usuario_admin(
