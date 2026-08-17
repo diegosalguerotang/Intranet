@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { AlertTriangle, FileDown, Paperclip } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, FileDown, Paperclip, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Button, Field, Input, Textarea, Select, Note, Badge, Table, Td, Modal, Stat,
@@ -14,15 +14,50 @@ const ESTADOS = {
   resuelto: { tone: "neutral", label: "Resuelto" },
 };
 
+// Encabezado ordenable: la flechita indica el orden activo y el click lo
+// alterna (sin orden → ascendente → descendente).
+function OrdenTh({ etiqueta, campo, orden, setOrden }) {
+  const activo = orden.campo === campo;
+  const Icono = !activo ? ArrowUpDown : orden.dir === 1 ? ArrowUp : ArrowDown;
+  return (
+    <button
+      type="button"
+      onClick={() => setOrden(activo && orden.dir === -1 ? { campo: null, dir: 1 } : { campo, dir: activo ? -1 : 1 })}
+      className={`inline-flex items-center gap-1 uppercase tracking-[0.06em] ${activo ? "text-white" : "text-white/80 hover:text-white"}`}
+    >
+      {etiqueta} <Icono size={11} />
+    </button>
+  );
+}
+
 // RRH-18 / RRH-19 — Emisión y bandeja de memorándums
 export default function Memorandums() {
   const { db, persona, addMemo, resolverMemo } = useApp();
   const [emitir, setEmitir] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [filtro, setFiltro] = useState("");
+  const [busca, setBusca] = useState("");
+  const [orden, setOrden] = useState({ campo: null, dir: 1 });
   const memos = db.memorandums;
 
-  const filas = memos.filter((m) => !filtro || m.estado === filtro);
+  const filas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    const lista = memos.filter((m) => {
+      if (filtro && m.estado !== filtro) return false;
+      if (!q) return true;
+      const p = persona(m.dni);
+      return m.dni.includes(q) || (p?.nombre ?? "").toLowerCase().includes(q);
+    });
+    if (!orden.campo) return lista;
+    return [...lista].sort((a, b) => {
+      const va = orden.campo === "nombre" ? (persona(a.dni)?.nombre ?? "") : (a.notificado ?? "");
+      const vb = orden.campo === "nombre" ? (persona(b.dni)?.nombre ?? "") : (b.notificado ?? "");
+      if (va === vb) return 0;
+      if (va === "") return 1; // sin fecha/nombre siempre al final
+      if (vb === "") return -1;
+      return va < vb ? -orden.dir : orden.dir;
+    });
+  }, [memos, filtro, busca, orden, persona]);
 
   const emitirMemo = (datos) => {
     const correlativo = `01${43 + memos.length}-2026`;
@@ -57,6 +92,7 @@ export default function Memorandums() {
 
       <Card pad={false}>
         <div className="flex flex-wrap gap-2.5 border-b border-borde bg-papel/50 p-3.5">
+          <Input placeholder="Buscar por trabajador o DNI…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ maxWidth: 250 }} />
           <Select value={filtro} onChange={(e) => setFiltro(e.target.value)} style={{ maxWidth: 220 }}>
             <option value="">Todos los estados</option>
             <option value="emitido_sin_notificar">Sin notificar</option>
@@ -64,7 +100,13 @@ export default function Memorandums() {
             <option value="resuelto">Resueltos</option>
           </Select>
         </div>
-        <Table head={["N°", "Trabajador", "Tipo", "Notificado", "Vence", "Estado", ""]}>
+        <Table head={[
+          "N°",
+          <OrdenTh key="t" etiqueta="Trabajador" campo="nombre" orden={orden} setOrden={setOrden} />,
+          "Tipo",
+          <OrdenTh key="f" etiqueta="Notificado" campo="notificado" orden={orden} setOrden={setOrden} />,
+          "Vence", "Estado", "",
+        ]}>
           {filas.map((m) => {
             const est = ESTADOS[m.estado] ?? ESTADOS.notificado;
             return (
