@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
-  Clock, FileSignature, Boxes, Smartphone, HardHat, PieChart, LogOut, Building2,
+  Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin,
 } from "lucide-react";
 import { useApp } from "../state";
@@ -23,11 +23,12 @@ const NAV_RRHH = [
   { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas" },
 ];
 
+// Costo por sede (ADQ-07) retirado a pedido de Diego (2026-08-17): no sirve
+// por ahora. EPP queda visible pero deshabilitado («Próximamente»).
 const NAV_ADMIN = [
   { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01", modulo: "activos" },
   { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05", modulo: "activos" },
-  { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos" },
-  { to: "/admin/costos", icon: PieChart, label: "Costo por sede", code: "ADQ-07", modulo: "activos" },
+  { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos", proximamente: true },
 ];
 
 const NAV_ACCESOS = [
@@ -45,7 +46,21 @@ function NavGroup({ title, items, acceso }) {
       <h3 className="mb-2 mt-6 px-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-gris-cl first:mt-0">
         {title}
       </h3>
-      {visibles.map(({ to, icon: Icon, label, code, end }) => (
+      {visibles.map(({ to, icon: Icon, label, code, end, proximamente }) =>
+        proximamente ? (
+          // Módulo anunciado pero aún sin función: gris y sin click.
+          <div
+            key={to}
+            className="mb-1 flex cursor-not-allowed items-center gap-2.5 rounded-caja px-3 py-2 text-[13px] font-medium text-gris-cl opacity-70"
+            title="Próximamente"
+          >
+            <Icon size={15} className="shrink-0 text-gris-cl" />
+            <span className="flex-1">{label}</span>
+            <span className="rounded-full bg-papel px-2 py-0.5 font-mono text-[8.5px] font-semibold uppercase tracking-wide text-gris-cl">
+              Próximamente
+            </span>
+          </div>
+        ) : (
         <NavLink
           key={to}
           to={to}
@@ -66,7 +81,8 @@ function NavGroup({ title, items, acceso }) {
             </>
           )}
         </NavLink>
-      ))}
+        )
+      )}
     </div>
   );
 }

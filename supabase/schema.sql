@@ -194,7 +194,11 @@ create table comunicados (
   exige_acuse  boolean not null default true,
   segmento     text not null,
   alcance      integer not null default 0,   -- congelado al publicar
-  leidos       integer not null default 0
+  leidos       integer not null default 0,
+  -- Segmentación ESTRUCTURAL (2026-08-17): null = todo el grupo. El texto
+  -- `segmento` queda solo para mostrar.
+  empresa_id   text references empresas(id),
+  sede_id      text references sedes(id)
 );
 
 -- ---------------------------------------------------------------------------
@@ -270,7 +274,8 @@ create table contratos (
 create table activos (
   codigo        text primary key,            -- identidad del activo (global)
   categoria     text not null
-    check (categoria in ('Telefonía','Cómputo','Comunicaciones','Maquinaria')),
+    -- Telefonía se fusionó en Comunicaciones (2026-08-17): eran lo mismo.
+    check (categoria in ('Cómputo','Comunicaciones','Maquinaria')),
   -- marca/modelo/serie opcionales desde la importación de inventario (el
   -- Formato 7.1 real trae vacíos y procesadores en la columna de serie); la
   -- serie repetida se vigila como advertencia del parser, no por unicidad.
@@ -290,7 +295,7 @@ create table activos (
   usuario_anterior text,                     -- historial textual del archivo
   observaciones text,
   por_corregir  boolean not null default false, -- código repetido en el archivo: falta corregir
-  constraint imei_solo_telefonia check (imei is null or categoria = 'Telefonía')
+  constraint imei_solo_comunicaciones check (imei is null or categoria = 'Comunicaciones')
 );
 
 create table asignaciones (
@@ -508,8 +513,8 @@ from (values
 join vinculos v on v.persona_dni = c.dni and v.fecha_fin is null;
 
 insert into activos (codigo, categoria, marca, modelo, serie, imei, estado_fisico, sede_id, empresa_id, valor, compra) values
-  ('TEL-0012', 'Telefonía',      'Samsung',  'Galaxy A15',            'SM-A155M-8871', '358240051111110', 'operativo',     null,    'negliaf', 620,  '2026-01-15'),
-  ('TEL-0013', 'Telefonía',      'Samsung',  'Galaxy A15',            'SM-A155M-8872', '358240051111128', 'operativo',     null,    'negliaf', 620,  '2026-01-15'),
+  ('TEL-0012', 'Comunicaciones', 'Samsung',  'Galaxy A15',            'SM-A155M-8871', '358240051111110', 'operativo',     null,    'negliaf', 620,  '2026-01-15'),
+  ('TEL-0013', 'Comunicaciones', 'Samsung',  'Galaxy A15',            'SM-A155M-8872', '358240051111128', 'operativo',     null,    'negliaf', 620,  '2026-01-15'),
   ('COM-0004', 'Cómputo',        'Lenovo',   'ThinkPad E14',          'PF-4RTZ88',     null,              'operativo',     null,    'negliaf', 2850, '2025-11-20'),
   ('MAQ-0021', 'Maquinaria',     'Kärcher',  'Hidrolavadora HD 5/15', 'KAR-99120',     null,              'operativo',     null,    'negliaf', 3200, '2025-08-10'),
   ('MAQ-0022', 'Maquinaria',     'Kärcher',  'Aspiradora NT 30/1',    'KAR-99245',     null,              'mantenimiento', 'sunat', 'negliaf', 1450, '2025-08-10'),
@@ -957,12 +962,13 @@ end $$;
 
 create function publicar_comunicado(
   p_titulo text, p_cuerpo text, p_vence date, p_exige boolean,
-  p_segmento text, p_alcance int
+  p_segmento text, p_alcance int, p_empresa text default null, p_sede text default null
 ) returns bigint language plpgsql security definer as $$
 declare v_id bigint;
 begin
-  insert into comunicados (titulo, cuerpo, vence, exige_acuse, segmento, alcance)
-  values (p_titulo, p_cuerpo, p_vence, p_exige, p_segmento, p_alcance)
+  insert into comunicados (titulo, cuerpo, vence, exige_acuse, segmento, alcance, empresa_id, sede_id)
+  values (p_titulo, p_cuerpo, p_vence, p_exige, p_segmento, p_alcance,
+          nullif(p_empresa, ''), nullif(p_sede, ''))
   returning id into v_id;
   return v_id;
 end $$;

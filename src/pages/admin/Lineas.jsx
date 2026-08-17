@@ -102,7 +102,7 @@ function NuevaLinea({ open, onClose, onGuardar, activos, empresas }) {
           <Field label="Equipo vinculado (opcional)">
             <Select value={form.equipo} onChange={set("equipo")}>
               <option value="">Sin equipo</option>
-              {activos.filter((a) => a.categoria === "Telefonía").map((a) => (
+              {activos.filter((a) => a.categoria === "Comunicaciones").map((a) => (
                 <option key={a.codigo} value={a.codigo}>{a.codigo} — {a.modelo}</option>
               ))}
             </Select>

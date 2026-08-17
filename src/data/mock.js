@@ -107,8 +107,8 @@ export const CONTRATOS = [
 ];
 
 export const ACTIVOS = [
-  { codigo: "TEL-0012", categoria: "Telefonía", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8871", imei: "358240051111110", estado: "asignado", asignado: "40125634", sede: "migraciones", empresa: "negliaf", valor: 620, compra: "2026-01-15" },
-  { codigo: "TEL-0013", categoria: "Telefonía", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8872", imei: "358240051111128", estado: "disponible", asignado: null, sede: null, empresa: "negliaf", valor: 620, compra: "2026-01-15" },
+  { codigo: "TEL-0012", categoria: "Comunicaciones", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8871", imei: "358240051111110", estado: "asignado", asignado: "40125634", sede: "migraciones", empresa: "negliaf", valor: 620, compra: "2026-01-15" },
+  { codigo: "TEL-0013", categoria: "Comunicaciones", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8872", imei: "358240051111128", estado: "disponible", asignado: null, sede: null, empresa: "negliaf", valor: 620, compra: "2026-01-15" },
   { codigo: "COM-0004", categoria: "Cómputo", marca: "Lenovo", modelo: "ThinkPad E14", serie: "PF-4RTZ88", imei: null, estado: "asignado", asignado: "43906712", sede: "minedu", empresa: "negliaf", valor: 2850, compra: "2025-11-20" },
   { codigo: "MAQ-0021", categoria: "Maquinaria", marca: "Kärcher", modelo: "Hidrolavadora HD 5/15", serie: "KAR-99120", imei: null, estado: "asignado", asignado: "40987654", sede: "ins", empresa: "negliaf", valor: 3200, compra: "2025-08-10" },
   { codigo: "MAQ-0022", categoria: "Maquinaria", marca: "Kärcher", modelo: "Aspiradora NT 30/1", serie: "KAR-99245", imei: null, estado: "mantenimiento", asignado: null, sede: "sunat", empresa: "negliaf", valor: 1450, compra: "2025-08-10" },

@@ -212,7 +212,17 @@ export function AppProvider({ children }) {
       rpc("publicar_comunicado", {
         p_titulo: c.titulo, p_cuerpo: c.cuerpo, p_vence: c.vence,
         p_exige: c.exigeAcuse, p_segmento: c.segmento, p_alcance: c.alcance,
+        p_empresa: c.empresa ?? null, p_sede: c.sede ?? null,
       }, "comunicados");
+    },
+    // RRH-17 — Lista real de pendientes de lectura de un comunicado (se
+    // consulta al abrir el modal, no se precarga: crece con el padrón).
+    pendientesComunicado: async (id) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase
+        .from("v_comunicado_pendientes").select("*").eq("comunicado_id", id).order("nombre");
+      if (error) throw new Error(error.message);
+      return data ?? [];
     },
     addMemo: (m) => {
       local("memorandums", (xs) => [m, ...xs]);

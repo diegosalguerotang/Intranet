@@ -93,7 +93,6 @@ export default function Inventario() {
           <Input placeholder="Buscar por código, serie o IMEI…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 250 }} />
           <Select value={fCat} onChange={(e) => setFCat(e.target.value)} style={{ maxWidth: 190 }}>
             <option value="">Todas las categorías</option>
-            <option>Telefonía</option>
             <option>Cómputo</option>
             <option>Comunicaciones</option>
             <option>Maquinaria</option>
@@ -250,7 +249,7 @@ function EditarActivo({ activo, onClose, editarActivo, onListo }) {
 
 // ADQ-02 — Alta de activo
 function AltaActivo({ open, onClose }) {
-  const [cat, setCat] = useState("Telefonía");
+  const [cat, setCat] = useState("Cómputo");
   const [ok, setOk] = useState(false);
   const cerrar = () => { setOk(false); onClose(); };
 
@@ -266,7 +265,6 @@ function AltaActivo({ open, onClose }) {
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Categoría" required>
               <Select value={cat} onChange={(e) => setCat(e.target.value)}>
-                <option>Telefonía</option>
                 <option>Cómputo</option>
                 <option>Comunicaciones</option>
                 <option>Maquinaria</option>
@@ -277,7 +275,7 @@ function AltaActivo({ open, onClose }) {
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Número de serie" required hint="Único por categoría."><Input /></Field>
-            {cat === "Telefonía" && (
+            {cat === "Comunicaciones" && (
               <Field label="IMEI" required hint="Único en todo el sistema."><Input inputMode="numeric" maxLength={15} /></Field>
             )}
             <Field label="Valor de adquisición (S/)" required><Input inputMode="decimal" /></Field>

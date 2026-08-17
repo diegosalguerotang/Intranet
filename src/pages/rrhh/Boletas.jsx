@@ -299,11 +299,10 @@ export default function Boletas() {
               </Select>
             </Field>
             <Field label="Tipo de documento" required>
+              {/* Gratificación y Utilidades retirados a pedido de Diego (2026-08-17). */}
               <Select value={tipo} onChange={(e) => setTipo(e.target.value)}>
                 <option>Boleta de pago</option>
-                <option>Gratificación</option>
                 <option>Liquidación de CTS</option>
-                <option>Utilidades</option>
               </Select>
             </Field>
             <Field label="Periodo" required>

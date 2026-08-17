@@ -381,3 +381,40 @@ begin
 end $$;
 -- Las lecturas confirmadas no se degradan ni se borran desde la API pública.
 revoke update, delete on comunicado_lecturas from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- SEGUIMIENTO DE COMUNICADOS EN EL BACKOFFICE (2026-08-17). Viven aquí (no en
+-- schema.sql) porque dependen de comunicado_lecturas, que nace en este
+-- archivo: portal.sql se aplica SIEMPRE después de schema.sql.
+-- ---------------------------------------------------------------------------
+
+-- Pendientes de un comunicado: personas con vínculo VIGENTE dentro del
+-- segmento que aún no confirmaron la lectura. Los comunicados sin
+-- empresa/sede guardada cuentan como "todo el grupo".
+create or replace view v_comunicado_pendientes as
+select distinct c.id as comunicado_id, p.dni, p.nombre,
+       s.nombre as sede, p.celular, v.empresa_id as empresa
+from comunicados c
+join vinculos v on v.fecha_fin is null
+  and (c.empresa_id is null or v.empresa_id = c.empresa_id)
+  and (c.sede_id is null or v.sede_id = c.sede_id)
+join personas p on p.dni = v.persona_dni
+left join sedes s on s.id = v.sede_id
+where not exists (
+  select 1 from comunicado_lecturas l
+  where l.comunicado_id = c.id and l.dni = p.dni and l.confirmado
+);
+
+-- v_comunicados con la lectura VIVA desde las confirmaciones del portal
+-- (reemplaza a la de schema.sql; la columna leidos queda como histórico).
+create or replace view v_comunicados as
+select id, titulo, cuerpo,
+       to_char(publicado, 'YYYY-MM-DD') as publicado,
+       to_char(vence, 'YYYY-MM-DD') as vence,
+       alcance,
+       (select count(*)::int from comunicado_lecturas l
+        where l.comunicado_id = comunicados.id and l.confirmado) as leidos,
+       exige_acuse as "exigeAcuse", segmento,
+       case when vence < current_date then 'vencido' else 'vigente' end as estado
+from comunicados
+order by publicado desc;

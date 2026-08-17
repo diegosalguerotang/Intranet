@@ -6,10 +6,24 @@ import {
 } from "../../components/ui";
 
 export default function Comunicados() {
-  const { empresaId, db, addComunicado } = useApp();
+  const { empresaId, db, addComunicado, pendientesComunicado } = useApp();
   const [nuevo, setNuevo] = useState(false);
   const [detalle, setDetalle] = useState(null);
+  const [pendientes, setPendientes] = useState(null); // null = cargando
+  const [errorPendientes, setErrorPendientes] = useState(null);
   const comunicados = db.comunicados;
+
+  const abrirDetalle = async (c) => {
+    setDetalle(c);
+    setPendientes(null);
+    setErrorPendientes(null);
+    try {
+      setPendientes(await pendientesComunicado(c.id));
+    } catch (e) {
+      setErrorPendientes(e.message);
+      setPendientes([]);
+    }
+  };
 
   const publicar = (c) => {
     addComunicado({
@@ -52,7 +66,7 @@ export default function Comunicados() {
                   <Progress value={pct} tone={pct >= 90 ? "conf" : "pend"} />
                 </Td>
                 <Td>
-                  <Button variant="ghost" size="sm" onClick={() => setDetalle(c)}>Ver pendientes</Button>
+                  <Button variant="ghost" size="sm" onClick={() => abrirDetalle(c)}>Ver pendientes</Button>
                 </Td>
               </tr>
             );
@@ -62,14 +76,37 @@ export default function Comunicados() {
 
       <NuevoComunicado open={nuevo} onClose={() => setNuevo(false)} onPublicar={publicar} empresaId={empresaId} />
 
-      <Modal open={!!detalle} onClose={() => setDetalle(null)} title={`Seguimiento — ${detalle?.titulo ?? ""}`}>
+      <Modal open={!!detalle} onClose={() => setDetalle(null)} title={`Pendientes de lectura — ${detalle?.titulo ?? ""}`} wide>
         {detalle && (
           <div className="space-y-3">
-            <Note tone="neutral">
-              {detalle.alcance - detalle.leidos} personas no han confirmado la lectura. El listado es exportable y el
-              recordatorio respeta la ventana horaria.
-            </Note>
-            <Button size="sm" variant="secondary"><Send size={12} /> Recordar a pendientes</Button>
+            {pendientes === null ? (
+              <Note tone="neutral">Cargando pendientes…</Note>
+            ) : pendientes.length === 0 && !errorPendientes ? (
+              <Note tone="conf">Todos los del segmento confirmaron la lectura. Nadie pendiente.</Note>
+            ) : (
+              <>
+                <Note tone="pend">
+                  <b>{pendientes.length}</b> persona{pendientes.length === 1 ? "" : "s"} del segmento aún no
+                  confirma{pendientes.length === 1 ? "" : "n"} la lectura.
+                </Note>
+                <div className="max-h-72 overflow-y-auto rounded-caja border border-borde">
+                  <Table head={["Trabajador", "DNI", "Sede", "Contacto"]}>
+                    {pendientes.map((p) => (
+                      <tr key={p.dni}>
+                        <Td className="font-semibold">{p.nombre}</Td>
+                        <Td className="font-mono text-[12px]">{p.dni}</Td>
+                        <Td className="text-gris">{p.sede ?? "—"}</Td>
+                        <Td className="font-mono text-[12px] text-gris">{p.celular ?? <span className="text-gris-cl">sin celular</span>}</Td>
+                      </tr>
+                    ))}
+                  </Table>
+                </div>
+              </>
+            )}
+            {errorPendientes && <Note tone="alerta">{errorPendientes}</Note>}
+            <Button size="sm" variant="secondary" disabled title="Llega con el motor de mensajería">
+              <Send size={12} /> Recordar a pendientes (próximamente)
+            </Button>
           </div>
         )}
       </Modal>
@@ -87,13 +124,15 @@ function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
   const [nivel, setNivel] = useState("grupo");
   const [sedeSel, setSedeSel] = useState("");
 
-  const alcance =
+  // Alcance REAL sobre el padrón vigente (nada de multiplicadores de demo).
+  const destinatarios =
     nivel === "grupo"
-      ? db.personal.filter((p) => p.estado === "vigente").length * 22 // dotación de demostración
+      ? db.personal.filter((p) => p.estado === "vigente")
       : nivel === "empresa"
-      ? db.personal.filter((p) => p.empresa === empresaId && p.estado === "vigente").length * 24
-      : db.personal.filter((p) => p.sede === sedeSel && p.estado === "vigente").length * 21;
-  const conCelular = Math.round(alcance * 0.96);
+      ? db.personal.filter((p) => p.empresa === empresaId && p.estado === "vigente")
+      : db.personal.filter((p) => p.sede === sedeSel && p.estado === "vigente");
+  const alcance = destinatarios.length;
+  const conCelular = destinatarios.filter((p) => p.celular).length;
 
   const segmento =
     nivel === "grupo" ? "Todo el grupo"
@@ -143,7 +182,13 @@ function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
         <div className="flex gap-2">
           <Button
             disabled={!titulo || !cuerpo || !vence || (nivel === "sede" && !sedeSel)}
-            onClick={() => onPublicar({ titulo, cuerpo, vence, exigeAcuse, alcance, segmento })}
+            onClick={() => onPublicar({
+              titulo, cuerpo, vence, exigeAcuse, alcance, segmento,
+              // Segmentación estructural: con ella el sistema sabe a QUIÉN le
+              // falta leer (lista de pendientes). null = todo el grupo.
+              empresa: nivel === "grupo" ? null : empresaId,
+              sede: nivel === "sede" ? sedeSel : null,
+            })}
           >
             Publicar
           </Button>
