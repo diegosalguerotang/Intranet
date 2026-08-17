@@ -124,6 +124,25 @@ describe("leerXlsx", () => {
     expect(filas[2][0]).toBe("tercera");
   });
 
+  // El libro de activos trae 12 hojas y la primera está OCULTA: sin selección
+  // por nombre, el lector caería en una hoja equivocada.
+  describe("hoja por nombre (libro de activos, 12 hojas)", () => {
+    const activos = new Uint8Array(readFileSync("tests/fixtures/EQUIPOS_DE_COMPUTO_ACTIVOS_FIJOS.xlsx"));
+
+    it("lee la hoja 'AF EQUIPO DE COMPUTO' por nombre", async () => {
+      const filas = await leerXlsx(activos, { hoja: "AF EQUIPO DE COMPUTO" });
+      expect(filas[0].join(" ")).toContain("FORMATO 7.1");
+      expect(filas[4].join(" ")).toContain("PROMANT SERVICIOS");
+    });
+    it("una hoja inexistente detiene con un mensaje claro que la nombra", async () => {
+      await expect(leerXlsx(activos, { hoja: "NO EXISTE" })).rejects.toThrow(/NO EXISTE/);
+    });
+    it("sin opción de hoja conserva el comportamiento actual (primera hoja física)", async () => {
+      const filas = await leerXlsx(activos);
+      expect(filas.every((f) => !f.join(" ").includes("FORMATO 7.1"))).toBe(true);
+    });
+  });
+
   it("una celda t=\"s\" sin <v> resuelve a cadena vacía, no a compartidas[0]", async () => {
     const sharedXml = `<?xml version="1.0"?><sst><si><t>NO_DEBE_APARECER</t></si><si><t>NOVACIA</t></si></sst>`;
     const sheetXml = `<?xml version="1.0"?><worksheet><sheetData>

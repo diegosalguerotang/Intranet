@@ -55,7 +55,7 @@ const colAIndice = (ref) => {
   return n - 1;
 };
 
-export async function leerXlsx(bytes) {
+export async function leerXlsx(bytes, { hoja: nombreHoja } = {}) {
   const { dv, entradas } = leerEntradasZip(bytes);
   const texto = async (nombre) =>
     entradas.has(nombre) ? new TextDecoder().decode(await extraer(bytes, dv, entradas.get(nombre))) : "";
@@ -63,8 +63,31 @@ export async function leerXlsx(bytes) {
   const compartidas = [...(await texto("xl/sharedStrings.xml")).matchAll(/<si>([\s\S]*?)<\/si>/g)]
     .map((m) => decodificarXml(m[1].replace(/<[^>]+>/g, "")));
 
-  const hoja = await texto("xl/worksheets/sheet1.xml");
-  if (!hoja) throw new Error("El .xlsx no contiene la hoja esperada (xl/worksheets/sheet1.xml).");
+  // Sin nombre de hoja se conserva el comportamiento histórico (sheet1.xml).
+  // Con nombre, se resuelve por workbook.xml + rels: el orden físico de los
+  // archivos sheetN.xml NO es el orden visible del libro, y la primera hoja
+  // puede estar oculta (caso real del libro de activos).
+  let rutaHoja = "xl/worksheets/sheet1.xml";
+  if (nombreHoja) {
+    const libro = await texto("xl/workbook.xml");
+    const hojas = [...libro.matchAll(/<sheet [^>]*\/>/g)].map((m) => ({
+      nombre: decodificarXml((m[0].match(/name="([^"]*)"/) || [])[1] ?? ""),
+      rid: (m[0].match(/r:id="([^"]*)"/) || [])[1] ?? "",
+    }));
+    const buscada = hojas.find((h) => h.nombre === nombreHoja);
+    if (!buscada) {
+      const nombres = hojas.map((h) => `"${h.nombre}"`).join(", ");
+      throw new Error(`El libro no contiene la hoja "${nombreHoja}". Hojas disponibles: ${nombres}.`);
+    }
+    const rels = await texto("xl/_rels/workbook.xml.rels");
+    const rel = (rels.match(new RegExp(`<Relationship [^>]*Id="${buscada.rid}"[^>]*/>`)) || [])[0] ?? "";
+    const destino = (rel.match(/Target="([^"]*)"/) || [])[1];
+    if (!destino) throw new Error(`No se pudo resolver la hoja "${nombreHoja}" dentro del libro.`);
+    rutaHoja = destino.startsWith("/") ? destino.slice(1) : `xl/${destino}`;
+  }
+
+  const hoja = await texto(rutaHoja);
+  if (!hoja) throw new Error(`El .xlsx no contiene la hoja esperada (${rutaHoja}).`);
 
   // Se indexa por el atributo r="N" de <row> (posición real de la fila en la hoja):
   // una fila vacía puede venir self-closing (<row r="N"/>, sin cuerpo) y no debe
