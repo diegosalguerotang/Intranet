@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Card, Button, Field, Input, Note } from "../components/ui";
+import { supabase } from "../lib/supabase";
 
-// Aterrizaje del enlace de recuperación del BackOffice: el usuario crea aquí
-// su clave nueva (mínimo 12). El token de la URL dura 1 hora, un solo uso.
+// Aterrizaje de los enlaces de acceso del BackOffice. Dos modos:
+//  · Correo NATIVO de Supabase (invitación al crear el usuario, o
+//    recuperación): el enlace trae la sesión en el hash de la URL — el
+//    cliente la detecta y la clave nueva se guarda con updateUser.
+//  · Token del motor propio (?token=): flujo del webhook, se conserva.
 function CampoClave({ ver, setVer, ...props }) {
   return (
     <div className="relative">
@@ -22,6 +26,7 @@ function CampoClave({ ver, setVer, ...props }) {
 
 export default function RestablecerAdmin() {
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const [sesionSupabase, setSesionSupabase] = useState(null);
   const [clave, setClave] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [ver1, setVer1] = useState(false);
@@ -30,6 +35,19 @@ export default function RestablecerAdmin() {
   const [listo, setListo] = useState(false);
   const [cargando, setCargando] = useState(false);
 
+  // Los enlaces nativos de Supabase llegan con la sesión en el hash; el
+  // cliente la procesa solo, aquí basta escucharla.
+  useEffect(() => {
+    if (token || !supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) setSesionSupabase(data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, sesion) => {
+      if (sesion) setSesionSupabase(sesion);
+    });
+    return () => sub?.subscription?.unsubscribe();
+  }, [token]);
+
   const guardar = async (e) => {
     e.preventDefault();
     if (clave.length < 12) return setError("La clave nueva debe tener al menos 12 caracteres.");
@@ -37,6 +55,23 @@ export default function RestablecerAdmin() {
     setError(null);
     setCargando(true);
     try {
+      if (sesionSupabase) {
+        // Modo nativo: la clave se guarda sobre la sesión del enlace.
+        const { error: err } = await supabase.auth.updateUser({ password: clave });
+        if (err) {
+          setError(/different from the old/i.test(err.message)
+            ? "La clave nueva debe ser distinta a la anterior."
+            : "No se pudo guardar la clave. Intenta de nuevo.");
+          return;
+        }
+        const correoSesion = sesionSupabase.user?.email;
+        if (correoSesion) {
+          await supabase.rpc("marcar_clave_cambiada", { p_correo: correoSesion }).catch?.(() => {});
+        }
+        setListo(true);
+        return;
+      }
+      // Modo token del motor propio.
       const r = await fetch(`${window.location.origin}/api/restablecer-clave`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -64,10 +99,15 @@ export default function RestablecerAdmin() {
         {listo ? (
           <div className="space-y-4 text-center">
             <Note tone="conf">Ya puedes ingresar al BackOffice con tu correo y tu clave nueva.</Note>
-            <Link to="/admin/login"><Button className="w-full">Ir a ingresar</Button></Link>
+            <Link to={sesionSupabase ? "/" : "/admin/login"}>
+              <Button className="w-full">{sesionSupabase ? "Entrar al BackOffice" : "Ir a ingresar"}</Button>
+            </Link>
           </div>
-        ) : !token ? (
-          <Note tone="alerta">Enlace incompleto: ábrelo completo desde tu correo, o pide uno nuevo desde el login.</Note>
+        ) : !token && !sesionSupabase ? (
+          <Note tone="neutral">
+            Procesando tu enlace… Si esta pantalla no cambia en unos segundos, el enlace está incompleto o
+            vencido: pide uno nuevo desde el login.
+          </Note>
         ) : (
           <form onSubmit={guardar} className="space-y-4">
             <Field label="Clave nueva" required hint="Mínimo 12 caracteres.">

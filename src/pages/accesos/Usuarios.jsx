@@ -52,7 +52,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
     onClave({
       nombre: personaSel.nombre, clave: r.clave, correo: correo.trim() || null,
       codigo: r.codigo, creado: r.creado, errorCuenta: r.errorCuenta,
-      enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo,
+      enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo, invitado: r.invitado,
     });
     if (otro) {
       setBusca(""); setPersonaSel(null); setCorreo(""); setCelular(""); setPerfilId("");
@@ -271,7 +271,8 @@ export default function Usuarios() {
     setClaveModal(r.error
       ? { nombre: u.nombre, error: r.error }
       : { nombre: u.nombre, clave: r.clave, correo: u.correo,
-          enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo });
+          enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo,
+          recuperacion: r.recuperacion });
   };
 
   const ejecutarEliminar = async () => {
@@ -439,7 +440,17 @@ export default function Usuarios() {
             {claveModal.errorCuenta && (
               <Note tone="alerta">El usuario se registró, pero su cuenta de ingreso falló: {claveModal.errorCuenta}. Usa «Restablecer clave» para reintentar.</Note>
             )}
-            {claveModal.clave ? (
+            {claveModal.invitado ? (
+              <Note tone="conf">
+                <b>Invitación enviada por correo</b> a {claveModal.invitado} (remitente de Supabase). La persona
+                creará su propia clave desde el enlace — no hay clave provisional que entregar.
+              </Note>
+            ) : claveModal.recuperacion ? (
+              <Note tone="conf">
+                <b>Enlace de recuperación enviado por correo</b> a {claveModal.recuperacion}. La persona creará su
+                clave nueva desde el enlace.
+              </Note>
+            ) : claveModal.clave ? (
               <>
                 <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
                   <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />

@@ -220,20 +220,15 @@ export default function AdminLogin() {
                   className="text-petroleo hover:underline"
                   disabled={cargando}
                   onClick={async () => {
-                    // Recuperación por correo (motor de correo): respuesta
+                    // Recuperación por el correo NATIVO de Supabase: respuesta
                     // siempre genérica, no revela si la cuenta existe.
                     if (!correo.trim()) { setRecuperado("Escribe tu correo arriba y vuelve a tocar aquí."); return; }
                     try {
-                      const r = await fetch(`${window.location.origin}/api/enviar-correo`, {
-                        method: "POST",
-                        headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ accion: "recuperacion-admin", correo: correo.trim() }),
+                      await supabase.auth.resetPasswordForEmail(correo.trim(), {
+                        redirectTo: `${window.location.origin}/admin/restablecer`,
                       });
-                      const j = await r.json().catch(() => null);
-                      setRecuperado(j?.mensaje ?? "Si el correo pertenece a un usuario activo, te llegará un enlace.");
-                    } catch {
-                      setRecuperado("No se pudo enviar la solicitud. Revisa tu conexión.");
-                    }
+                    } catch { /* la respuesta es genérica igual */ }
+                    setRecuperado("Si el correo pertenece a un usuario activo, te llegará un enlace para crear una clave nueva.");
                   }}
                 >
                   ¿Olvidaste tu clave? Te enviamos un enlace a tu correo

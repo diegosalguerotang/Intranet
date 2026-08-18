@@ -82,6 +82,25 @@ export default async function handler(req, res) {
     if (nivelAccesos < 2) return res.status(403).json({ error: "Necesitas nivel de acción en el módulo Accesos." });
     if (!objetivo.correo) return res.status(400).json({ error: "El usuario no tiene correo: sin correo no hay cuenta de ingreso." });
 
+    // Camino preferido (correo NATIVO de Supabase): invitación — el usuario
+    // recibe un enlace y crea su propia clave; no hay clave provisional que
+    // repartir. Si el envío falla (límite del remitente integrado, etc.), se
+    // cae al camino clásico: cuenta con clave provisional mostrada en pantalla.
+    const invite = await rest(`/auth/v1/invite?redirect_to=${encodeURIComponent(APP + "/admin/restablecer")}`, {
+      method: "POST",
+      body: JSON.stringify({ email: objetivo.correo }),
+    });
+    if (invite.ok) {
+      await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}`, {
+        method: "PATCH",
+        headers: { prefer: "return=minimal" },
+        // La clave la elegirá la propia persona desde el enlace: no hay
+        // cambio obligatorio pendiente ni provisional que guardar.
+        body: JSON.stringify({ requiere_cambio_clave: false, clave_provisional: null }),
+      });
+      return res.status(200).json({ invitado: objetivo.correo });
+    }
+
     const clave = generarClave();
     const alta = await rest("/auth/v1/admin/users", {
       method: "POST",
@@ -111,6 +130,18 @@ export default async function handler(req, res) {
       (u) => (u.email ?? "").toLowerCase() === objetivo.correo.toLowerCase()
     );
     if (!cuenta) return res.status(404).json({ error: "El usuario aún no tiene cuenta de ingreso: usa Crear cuenta." });
+
+    // Camino preferido (correo NATIVO de Supabase): enlace de recuperación —
+    // la persona crea su clave nueva desde el correo. Respaldo: clave nueva
+    // en pantalla.
+    const recover = await rest(`/auth/v1/recover?redirect_to=${encodeURIComponent(APP + "/admin/restablecer")}`, {
+      method: "POST",
+      body: JSON.stringify({ email: objetivo.correo }),
+    });
+    if (recover.ok) {
+      return res.status(200).json({ recuperacion: objetivo.correo });
+    }
+
     const clave = generarClave();
     const cambio = await rest(`/auth/v1/admin/users/${cuenta.id}`, {
       method: "PUT",

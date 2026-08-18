@@ -329,16 +329,19 @@ export function AppProvider({ children }) {
         p_clave: null, p_por: user?.nombre ?? "BackOffice",
       });
       if (error) return { error: error.message };
-      let clave = null, errorCuenta = null, enviadoCorreo = null, avisoCorreo = null;
+      let clave = null, errorCuenta = null, enviadoCorreo = null, avisoCorreo = null, invitado = null;
       if (u.correo) {
         const r = await cuentaAdmin("crear", id);
         if (r.error) errorCuenta = r.error;
-        else { clave = r.clave; enviadoCorreo = r.enviadoCorreo ?? null; avisoCorreo = r.avisoCorreo ?? null; }
+        else {
+          clave = r.clave ?? null; invitado = r.invitado ?? null;
+          enviadoCorreo = r.enviadoCorreo ?? null; avisoCorreo = r.avisoCorreo ?? null;
+        }
       }
       const { data: fila } = await supabase
         .from("v_usuarios_admin").select("codigo, creado").eq("id", id).maybeSingle();
       await recargar("usuariosAdmin", "perfiles");
-      return { id, clave, errorCuenta, enviadoCorreo, avisoCorreo, codigo: fila?.codigo, creado: fila?.creado };
+      return { id, clave, invitado, errorCuenta, enviadoCorreo, avisoCorreo, codigo: fila?.codigo, creado: fila?.creado };
     },
     actualizarUsuarioAdmin: (id, cambios) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, ...cambios } : x)));
