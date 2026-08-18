@@ -52,6 +52,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
     onClave({
       nombre: personaSel.nombre, clave: r.clave, correo: correo.trim() || null,
       codigo: r.codigo, creado: r.creado, errorCuenta: r.errorCuenta,
+      enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo,
     });
     if (otro) {
       setBusca(""); setPersonaSel(null); setCorreo(""); setCelular(""); setPerfilId("");
@@ -269,7 +270,8 @@ export default function Usuarios() {
     const r = await reenviarClaveCuenta(u.id);
     setClaveModal(r.error
       ? { nombre: u.nombre, error: r.error }
-      : { nombre: u.nombre, clave: r.clave, correo: u.correo });
+      : { nombre: u.nombre, clave: r.clave, correo: u.correo,
+          enviadoCorreo: r.enviadoCorreo, avisoCorreo: r.avisoCorreo });
   };
 
   const ejecutarEliminar = async () => {
@@ -444,8 +446,13 @@ export default function Usuarios() {
                   <div className="font-mono text-[22px] font-bold tracking-[0.15em] text-tinta">{claveModal.clave}</div>
                   <div className="mt-1 text-[11.5px] text-gris-cl">Clave provisional para {claveModal.nombre}. Deberá reemplazarla en su primer ingreso.</div>
                 </div>
-                {claveModal.correo ? (
-                  <Note tone="conf">Entrégala a <b>{claveModal.correo}</b> (el envío automático por correo llega con el Motor de mensajería).</Note>
+                {claveModal.enviadoCorreo ? (
+                  <Note tone="conf">El acceso también <b>se envió por correo</b> a {claveModal.enviadoCorreo}.</Note>
+                ) : claveModal.correo ? (
+                  <Note tone="pend">
+                    Entrégala a <b>{claveModal.correo}</b> en mano.
+                    {claveModal.avisoCorreo && <> No se pudo enviar por correo: {claveModal.avisoCorreo}</>}
+                  </Note>
                 ) : (
                   <Note tone="pend">La persona no tiene correo registrado: entrega la clave <b>presencialmente</b>.</Note>
                 )}

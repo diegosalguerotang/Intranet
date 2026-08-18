@@ -55,6 +55,7 @@ export default function AdminLogin() {
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [verClave, setVerClave] = useState(false);
+  const [recuperado, setRecuperado] = useState(null);
 
   // ?probar=1 deja ver el formulario aunque el MODO DEMO ya haya puesto un
   // usuario: sin esta puerta no hay forma de diagnosticar el login real
@@ -211,7 +212,33 @@ export default function AdminLogin() {
             </div>
 
             <p className="mb-7 text-right text-[12px] text-gris-cl">
-              ¿Olvidaste tu clave? Pídele a un administrador que te la reenvíe.
+              {recuperado ? (
+                <span className="text-gris">{recuperado}</span>
+              ) : (
+                <button
+                  type="button"
+                  className="text-petroleo hover:underline"
+                  disabled={cargando}
+                  onClick={async () => {
+                    // Recuperación por correo (motor de correo): respuesta
+                    // siempre genérica, no revela si la cuenta existe.
+                    if (!correo.trim()) { setRecuperado("Escribe tu correo arriba y vuelve a tocar aquí."); return; }
+                    try {
+                      const r = await fetch(`${window.location.origin}/api/enviar-correo`, {
+                        method: "POST",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ accion: "recuperacion-admin", correo: correo.trim() }),
+                      });
+                      const j = await r.json().catch(() => null);
+                      setRecuperado(j?.mensaje ?? "Si el correo pertenece a un usuario activo, te llegará un enlace.");
+                    } catch {
+                      setRecuperado("No se pudo enviar la solicitud. Revisa tu conexión.");
+                    }
+                  }}
+                >
+                  ¿Olvidaste tu clave? Te enviamos un enlace a tu correo
+                </button>
+              )}
             </p>
 
             {error && <div className="mb-4"><Note tone="alerta">{error}</Note></div>}

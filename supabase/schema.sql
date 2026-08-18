@@ -78,7 +78,7 @@ create sequence if not exists seq_sede_codigo;
 create table correo_tokens (
   token     text primary key,
   dni       text not null references personas(dni),
-  proposito text not null check (proposito in ('verificacion','recuperacion')),
+  proposito text not null check (proposito in ('verificacion','recuperacion','recuperacion-admin')),
   correo    text not null,
   creado_en timestamptz not null default now(),
   expira_en timestamptz not null,

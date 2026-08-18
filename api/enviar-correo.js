@@ -11,18 +11,14 @@
 // SMTP_PASS, por defecto Gmail: basta una «contraseña de aplicación» del
 // propio Gmail de Diego, sin crear cuentas nuevas — ~500 correos/día).
 // Sin ninguno, las acciones responden 503 con un mensaje claro.
+import { enviar, plantilla, botonCorreo } from "./_correo.js";
+
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
 const CLAVE_INICIAL = "111111";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
-const RESEND = limpiar(process.env.RESEND_API_KEY) || "";
-const SMTP_USER = limpiar(process.env.SMTP_USER) || "";
-const SMTP_PASS = limpiar(process.env.SMTP_PASS) || "";
-const SMTP_HOST = limpiar(process.env.SMTP_HOST) || "smtp.gmail.com";
-const REMITENTE = limpiar(process.env.CORREO_REMITENTE) ||
-  (SMTP_USER ? `GrupoER <${SMTP_USER}>` : "GrupoER <onboarding@resend.dev>");
 const cabService = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };
 
 async function rest(ruta, opciones = {}) {
@@ -32,40 +28,6 @@ async function rest(ruta, opciones = {}) {
   try { json = texto ? JSON.parse(texto) : null; } catch { /* sin JSON */ }
   return { ok: r.ok, status: r.status, json };
 }
-
-async function enviar(destino, asunto, html) {
-  if (RESEND) {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: REMITENTE, to: [destino], subject: asunto, html }),
-    });
-    if (!r.ok) return { error: `El proveedor de correo respondió ${r.status}: ${(await r.text()).slice(0, 200)}` };
-    return {};
-  }
-  if (SMTP_USER && SMTP_PASS) {
-    try {
-      const { default: nodemailer } = await import("nodemailer");
-      const transporte = nodemailer.createTransport({
-        host: SMTP_HOST, port: 465, secure: true,
-        auth: { user: SMTP_USER, pass: SMTP_PASS },
-      });
-      await transporte.sendMail({ from: REMITENTE, to: destino, subject: asunto, html });
-      return {};
-    } catch (e) {
-      return { error: `El envío SMTP falló: ${String(e.message).slice(0, 200)}` };
-    }
-  }
-  return { error: "El motor de correo aún no está configurado (falta RESEND_API_KEY o SMTP_USER/SMTP_PASS)." };
-}
-
-const plantilla = (titulo, cuerpo) => `
-  <div style="font-family:Poppins,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#333">
-    <h2 style="color:#3569a0;margin-bottom:4px">GrupoER</h2>
-    <h3 style="margin-top:0">${titulo}</h3>
-    ${cuerpo}
-    <p style="font-size:12px;color:#999;margin-top:28px">Si no esperabas este correo, ignóralo: nada cambia sin tu acción.</p>
-  </div>`;
 
 async function crearToken(dni, proposito, correo, horas) {
   const token = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)).replace(/-/g, "") +
@@ -156,6 +118,29 @@ export default async function handler(req, res) {
          <p><a href="${APP}/portal/restablecer?token=${token}"
                style="background:#3569a0;color:#fff;padding:10px 22px;border-radius:10px;text-decoration:none">
             Crear mi clave nueva</a></p>
+         <p style="font-size:12px;color:#999">El enlace vence en 1 hora y sirve una sola vez.
+            Si no fuiste tú, ignora este correo.</p>`));
+    }
+    return res.status(200).json(generica);
+  }
+
+  if (accion === "recuperacion-admin") {
+    // PÚBLICA («olvidé mi clave» del BackOffice). Respuesta siempre genérica.
+    const generica = { mensaje: "Si el correo pertenece a un usuario activo, te llegará un enlace para crear una clave nueva." };
+    const correo = String(cuerpo.correo ?? "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo) || correo.endsWith(`@${DOMINIO_PORTAL}`)) {
+      return res.status(200).json(generica);
+    }
+    const u = (await rest(
+      `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=persona_dni,correo&limit=1`
+    )).json?.[0];
+    if (!u) return res.status(200).json(generica);
+    const token = await crearToken(u.persona_dni, "recuperacion-admin", correo, 1);
+    if (token) {
+      await enviar(correo, "Crea una clave nueva — BackOffice GrupoER", plantilla(
+        "Crea una clave nueva para el BackOffice",
+        `<p>Pediste restablecer tu clave del BackOffice de GrupoER.</p>
+         ${botonCorreo(`${APP}/admin/restablecer?token=${token}`, "Crear mi clave nueva")}
          <p style="font-size:12px;color:#999">El enlace vence en 1 hora y sirve una sola vez.
             Si no fuiste tú, ignora este correo.</p>`));
     }

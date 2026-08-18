@@ -4,8 +4,24 @@
 // patrón del proxy api/supa) y su permiso se verifica contra la BD:
 //   crear   → nivel >= 2 en el módulo accesos (o superadmin)
 //   eliminar→ nivel 3 en accesos o superadmin; nunca a sí mismo
+import { enviar, plantilla } from "./_correo.js";
+
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
+const APP = "https://intranet-general.vercel.app";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
+
+// Envío del acceso por correo (mejor esfuerzo: si el motor no está
+// configurado, la clave igual se muestra en pantalla y se entrega en mano).
+async function enviarAccesoAdmin(correo, clave) {
+  const r = await enviar(correo, "Tu acceso al BackOffice — GrupoER", plantilla(
+    "Tu acceso al BackOffice",
+    `<p>Ya tienes acceso al BackOffice de GrupoER.</p>
+     <p><b>Dirección:</b> <a href="${APP}/admin/login">${APP}/admin/login</a><br/>
+        <b>Usuario:</b> ${correo}<br/>
+        <b>Clave provisional:</b> ${clave}</p>
+     <p>En tu primer ingreso el sistema te pedirá crear tu clave personal (mínimo 12 caracteres).</p>`));
+  return r.error ? { avisoCorreo: r.error } : { enviadoCorreo: correo };
+}
 // SUPA_SERVICE_KEY la configura scripts/configurar-service-key.mjs con la
 // clave real del proyecto; la del marketplace (SUPABASE_SERVICE_ROLE_KEY)
 // resultó ser de otro proyecto y queda solo como último recurso.
@@ -84,7 +100,7 @@ export default async function handler(req, res) {
       headers: { prefer: "return=minimal" },
       body: JSON.stringify({ requiere_cambio_clave: true, clave_provisional: null }),
     });
-    return res.status(200).json({ clave });
+    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
   }
 
   if (accion === "reenviar") {
@@ -106,7 +122,7 @@ export default async function handler(req, res) {
       headers: { prefer: "return=minimal" },
       body: JSON.stringify({ requiere_cambio_clave: true, clave_provisional: null }),
     });
-    return res.status(200).json({ clave });
+    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
   }
 
   if (accion === "eliminar") {

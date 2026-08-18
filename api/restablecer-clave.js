@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   if (clave.length < 6) return res.status(400).json({ error: "La clave debe tener al menos 6 caracteres." });
 
   const t = (await rest(
-    `/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}&proposito=eq.recuperacion&select=dni,expira_en,usado_en&limit=1`
+    `/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}&proposito=in.(recuperacion,recuperacion-admin)&select=dni,correo,proposito,expira_en,usado_en&limit=1`
   )).json?.[0];
   if (!t) return res.status(404).json({ error: "El enlace no es válido. Pide uno nuevo desde «Olvidé mi clave»." });
   if (t.usado_en) return res.status(410).json({ error: "Este enlace ya se usó. Pide uno nuevo si aún lo necesitas." });
@@ -34,18 +34,33 @@ export default async function handler(req, res) {
     return res.status(410).json({ error: "El enlace venció (dura 1 hora). Pide uno nuevo desde «Olvidé mi clave»." });
   }
 
+  // Portal: la cuenta técnica del DNI, clave mínima 6. BackOffice: la cuenta
+  // es el correo real y rige el mínimo de 12.
+  const esAdmin = t.proposito === "recuperacion-admin";
+  if (esAdmin && clave.length < 12) {
+    return res.status(400).json({ error: "La clave del BackOffice debe tener al menos 12 caracteres." });
+  }
+  const emailCuenta = esAdmin ? t.correo.toLowerCase() : `${t.dni}@${DOMINIO_PORTAL}`;
   const cuenta = (await rest(`/auth/v1/admin/users?per_page=1000`)).json?.users
-    ?.find((u) => (u.email ?? "").toLowerCase() === `${t.dni}@${DOMINIO_PORTAL}`);
-  if (!cuenta) return res.status(404).json({ error: "La cuenta del portal no existe." });
+    ?.find((u) => (u.email ?? "").toLowerCase() === emailCuenta);
+  if (!cuenta) return res.status(404).json({ error: "La cuenta no existe." });
 
   const cambio = await rest(`/auth/v1/admin/users/${cuenta.id}`, {
     method: "PUT", body: JSON.stringify({ password: clave }),
   });
   if (!cambio.ok) return res.status(500).json({ error: "No se pudo guardar la clave nueva. Intenta de nuevo." });
 
+  if (esAdmin) {
+    // La eligió la propia persona: no hay cambio obligatorio pendiente.
+    await rest(`/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(emailCuenta)}`, {
+      method: "PATCH", headers: { prefer: "return=minimal" },
+      body: JSON.stringify({ requiere_cambio_clave: false }),
+    });
+  }
+
   await rest(`/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}`, {
     method: "PATCH", headers: { prefer: "return=minimal" },
     body: JSON.stringify({ usado_en: new Date().toISOString() }),
   });
-  return res.status(200).json({ listo: true });
+  return res.status(200).json({ listo: true, backoffice: esAdmin });
 }
