@@ -95,6 +95,7 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
                           // Los datos ya registrados en Personal se jalan al
                           // formulario; siguen siendo editables aquí.
                           setCelular((c) => c || p.celular || "");
+                          setCorreo((c) => c || p.correo || "");
                         }}
                       >
                         <span className="text-[13px] text-tinta">{p.nombre}</span>

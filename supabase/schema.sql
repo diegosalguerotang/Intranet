@@ -62,6 +62,7 @@ create table personas (
   celular               text,  -- LIBRE: puede venir con +51 o espacios (Excels de planilla)
   correo                text,  -- opcional: lo declara el trabajador o RRHH (motor de correo)
   correo_verificado     boolean not null default false,
+  cci                   text,  -- código interbancario, separado del nro de cuenta
   direccion             text,
   banco                 text,
   cuenta                text,
@@ -763,7 +764,8 @@ select p.dni, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
        p.banco, p.cuenta,
        to_char(v.fecha_fin, 'YYYY-MM-DD') as cese,
        v.id as vinculo_id,
-       p.correo, p.correo_verificado as "correoVerificado"
+       p.correo, p.correo_verificado as "correoVerificado",
+       p.cci
 from vinculos v join personas p on p.dni = v.persona_dni;
 
 create view v_acuses as
@@ -896,17 +898,19 @@ order by entrega desc;
 create function alta_trabajador(
   p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text,
   p_ingreso date, p_celular text default null,
-  p_banco text default null, p_cuenta text default null, p_correo text default null
+  p_banco text default null, p_cuenta text default null, p_correo text default null,
+  p_cci text default null
 ) returns void language plpgsql security definer as $$
 begin
-  insert into personas (dni, nombre, celular, banco, cuenta, portal, correo)
-  values (p_dni, p_nombre, p_celular, p_banco, p_cuenta,
+  insert into personas (dni, nombre, celular, banco, cuenta, cci, portal, correo)
+  values (p_dni, p_nombre, p_celular, p_banco, p_cuenta, nullif(trim(coalesce(p_cci, '')), ''),
           case when p_celular is null then 'sin_celular' else 'nunca_ingreso' end,
           nullif(lower(trim(coalesce(p_correo, ''))), ''))
   on conflict (dni) do update
     set celular = coalesce(excluded.celular, personas.celular),
         banco   = coalesce(excluded.banco, personas.banco),
         cuenta  = coalesce(excluded.cuenta, personas.cuenta),
+        cci     = coalesce(excluded.cci, personas.cci),
         correo  = coalesce(excluded.correo, personas.correo);
 
   if exists (select 1 from vinculos where persona_dni = p_dni
@@ -923,7 +927,8 @@ end $$;
 -- confirmar»; cambiar el correo lo deja pendiente de verificar. La cuenta
 -- bancaria no se guarda en claro en la auditoría.
 create function editar_trabajador(
-  p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text
+  p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text,
+  p_cci text default null
 ) returns void language plpgsql security definer as $$
 declare j_antes jsonb; j_despues jsonb; v_correo text;
 begin
@@ -941,17 +946,18 @@ begin
     raise exception 'El correo no tiene un formato válido.';
   end if;
 
-  select to_jsonb(p) - 'cuenta' into j_antes from personas p where dni = p_dni;
+  select to_jsonb(p) - 'cuenta' - 'cci' into j_antes from personas p where dni = p_dni;
   update personas set
     nombre = trim(p_nombre),
     nombre_por_confirmar = false,
     celular = nullif(trim(coalesce(p_celular, '')), ''),
     banco = nullif(trim(coalesce(p_banco, '')), ''),
     cuenta = nullif(trim(coalesce(p_cuenta, '')), ''),
+    cci = nullif(trim(coalesce(p_cci, '')), ''),
     correo_verificado = case when v_correo is distinct from correo then false else correo_verificado end,
     correo = v_correo
   where dni = p_dni;
-  select to_jsonb(p) - 'cuenta' into j_despues from personas p where dni = p_dni;
+  select to_jsonb(p) - 'cuenta' - 'cci' into j_despues from personas p where dni = p_dni;
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);

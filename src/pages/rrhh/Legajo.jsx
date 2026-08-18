@@ -98,7 +98,8 @@ export default function Legajo() {
               ["Celular", p.celular ?? "Sin registrar"],
               ["Correo", p.correo ? `${p.correo}${p.correoVerificado ? " ✓ verificado" : " (sin verificar)"}` : "Sin registrar"],
               ["Banco de haberes", p.banco],
-              ["Cuenta", p.cuenta],
+              ["N° de cuenta", p.cuenta ?? "Sin registrar"],
+              ["CCI", p.cci ?? "Sin registrar"],
               ["Estado del portal", { activo: "Activo", nunca_ingreso: "Nunca ingresó", sin_celular: "Sin celular" }[p.portal]],
             ].map(([k, v]) => (
               <div key={k}>
@@ -256,7 +257,7 @@ export default function Legajo() {
 function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
   const [form, setForm] = useState({
     nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
-    banco: p.banco ?? "", cuenta: p.cuenta ?? "",
+    banco: p.banco ?? "", cuenta: p.cuenta ?? "", cci: p.cci ?? "",
   });
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
@@ -298,10 +299,13 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
               <option>BCP</option><option>BBVA</option><option>Interbank</option><option>Scotiabank</option>
             </Select>
           </Field>
-          <Field label="Cuenta (CCI)" hint="Dato sensible: el cambio queda en auditoría sin guardar el número en claro.">
+          <Field label="N° de cuenta" hint="Dato sensible: el cambio queda en auditoría sin guardar el número en claro.">
             <Input value={form.cuenta} onChange={set("cuenta")} />
           </Field>
         </div>
+        <Field label="CCI" hint="Código interbancario (20 dígitos). Mismo tratamiento sensible que la cuenta.">
+          <Input value={form.cci} onChange={set("cci")} />
+        </Field>
         {error && <Note tone="alerta">{error}</Note>}
         <div className="flex gap-2">
           <Button type="submit" disabled={ocupado || !form.nombre.trim()}>

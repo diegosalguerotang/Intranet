@@ -241,7 +241,7 @@ export default function Personal() {
 
 // RRH-04 — Alta de trabajador
 function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
-  const vacio = { dni: "", nombre: "", celular: "", correo: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "" };
+  const vacio = { dni: "", nombre: "", celular: "", correo: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "", cci: "" };
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -262,6 +262,7 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
       ingreso: form.ingreso,
       celular: form.celular || null,
       correo: form.correo.trim().toLowerCase() || null,
+      cci: form.cci.trim() || null,
       portal: form.celular ? "nunca_ingreso" : "sin_celular",
       estado: "vigente",
       banco: form.banco,
@@ -319,8 +320,11 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
               <option>BCP</option><option>BBVA</option><option>Interbank</option><option>Scotiabank</option>
             </Select>
           </Field>
-          <Field label="Cuenta (CCI)" hint="Dato sensible: su consulta queda en auditoría.">
+          <Field label="N° de cuenta" hint="Dato sensible: su consulta queda en auditoría.">
             <Input value={form.cuenta} onChange={set("cuenta")} />
+          </Field>
+          <Field label="CCI" hint="Código interbancario (20 dígitos).">
+            <Input value={form.cci} onChange={set("cci")} />
           </Field>
         </div>
         {error && <Note tone="alerta">{error}</Note>}
