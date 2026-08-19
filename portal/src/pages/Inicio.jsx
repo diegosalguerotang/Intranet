@@ -56,6 +56,19 @@ export default function Inicio() {
         )}
       </section>
 
+      <section>
+        <Enlace
+          to="/solicitudes"
+          className="flex items-center gap-3 rounded-caja border border-borde bg-white p-3.5 shadow-[0_2px_10px_rgba(29,63,114,0.06)] active:bg-papel"
+        >
+          <div className="flex-1">
+            <div className="text-[14.5px] font-semibold text-tinta">Mis solicitudes</div>
+            <div className="text-[12px] text-gris-cl">Pide tus vacaciones y sigue el estado de tus pedidos.</div>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-gris-cl" />
+        </Enlace>
+      </section>
+
       {mes && (
         <section>
           <h2 className="mb-2 text-[13px] font-bold uppercase tracking-wide text-gris-cl">Tu mes</h2>
