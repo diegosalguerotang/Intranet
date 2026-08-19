@@ -62,7 +62,7 @@ export default function Legajo() {
 
       <div className="mb-5 flex flex-wrap gap-4">
         {[
-          ["DNI", p.dni],
+          [p.tipo_documento === "CE" ? "Carné de extranjería" : p.tipo_documento === "Pasaporte" ? "Pasaporte" : "DNI", p.dni],
           ["Ingreso", p.ingreso],
           ["Antigüedad", `${antiguedad} años`],
           ["Celular", p.celular ?? "Sin registrar"],
@@ -94,7 +94,7 @@ export default function Legajo() {
           <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               ["Nombre completo", p.nombre],
-              ["DNI", p.dni],
+              [p.tipo_documento === "CE" ? "Carné de extranjería" : p.tipo_documento === "Pasaporte" ? "Pasaporte" : "DNI", p.dni],
               ["Celular", p.celular ?? "Sin registrar"],
               ["Correo", p.correo ? `${p.correo}${p.correoVerificado ? " ✓ verificado" : " (sin verificar)"}` : "Sin registrar"],
               ["Banco de haberes", p.banco],
@@ -258,6 +258,7 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
   const [form, setForm] = useState({
     nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
     banco: p.banco ?? "", cuenta: p.cuenta ?? "", cci: p.cci ?? "",
+    tipoDocumento: p.tipo_documento ?? "DNI",
   });
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
@@ -281,9 +282,18 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
   return (
     <Modal open onClose={onClose} title={`Editar datos — ${p.nombre}`} wide>
       <form onSubmit={guardar} className="space-y-4">
-        <Field label="Nombres y apellidos" required hint="Corregirlo quita la marca «por confirmar» de la importación.">
-          <Input value={form.nombre} onChange={set("nombre")} required />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nombres y apellidos" required hint="Corregirlo quita la marca «por confirmar» de la importación.">
+            <Input value={form.nombre} onChange={set("nombre")} required />
+          </Field>
+          <Field label="Tipo de documento" hint={`El número (${p.dni}) es la identidad y no se edita aquí.`}>
+            <Select value={form.tipoDocumento} onChange={set("tipoDocumento")}>
+              <option value="DNI">DNI</option>
+              <option value="CE">Carné de extranjería</option>
+              <option value="Pasaporte">Pasaporte</option>
+            </Select>
+          </Field>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Celular" hint="Libre: acepta +51 y espacios. Vaciarlo lo borra.">
             <Input value={form.celular} onChange={set("celular")} placeholder="987 654 321 o +51 987 654 321" />

@@ -121,7 +121,7 @@ export function FormPapeleta({ inicial = {}, onEnviar, ocupado, textoEnviar = "R
 
 export function FormVacaciones({ inicial = {}, onEnviar, ocupado, textoEnviar = "Enviar solicitud" }) {
   const [f, setF] = useState({
-    tipo_goce: inicial.tipo_goce ?? "Efectivas", desde: inicial.desde ?? "", hasta: inicial.hasta ?? "",
+    tipo_goce: inicial.tipo_goce ?? "Efectivas / Gozadas", desde: inicial.desde ?? "", hasta: inicial.hasta ?? "",
     dias_gozados: inicial.dias_gozados ?? "", dias_trabajados: inicial.dias_trabajados ?? "",
     periodo: inicial.periodo ?? "", horario: inicial.horario ?? "",
   });
@@ -153,10 +153,10 @@ export function FormVacaciones({ inicial = {}, onEnviar, ocupado, textoEnviar = 
   return (
     <form onSubmit={enviar} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Tipo" required>
+        <Field label="Solicito vacaciones" required hint="Las dos casillas del formato GR-F-012.">
           <Select value={f.tipo_goce} onChange={set("tipo_goce")}>
-            <option>Efectivas</option>
-            <option>Gozadas</option>
+            <option>Efectivas / Gozadas</option>
+            <option>Pagadas / Trabajadas</option>
           </Select>
         </Field>
         <Field label="Desde el" required>

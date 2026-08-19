@@ -240,22 +240,37 @@ export default function Personal() {
 }
 
 // RRH-04 — Alta de trabajador
+// Reglas de formato por tipo de documento (espejo de fn_validar_documento).
+const TIPOS_DOCUMENTO = {
+  DNI: { etiqueta: "DNI", regex: /^[0-9]{8}$/, error: "El DNI debe tener 8 dígitos.", numerico: true, max: 8 },
+  CE: { etiqueta: "Carné de extranjería", regex: /^[0-9A-Z]{9,12}$/, error: "El carné de extranjería tiene de 9 a 12 caracteres.", numerico: false, max: 12 },
+  Pasaporte: { etiqueta: "Pasaporte", regex: /^[0-9A-Z]{6,15}$/, error: "El pasaporte tiene de 6 a 15 caracteres.", numerico: false, max: 15 },
+};
+
+export function sanearDocumento(tipo, valor) {
+  const t = TIPOS_DOCUMENTO[tipo] ?? TIPOS_DOCUMENTO.DNI;
+  const limpio = valor.toUpperCase().replace(t.numerico ? /[^0-9]/g : /[^0-9A-Z]/g, "");
+  return limpio.slice(0, t.max);
+}
+
 function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
-  const vacio = { dni: "", nombre: "", celular: "", correo: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "", cci: "" };
+  const vacio = { tipoDocumento: "DNI", dni: "", nombre: "", celular: "", correo: "", sede: "", cargo: CARGOS[0], ingreso: "", banco: "BCP", cuenta: "", cci: "" };
   const [form, setForm] = useState(vacio);
   const [error, setError] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const existente = personal.find((p) => p.dni === form.dni);
+  const regla = TIPOS_DOCUMENTO[form.tipoDocumento];
 
   const guardar = (e) => {
     e.preventDefault();
-    if (form.dni.length !== 8) return setError("El DNI debe tener 8 dígitos.");
-    if (existente) return setError("Este DNI ya está registrado. Para una recontratación, abre un nuevo vínculo desde su legajo.");
+    if (!regla.regex.test(form.dni)) return setError(regla.error);
+    if (existente) return setError("Este documento ya está registrado. Para una recontratación, abre un nuevo vínculo desde su legajo.");
     if (!form.nombre.trim()) return setError("Ingresa los nombres y apellidos.");
     if (!form.sede) return setError("Toda alta requiere sede asignada: la segmentación posterior depende de ese dato.");
     if (!form.ingreso) return setError("Ingresa la fecha de ingreso.");
     onGuardar({
       dni: form.dni,
+      tipoDocumento: form.tipoDocumento,
       nombre: form.nombre.trim(),
       cargo: form.cargo,
       sede: form.sede,
@@ -277,17 +292,25 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
   return (
     <Modal open={open} onClose={cerrar} title="RRH-04 · Alta de trabajador" wide>
       <form onSubmit={guardar} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="DNI" required hint="Si el DNI ya existe como Persona, se agrega un vínculo sin duplicarla.">
-            <Input inputMode="numeric" value={form.dni} onChange={(e) => setForm((f) => ({ ...f, dni: soloDigitos(e.target.value, 8) }))} />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Tipo de documento" required>
+            <Select value={form.tipoDocumento}
+              onChange={(e) => setForm((f) => ({ ...f, tipoDocumento: e.target.value, dni: sanearDocumento(e.target.value, f.dni) }))}>
+              {Object.entries(TIPOS_DOCUMENTO).map(([id, t]) => <option key={id} value={id}>{t.etiqueta}</option>)}
+            </Select>
+          </Field>
+          <Field label="Número de documento" required hint="Si ya existe como Persona, se agrega un vínculo sin duplicarla.">
+            <Input inputMode={regla.numerico ? "numeric" : "text"} value={form.dni}
+              placeholder={regla.numerico ? "8 dígitos" : "Letras y números"}
+              onChange={(e) => setForm((f) => ({ ...f, dni: sanearDocumento(f.tipoDocumento, e.target.value) }))} />
           </Field>
           <Field label="Nombres y apellidos" required>
-            <Input placeholder="Como figura en el DNI" value={form.nombre} onChange={set("nombre")} />
+            <Input placeholder="Como figura en el documento" value={form.nombre} onChange={set("nombre")} />
           </Field>
         </div>
         {existente && (
           <Note tone="pend">
-            El DNI {form.dni} ya existe: <b>{existente.nombre}</b>. No se creará un duplicado.
+            El documento {form.dni} ya existe: <b>{existente.nombre}</b>. No se creará un duplicado.
           </Note>
         )}
         <div className="grid gap-4 sm:grid-cols-3">

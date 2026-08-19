@@ -215,6 +215,7 @@ export function AppProvider({ children }) {
         p_sede: row.sede, p_empresa: row.empresa, p_ingreso: row.ingreso,
         p_celular: row.celular, p_banco: row.banco, p_cuenta: row.cuenta,
         p_correo: row.correo ?? null, p_cci: row.cci ?? null,
+        p_tipo_documento: row.tipoDocumento ?? "DNI",
       }, "personal");
     },
     deletePersonal: (dni) => {
@@ -385,7 +386,7 @@ export function AppProvider({ children }) {
       const { error } = await supabase.rpc("editar_trabajador", {
         p_dni: dni, p_nombre: cambios.nombre, p_celular: cambios.celular,
         p_correo: cambios.correo, p_banco: cambios.banco, p_cuenta: cambios.cuenta,
-        p_cci: cambios.cci ?? null,
+        p_cci: cambios.cci ?? null, p_tipo_documento: cambios.tipoDocumento ?? null,
       });
       if (error) throw new Error(error.message);
       await recargar("personal");

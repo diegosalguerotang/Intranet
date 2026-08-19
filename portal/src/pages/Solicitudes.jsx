@@ -146,7 +146,7 @@ export default function Solicitudes() {
 
 function FormVacacionesPortal({ inicial = {}, onEnviar, onCancelar, texto = "Enviar solicitud" }) {
   const [f, setF] = useState({
-    tipo_goce: inicial.tipo_goce ?? "Efectivas", desde: inicial.desde ?? "", hasta: inicial.hasta ?? "",
+    tipo_goce: inicial.tipo_goce ?? "Efectivas / Gozadas", desde: inicial.desde ?? "", hasta: inicial.hasta ?? "",
     dias_gozados: inicial.dias_gozados ?? "", dias_trabajados: inicial.dias_trabajados ?? "",
     periodo: inicial.periodo ?? "", horario: inicial.horario ?? "",
   });
@@ -179,10 +179,10 @@ function FormVacacionesPortal({ inicial = {}, onEnviar, onCancelar, texto = "Env
   return (
     <form onSubmit={enviar} className="space-y-3">
       <div>
-        <label className="mb-1 block text-[12.5px] font-semibold text-gris">Tipo</label>
+        <label className="mb-1 block text-[12.5px] font-semibold text-gris">Solicito vacaciones</label>
         <select className={cajaCls} value={f.tipo_goce} onChange={set("tipo_goce")}>
-          <option>Efectivas</option>
-          <option>Gozadas</option>
+          <option>Efectivas / Gozadas</option>
+          <option>Pagadas / Trabajadas</option>
         </select>
       </div>
       <div className="grid grid-cols-2 gap-3">

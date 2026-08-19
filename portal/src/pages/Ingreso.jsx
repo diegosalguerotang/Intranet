@@ -6,12 +6,19 @@ import { Enlace } from "../router";
 import { Boton, Nota } from "../components/ui";
 
 // TRB-01 · Ingreso: el trabajador se autentica con datos que sabe de memoria.
-// El identificador es el DNI, nunca un correo. El mensaje de error es único:
-// no revela si el DNI existe en el sistema.
-const MENSAJE_UNICO = "DNI o clave incorrectos. Si aún no tienes cuenta, acércate a Recursos Humanos.";
+// El identificador es su documento (DNI, CE o pasaporte), nunca un correo. El
+// mensaje de error es único: no revela si el documento existe en el sistema.
+const MENSAJE_UNICO = "Documento o clave incorrectos. Si aún no tienes cuenta, acércate a Recursos Humanos.";
+
+const TIPOS_DOC = {
+  DNI: { etiqueta: "DNI", regex: /^[0-9]{8}$/, numerico: true, max: 8, placeholder: "8 dígitos", error: "El DNI tiene 8 dígitos." },
+  CE: { etiqueta: "Carné de extranjería", regex: /^[0-9A-Z]{9,12}$/, numerico: false, max: 12, placeholder: "9 a 12 caracteres", error: "El carné tiene de 9 a 12 caracteres." },
+  Pasaporte: { etiqueta: "Pasaporte", regex: /^[0-9A-Z]{6,15}$/, numerico: false, max: 15, placeholder: "6 a 15 caracteres", error: "El pasaporte tiene de 6 a 15 caracteres." },
+};
 
 export default function Ingreso() {
   const { perfil, entrar } = usePortal();
+  const [tipoDoc, setTipoDoc] = useState("DNI");
   const [dni, setDni] = useState("");
   const [clave, setClave] = useState("");
   const [ver, setVer] = useState(false);
@@ -20,7 +27,7 @@ export default function Ingreso() {
 
   const ingresar = async (e) => {
     e.preventDefault();
-    if (!/^[0-9]{8}$/.test(dni)) return setError("El DNI tiene 8 dígitos.");
+    if (!TIPOS_DOC[tipoDoc].regex.test(dni)) return setError(TIPOS_DOC[tipoDoc].error);
     setError(null);
     setCargando(true);
     const dispositivo = navigator.userAgent.slice(0, 150);
@@ -62,16 +69,26 @@ export default function Ingreso() {
           </div>
         )}
 
+        <label className="mb-3 block">
+          <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu documento</span>
+          <select
+            value={tipoDoc}
+            onChange={(e) => { setTipoDoc(e.target.value); setDni(""); }}
+            className="w-full rounded-caja border border-borde-f bg-white px-4 py-3 text-[15px] text-gris focus:border-petroleo focus:outline-none"
+          >
+            {Object.entries(TIPOS_DOC).map(([id, t]) => <option key={id} value={id}>{t.etiqueta}</option>)}
+          </select>
+        </label>
         <label className="mb-5 block">
-          <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu DNI</span>
+          <span className="mb-1 block text-[13px] font-semibold text-tinta">Número de documento</span>
           <input
             type="text"
-            inputMode="numeric"
+            inputMode={TIPOS_DOC[tipoDoc].numerico ? "numeric" : "text"}
             autoComplete="username"
-            maxLength={8}
-            placeholder="8 dígitos"
+            maxLength={TIPOS_DOC[tipoDoc].max}
+            placeholder={TIPOS_DOC[tipoDoc].placeholder}
             value={dni}
-            onInput={(e) => setDni(e.currentTarget.value.replace(/\D/g, ""))}
+            onInput={(e) => setDni(e.currentTarget.value.toUpperCase().replace(TIPOS_DOC[tipoDoc].numerico ? /[^0-9]/g : /[^0-9A-Z]/g, ""))}
             className="w-full rounded-caja border border-borde-f bg-white px-4 py-3 text-[17px] tracking-[0.15em] text-gris placeholder:tracking-normal placeholder:text-gris-cl focus:border-petroleo focus:outline-none"
             autoFocus
           />
