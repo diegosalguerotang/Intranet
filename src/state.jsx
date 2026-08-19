@@ -264,9 +264,9 @@ export function AppProvider({ children }) {
       local("memorandums", (xs) => xs.map((m) => (m.id === id ? { ...m, estado: "resuelto", resolucion } : m)));
       rpc("resolver_memorandum", { p_id: id, p_decision: resolucion.decision }, "memorandums");
     },
-    asignarActivo: (codigo, dni, sedeId) => {
-      local("activos", (xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: "asignado", asignado: dni, sede: sedeId } : a)));
-      rpc("asignar_activo", { p_codigo: codigo, p_dni: dni }, "activos");
+    asignarActivo: (codigo, dni, sedeId, antivirus = null, comentario = null) => {
+      local("activos", (xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: "asignado", asignado: dni, sede: sedeId, antivirus, comentario_asignacion: comentario } : a)));
+      rpc("asignar_activo", { p_codigo: codigo, p_dni: dni, p_antivirus: antivirus, p_comentario: comentario }, "activos");
     },
     devolverActivo: (codigo, destino, sedeId) => {
       local("activos", (xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: destino, asignado: null, sede: sedeId } : a)));
@@ -445,10 +445,28 @@ export function AppProvider({ children }) {
         p_codigo: codigo, p_nuevo_codigo: cambios.codigo, p_tipo: cambios.tipo,
         p_marca: cambios.marca, p_modelo: cambios.modelo, p_serie: cambios.serie,
         p_area: cambios.area, p_asignado_sin_confirmar: cambios.asignadoSinConfirmar,
-        p_observaciones: cambios.observaciones, p_por: user?.nombre ?? "Administración",
+        p_observaciones: cambios.observaciones, p_ip: cambios.ip ?? null,
+        p_por: user?.nombre ?? "Gestión de TI",
       });
       if (error) throw new Error(error.message);
       await recargar("activos");
+    },
+    // Clave del equipo: solo superadmin (la RPC lo impone y todo acceso se audita).
+    guardarClaveEquipo: async (codigo, clave) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("guardar_clave_equipo", {
+        p_codigo: codigo, p_clave: clave, p_por: user?.nombre ?? "Gestión de TI",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("activos");
+    },
+    verClaveEquipo: async (codigo) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("ver_clave_equipo", {
+        p_codigo: codigo, p_por: user?.nombre ?? "Gestión de TI",
+      });
+      if (error) throw new Error(error.message);
+      return data;
     },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es

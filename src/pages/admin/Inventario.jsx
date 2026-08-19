@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PackagePlus, Upload } from "lucide-react";
+import { PackagePlus, Upload, Download, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Input, Select, Field, Modal, Note,
@@ -15,9 +15,11 @@ const ESTADOS = {
 
 // ADQ-01 — Inventario de activos
 export default function Inventario() {
-  const { empresaId, db, persona, asignarActivo, devolverActivo, editarActivo } = useApp();
+  const { empresaId, db, persona, asignarActivo, devolverActivo, editarActivo,
+    guardarClaveEquipo, verClaveEquipo, user } = useApp();
   const [q, setQ] = useState("");
   const [fCat, setFCat] = useState("");
+  const [fTipo, setFTipo] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [alta, setAlta] = useState(false);
   const [importar, setImportar] = useState(false);
@@ -26,6 +28,12 @@ export default function Inventario() {
   const [devolver, setDevolver] = useState(null); // activo a devolver
   const [aviso, setAviso] = useState(null);
   const activos = db.activos;
+  const esSuperadmin = user?.acceso?.esSuperadmin ?? user?.esSuperadmin ?? false;
+
+  const tipos = useMemo(
+    () => [...new Set(activos.filter((a) => a.empresa === empresaId).map((a) => a.tipo).filter(Boolean))].sort(),
+    [activos, empresaId]
+  );
 
   const filas = useMemo(
     () =>
@@ -33,14 +41,31 @@ export default function Inventario() {
         (a) =>
           a.empresa === empresaId &&
           (!fCat || a.categoria === fCat) &&
+          (!fTipo || a.tipo === fTipo) &&
           (!fEstado || a.estado === fEstado) &&
           (!q ||
             a.codigo.toLowerCase().includes(q.toLowerCase()) ||
             (a.serie ?? "").toLowerCase().includes(q.toLowerCase()) ||
+            (a.marca ?? "").toLowerCase().includes(q.toLowerCase()) ||
+            (a.modelo ?? "").toLowerCase().includes(q.toLowerCase()) ||
+            (a.ip ?? "").includes(q) ||
             (a.imei ?? "").includes(q))
       ),
-    [activos, empresaId, q, fCat, fEstado]
+    [activos, empresaId, q, fCat, fTipo, fEstado]
   );
+
+  // Exportar lo filtrado a CSV (sin valor ni clave de equipo).
+  const exportar = () => {
+    const enc = ["Tipo", "Código", "Marca", "Modelo", "Serie", "IMEI", "IP", "Asignado", "Estado"];
+    const csv = [enc, ...filas.map((a) => [a.tipo ?? a.categoria, a.codigo, a.marca ?? "", a.modelo ?? "",
+      a.serie ?? "", a.imei ?? "", a.ip ?? "",
+      persona(a.asignado)?.nombre ?? a.asignado_sin_confirmar ?? "", a.estado])]
+      .map((f) => f.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    const el = Object.assign(document.createElement("a"), { href: url, download: `activos-${empresaId}.csv` });
+    el.click();
+    URL.revokeObjectURL(url);
+  };
 
   const totales = {
     total: filas.length,
@@ -49,9 +74,9 @@ export default function Inventario() {
     mantenimiento: filas.filter((a) => a.estado === "mantenimiento").length,
   };
 
-  const ejecutarAsignacion = (codigo, dni) => {
+  const ejecutarAsignacion = (codigo, dni, antivirus, comentario) => {
     const p = persona(dni);
-    asignarActivo(codigo, dni, p?.sede ?? null);
+    asignarActivo(codigo, dni, p?.sede ?? null, antivirus, comentario || null);
     setAsignar(null);
     setAviso(`Activo ${codigo} asignado a ${p?.nombre}. El cargo digital entró al motor de acuses y aparecerá en su portal como pendiente de confirmar.`);
   };
@@ -71,6 +96,9 @@ export default function Inventario() {
         subtitle="El estado de un activo y su asignación son cosas distintas: un activo puede estar operativo y sin asignar."
         actions={
           <>
+            <Button variant="secondary" size="sm" onClick={exportar}>
+              <Download size={13} /> Exportar
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => setImportar(true)}>
               <Upload size={13} /> Importar inventario
             </Button>
@@ -90,12 +118,16 @@ export default function Inventario() {
 
       <Card pad={false}>
         <div className="flex flex-wrap gap-2.5 border-b border-borde bg-papel/50 p-3.5">
-          <Input placeholder="Buscar por código, serie o IMEI…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 250 }} />
+          <Input placeholder="Buscar por código, modelo, serie o IP…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 250 }} />
           <Select value={fCat} onChange={(e) => setFCat(e.target.value)} style={{ maxWidth: 190 }}>
             <option value="">Todas las categorías</option>
             <option>Cómputo</option>
             <option>Comunicaciones</option>
             <option>Maquinaria</option>
+          </Select>
+          <Select value={fTipo} onChange={(e) => setFTipo(e.target.value)} style={{ maxWidth: 170 }}>
+            <option value="">Todos los tipos</option>
+            {tipos.map((t) => <option key={t}>{t}</option>)}
           </Select>
           <Select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={{ maxWidth: 190 }}>
             <option value="">Todos los estados</option>
@@ -104,11 +136,12 @@ export default function Inventario() {
             <option value="mantenimiento">En mantenimiento</option>
           </Select>
         </div>
-        <Table head={["Código", "Categoría", "Marca y modelo", "Serie / IMEI", "Asignado a", "Valor (S/)", "Estado", ""]}>
+        <Table head={["Tipo", "Código interno", "Marca y modelo", "Serie / IMEI", "IP", "Asignado a", "Estado", ""]}>
           {filas.map((a) => {
             const est = ESTADOS[a.estado];
             return (
               <tr key={a.codigo} className="hover:bg-papel/60">
+                <Td className="text-gris">{a.tipo ?? a.categoria}</Td>
                 <Td className="font-mono text-[12px] font-semibold">
                   {a.codigo}
                   {a.por_corregir && (
@@ -118,12 +151,18 @@ export default function Inventario() {
                     <span className="ml-1.5"><Badge tone="pend">Falta corregir</Badge></span>
                   )}
                 </Td>
-                <Td className="text-gris">{a.categoria}</Td>
                 <Td className="font-semibold">{a.marca} {a.modelo}</Td>
                 <Td className="font-mono text-[11.5px] text-gris">{a.serie}{a.imei ? ` · ${a.imei}` : ""}</Td>
+                <Td className="font-mono text-[11.5px]">{a.ip ?? <span className="text-gris-cl">—</span>}</Td>
                 <Td>
                   {a.asignado ? (
-                    persona(a.asignado)?.nombre
+                    <>
+                      {persona(a.asignado)?.nombre}
+                      {a.antivirus === true && <span className="ml-1.5"><Badge tone="conf">AV</Badge></span>}
+                      {a.comentario_asignacion && (
+                        <div className="text-[11px] text-gris">{a.comentario_asignacion}</div>
+                      )}
+                    </>
                   ) : a.asignado_sin_confirmar ? (
                     // Texto importado del inventario: NO es un vínculo al
                     // maestro; la vinculación real se hace con "Asignar".
@@ -132,7 +171,6 @@ export default function Inventario() {
                     <span className="text-gris-cl">—</span>
                   )}
                 </Td>
-                <Td className="font-mono text-[12px]">{a.valor.toLocaleString()}</Td>
                 <Td><Badge tone={est.tone}>{est.label}</Badge></Td>
                 <Td>
                   <Button variant="ghost" size="sm" onClick={() => setEditar(a)}>Editar</Button>
@@ -150,7 +188,8 @@ export default function Inventario() {
       </Card>
 
       <AltaActivo open={alta} onClose={() => setAlta(false)} />
-      <EditarActivo activo={editar} onClose={() => setEditar(null)} editarActivo={editarActivo} onListo={setAviso} />
+      <EditarActivo activo={editar} onClose={() => setEditar(null)} editarActivo={editarActivo} onListo={setAviso}
+        esSuperadmin={esSuperadmin} guardarClaveEquipo={guardarClaveEquipo} verClaveEquipo={verClaveEquipo} />
       <ImportarInventario open={importar} onClose={() => setImportar(false)} />
       <AsignarActivo activo={asignar} onClose={() => setAsignar(null)} onAsignar={ejecutarAsignacion} />
       <DevolucionActivo activo={devolver} onClose={() => setDevolver(null)} onDevolver={ejecutarDevolucion} />
@@ -161,20 +200,36 @@ export default function Inventario() {
 // Edición manual de un activo: corregir el código (caso «falta corregir» de la
 // importación) y los datos del equipo. Renombrar el código arrastra el
 // historial de asignaciones y las líneas, y quita la marca de repetido.
-function EditarActivo({ activo, onClose, editarActivo, onListo }) {
+function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, guardarClaveEquipo, verClaveEquipo }) {
   const [form, setForm] = useState(null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
+  const [clave, setClave] = useState("");       // valor nuevo escrito (solo superadmin)
+  const [claveTocada, setClaveTocada] = useState(false);
+  const [claveVisible, setClaveVisible] = useState(false);
+  const [claveActual, setClaveActual] = useState(null); // resultado de "Ver clave actual"
   useEffect(() => {
     if (!activo) { setForm(null); setError(null); return; }
     setForm({
       codigo: activo.codigo, tipo: activo.tipo ?? "", marca: activo.marca ?? "",
       modelo: activo.modelo ?? "", serie: activo.serie ?? "", area: activo.area ?? "",
+      ip: activo.ip ?? "",
       asignadoSinConfirmar: activo.asignado_sin_confirmar ?? "",
       observaciones: activo.observaciones ?? "",
     });
+    setClave(""); setClaveTocada(false); setClaveVisible(false); setClaveActual(null);
   }, [activo]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const verActual = async () => {
+    setError(null);
+    try {
+      const v = await verClaveEquipo(activo.codigo);
+      setClaveActual(v ?? "(sin clave registrada)");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -183,6 +238,7 @@ function EditarActivo({ activo, onClose, editarActivo, onListo }) {
     setOcupado(true);
     try {
       await editarActivo(activo.codigo, form);
+      if (esSuperadmin && claveTocada) await guardarClaveEquipo(form.codigo, clave);
       onListo(
         form.codigo !== activo.codigo
           ? `Activo ${activo.codigo} corregido: ahora es ${form.codigo}. Su historial de asignaciones lo siguió.`
@@ -228,12 +284,41 @@ function EditarActivo({ activo, onClose, editarActivo, onListo }) {
               <Input value={form.serie} onChange={set("serie")} />
             </Field>
           </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="IP" hint="Dirección en la red interna.">
+              <Input value={form.ip} onChange={set("ip")} placeholder="192.168.1.100" />
+            </Field>
+          </div>
           <Field label="Asignado a (sin confirmar)" hint="Texto del inventario; la asignación real se hace con «Asignar».">
             <Input value={form.asignadoSinConfirmar} onChange={set("asignadoSinConfirmar")} />
           </Field>
           <Field label="Observaciones">
             <Input value={form.observaciones} onChange={set("observaciones")} />
           </Field>
+          {esSuperadmin && (
+            <div className="rounded-caja border border-borde bg-papel/60 p-3.5 space-y-3">
+              <div className="text-[13px] font-semibold text-tinta">Clave del equipo</div>
+              <div className="flex flex-wrap items-end gap-2">
+                <Field label={activo.tiene_clave ? "Reemplazar clave" : "Registrar clave"} hint="Todo acceso queda registrado en auditoría.">
+                  <div className="relative">
+                    <Input type={claveVisible ? "text" : "password"} value={clave} autoComplete="new-password"
+                      onChange={(e) => { setClave(e.target.value); setClaveTocada(true); }} style={{ paddingRight: 34 }} />
+                    <button type="button" onClick={() => setClaveVisible((v) => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gris hover:text-tinta"
+                      title={claveVisible ? "Ocultar" : "Mostrar"}>
+                      {claveVisible ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </Field>
+                {activo.tiene_clave && (
+                  <Button type="button" variant="secondary" size="sm" onClick={verActual}>Ver clave actual</Button>
+                )}
+              </div>
+              {claveActual !== null && (
+                <Note tone="neutral">Clave actual: <span className="font-mono font-semibold">{claveActual}</span></Note>
+              )}
+            </div>
+          )}
           {error && <Note tone="alerta">{error}</Note>}
           <div className="flex gap-2">
             <Button type="submit" disabled={ocupado || !form.codigo.trim()}>
@@ -304,6 +389,8 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
   const { db } = useApp();
   const [dni, setDni] = useState("");
   const [cargo, setCargo] = useState(true);
+  const [antivirus, setAntivirus] = useState(false);
+  const [comentario, setComentario] = useState("");
   const vigentes = db.personal.filter((p) => p.estado === "vigente");
 
   return (
@@ -330,12 +417,21 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
           <Field label="Fotografías del estado" hint="Referencia contra la cual se evaluará la devolución. Sin ella, cualquier discusión sobre deterioro es palabra contra palabra.">
             <Input type="file" multiple />
           </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
+              <input type="checkbox" checked={antivirus} onChange={(e) => setAntivirus(e.target.checked)} className="accent-petroleo" />
+              El equipo lleva antivirus instalado
+            </label>
+            <Field label="Comentario" hint="Ej.: «PC que perteneció a…»">
+              <Input value={comentario} onChange={(e) => setComentario(e.target.value)} />
+            </Field>
+          </div>
           <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
             <input type="checkbox" checked={cargo} onChange={(e) => setCargo(e.target.checked)} className="accent-petroleo" />
             Generar cargo digital para acuse del trabajador
           </label>
           <div className="flex gap-2">
-            <Button disabled={!dni} onClick={() => onAsignar(activo.codigo, dni)}>Asignar</Button>
+            <Button disabled={!dni} onClick={() => onAsignar(activo.codigo, dni, antivirus, comentario)}>Asignar</Button>
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           </div>
         </div>
