@@ -172,8 +172,9 @@ begin
     if coalesce((p_datos->>'dias_gozados')::numeric, 0) <= 0 then
       raise exception 'Los días gozados deben ser mayores a cero.';
     end if;
-    if coalesce(p_datos->>'tipo_goce','') not in ('Efectivas','Gozadas') then
-      raise exception 'Tipo inválido: Efectivas o Gozadas.';
+    -- Las DOS casillas del formato GR-F-012 real (corregido 2026-08-19).
+    if coalesce(p_datos->>'tipo_goce','') not in ('Efectivas / Gozadas','Pagadas / Trabajadas') then
+      raise exception 'Tipo inválido: «Efectivas / Gozadas» o «Pagadas / Trabajadas».';
     end if;
   end if;
 end $$;
@@ -410,7 +411,8 @@ end $$;
 
 create view v_solicitudes as
 select s.id, s.numero, s.tipo_id, t.nombre as tipo, t.codigo_formato,
-       s.solicitante_dni, s.solicitante_nombre, s.cargo,
+       s.solicitante_dni, pe.tipo_documento as solicitante_tipo_documento,
+       s.solicitante_nombre, s.cargo,
        s.sede_id, s.sede_nombre, s.empresa_id as empresa,
        to_char(s.fecha_ingreso, 'YYYY-MM-DD') as fecha_ingreso,
        s.supervisor_dni, s.supervisor_nombre,
@@ -434,6 +436,7 @@ select s.id, s.numero, s.tipo_id, t.nombre as tipo, t.codigo_formato,
        as se_superpone
 from solicitudes s
 join solicitud_tipos t on t.id = s.tipo_id
+join personas pe on pe.dni = s.solicitante_dni
 order by s.creado_en desc;
 
 create view v_solicitud_tipos as

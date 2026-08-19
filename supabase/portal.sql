@@ -86,12 +86,14 @@ on conflict (id, version) do nothing;
 -- 4 · Identidad de la sesión del portal ---------------------------------------
 -- NULL si la sesión no es del portal (las vistas devuelven vacío); los RPC
 -- validan y revientan con mensaje claro.
+-- Canónico desde 2026-08-19: resuelve la persona por lower(dni), así los
+-- números alfanuméricos (CE/pasaporte) funcionan aunque el correo técnico
+-- vaya en minúsculas. Devuelve el dni TAL COMO está en personas.
 create or replace function portal_dni() returns text language sql stable as $$
-  select case
-    when coalesce(auth.jwt()->>'email','') like '%@portal.grupoer.pe'
-     and split_part(auth.jwt()->>'email','@',1) ~ '^[0-9]{8}$'
-    then split_part(auth.jwt()->>'email','@',1)
-  end
+  select p.dni from personas p
+  where coalesce(auth.jwt()->>'email','') like '%@portal.grupoer.pe'
+    and lower(p.dni) = split_part(auth.jwt()->>'email','@',1)
+  limit 1
 $$;
 
 -- Modo del trabajador: vigente | solo-lectura (cesado ≤ 12 meses) | expirado.

@@ -57,7 +57,12 @@ create table empresas (
 );
 
 create table personas (
-  dni                   text primary key check (dni ~ '^[0-9]{8}$'),
+  -- «dni» es el NÚMERO de documento (nombre histórico): DNI de 8 dígitos o,
+  -- desde 2026-08-19, CE/pasaporte alfanuméricos EN MAYÚSCULAS. El formato
+  -- por tipo lo valida fn_validar_documento en alta/edición.
+  dni                   text primary key check (dni ~ '^[0-9A-Z-]{4,20}$'),
+  tipo_documento        text not null default 'DNI'
+    check (tipo_documento in ('DNI','CE','Pasaporte')),
   nombre                text not null,
   celular               text,  -- LIBRE: puede venir con +51 o espacios (Excels de planilla)
   correo                text,  -- opcional: lo declara el trabajador o RRHH (motor de correo)
@@ -761,7 +766,7 @@ select s.id, s.empresa_id as empresa, s.nombre, s.cliente, p.nombre as superviso
 from sedes s left join personas p on p.dni = s.supervisor_dni;
 
 create view v_personal as
-select p.dni, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
+select p.dni, p.tipo_documento, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
        to_char(v.fecha_inicio, 'YYYY-MM-DD') as ingreso,
        p.celular, p.portal,
        case when v.fecha_fin is null then 'vigente' else 'cesado' end as estado,
@@ -901,31 +906,53 @@ order by entrega desc;
 
 -- Alta de trabajador: Persona única + Vínculo. Si el DNI existe, NO se
 -- duplica la persona: se abre un vínculo nuevo (recontratación / rotación).
+-- Validación central del número por tipo de documento (alta y edición; la
+-- importación de planilla solo trae DNIs y no pasa por aquí).
+create function fn_validar_documento(p_tipo text, p_numero text)
+returns text language plpgsql as $$
+declare v text;
+begin
+  v := upper(trim(coalesce(p_numero, '')));
+  if p_tipo = 'DNI' then
+    if v !~ '^[0-9]{8}$' then raise exception 'El DNI tiene 8 dígitos.'; end if;
+  elsif p_tipo = 'CE' then
+    if v !~ '^[0-9A-Z]{9,12}$' then raise exception 'El carné de extranjería tiene de 9 a 12 caracteres (letras o números).'; end if;
+  elsif p_tipo = 'Pasaporte' then
+    if v !~ '^[0-9A-Z]{6,15}$' then raise exception 'El pasaporte tiene de 6 a 15 caracteres (letras o números).'; end if;
+  else
+    raise exception 'Tipo de documento inválido: DNI, CE o Pasaporte.';
+  end if;
+  return v;
+end $$;
+
 create function alta_trabajador(
   p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text,
   p_ingreso date, p_celular text default null,
   p_banco text default null, p_cuenta text default null, p_correo text default null,
-  p_cci text default null
+  p_cci text default null, p_tipo_documento text default 'DNI'
 ) returns void language plpgsql security definer as $$
+declare v_num text;
 begin
-  insert into personas (dni, nombre, celular, banco, cuenta, cci, portal, correo)
-  values (p_dni, p_nombre, p_celular, p_banco, p_cuenta, nullif(trim(coalesce(p_cci, '')), ''),
+  v_num := fn_validar_documento(p_tipo_documento, p_dni);
+  insert into personas (dni, tipo_documento, nombre, celular, banco, cuenta, cci, portal, correo)
+  values (v_num, p_tipo_documento, p_nombre, p_celular, p_banco, p_cuenta, nullif(trim(coalesce(p_cci, '')), ''),
           case when p_celular is null then 'sin_celular' else 'nunca_ingreso' end,
           nullif(lower(trim(coalesce(p_correo, ''))), ''))
   on conflict (dni) do update
-    set celular = coalesce(excluded.celular, personas.celular),
+    set tipo_documento = excluded.tipo_documento,
+        celular = coalesce(excluded.celular, personas.celular),
         banco   = coalesce(excluded.banco, personas.banco),
         cuenta  = coalesce(excluded.cuenta, personas.cuenta),
         cci     = coalesce(excluded.cci, personas.cci),
         correo  = coalesce(excluded.correo, personas.correo);
 
-  if exists (select 1 from vinculos where persona_dni = p_dni
+  if exists (select 1 from vinculos where persona_dni = v_num
              and empresa_id = p_empresa and fecha_fin is null) then
-    raise exception 'La persona % ya tiene un vínculo vigente con esta empresa.', p_dni;
+    raise exception 'La persona % ya tiene un vínculo vigente con esta empresa.', v_num;
   end if;
 
   insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio)
-  values (p_dni, p_empresa, p_sede, p_cargo, p_ingreso);
+  values (v_num, p_empresa, p_sede, p_cargo, p_ingreso);
 end $$;
 
 -- Edición desde el legajo (2026-08-17): superadmin o nivel >=2 en Personal.
@@ -934,7 +961,7 @@ end $$;
 -- bancaria no se guarda en claro en la auditoría.
 create function editar_trabajador(
   p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text,
-  p_cci text default null
+  p_cci text default null, p_tipo_documento text default null
 ) returns void language plpgsql security definer as $$
 declare j_antes jsonb; j_despues jsonb; v_correo text;
 begin
@@ -947,6 +974,11 @@ begin
   if nullif(trim(coalesce(p_nombre, '')), '') is null then
     raise exception 'El nombre no puede quedar vacío.';
   end if;
+  if p_tipo_documento is not null then
+    -- El número existente debe ser válido para el tipo nuevo (el NÚMERO no se
+    -- edita aquí: es la identidad, como el código de un activo).
+    perform fn_validar_documento(p_tipo_documento, p_dni);
+  end if;
   v_correo := nullif(lower(trim(coalesce(p_correo, ''))), '');
   if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
     raise exception 'El correo no tiene un formato válido.';
@@ -956,6 +988,7 @@ begin
   update personas set
     nombre = trim(p_nombre),
     nombre_por_confirmar = false,
+    tipo_documento = coalesce(p_tipo_documento, tipo_documento),
     celular = nullif(trim(coalesce(p_celular, '')), ''),
     banco = nullif(trim(coalesce(p_banco, '')), ''),
     cuenta = nullif(trim(coalesce(p_cuenta, '')), ''),
