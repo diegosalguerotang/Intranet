@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
-  Inbox, FilePlus2, BellRing, BarChart3, ChevronDown, ClipboardPen,
+  Inbox, BellRing, BarChart3, ChevronDown, ClipboardPen,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -32,9 +32,11 @@ const NAV_ADMIN = [
   { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos", proximamente: true },
 ];
 
+// El módulo Solicitudes es de los RESPONSABLES de responder (Diego,
+// 2026-08-19): crear la propia va por el botón global «Mi solicitud», y
+// registrar a nombre de un trabajador es una acción dentro de la Bandeja.
 const NAV_SOLICITUDES = [
   { to: "/solicitudes", icon: Inbox, label: "Bandeja", code: "SOL-01", end: true, modulo: "solicitudes" },
-  { to: "/solicitudes/nueva", icon: FilePlus2, label: "Nueva solicitud", code: "SOL-02", modulo: "solicitudes" },
   { to: "/solicitudes/tablero", icon: BarChart3, label: "Tablero mensual", code: "SOL-04", modulo: "solicitudes" },
   { to: "/solicitudes/avisos", icon: BellRing, label: "Avisos por correo", code: "SOL-03", modulo: "solicitudes" },
 ];
@@ -124,7 +126,13 @@ function NavGroup({ title, items, acceso }) {
 }
 
 export default function Shell() {
-  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen } = useApp();
+  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen, db } = useApp();
+  // Buzón personal: cuántas de MIS solicitudes siguen sin respuesta (enviadas)
+  // o me fueron devueltas para corregir (observadas). Alimenta el globito del
+  // botón flotante para que el usuario sepa que hay movimiento sin navegar.
+  const misPendientes = (db?.misSolicitudes ?? []).filter(
+    (s) => s.estado === "enviada" || s.estado === "observada"
+  ).length;
   const navigate = useNavigate();
 
   // Selector de empresa restringido al alcance de la categoría. Solo ofrece
@@ -226,6 +234,11 @@ export default function Shell() {
       >
         <ClipboardPen size={16} />
         Mi solicitud
+        {misPendientes > 0 && (
+          <span className="ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 font-mono text-[10.5px] font-bold text-petroleo">
+            {misPendientes}
+          </span>
+        )}
       </NavLink>
     </div>
   );

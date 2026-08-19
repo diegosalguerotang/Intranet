@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { ClipboardPen } from "lucide-react";
+import { useState } from "react";
+import { ClipboardPen, MailCheck, Hourglass } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Badge, Button, Select, Field, Note, EmptyState, Input,
@@ -32,7 +32,7 @@ export default function MiSolicitud() {
         : datos;
       const numero = await crearSolicitudPropia(tipoId, conSupervisor);
       avisarSolicitud(numero, "creada");
-      setAviso(`Tu solicitud ${numero} quedó registrada y entró a su cadena de aprobación.`);
+      setAviso(numero);
       setTipoId(""); setSupervisor("");
     } finally {
       setOcupado(false);
@@ -44,7 +44,7 @@ export default function MiSolicitud() {
     try {
       await reenviarSolicitud(corrigiendo.id, datos);
       avisarSolicitud(corrigiendo.numero, "estado");
-      setAviso(`Tu solicitud ${corrigiendo.numero} fue corregida y reenviada.`);
+      setAviso(corrigiendo.numero);
       setCorrigiendo(null);
     } finally {
       setOcupado(false);
@@ -59,7 +59,19 @@ export default function MiSolicitud() {
         subtitle={`Se registran a tu nombre (${user?.nombre ?? user?.correo ?? ""}) y siguen la cadena de aprobación normal. No necesitas acceso al módulo Solicitudes.`}
       />
 
-      {aviso && <div className="mb-4"><Note tone="conf">{aviso}</Note></div>}
+      {aviso && (
+        <div className="mb-4 flex items-start gap-3 rounded-caja border border-conf/40 bg-conf-bg p-4">
+          <MailCheck size={20} className="mt-0.5 shrink-0 text-conf" />
+          <div>
+            <div className="text-[14px] font-semibold text-conf">
+              Tu solicitud <span className="font-mono">{aviso}</span> fue enviada
+            </div>
+            <div className="mt-0.5 text-[12.5px] text-gris">
+              Aún no hay respuesta. En este buzón verás cada avance, y te llegará un correo cuando la resuelvan.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
@@ -112,9 +124,9 @@ export default function MiSolicitud() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 font-display text-[15px] font-semibold text-tinta">Historial</h2>
+          <h2 className="mb-3 font-display text-[15px] font-semibold text-tinta">Buzón</h2>
           {mias.length === 0 ? (
-            <EmptyState title="Sin solicitudes" body="Cuando registres una, aquí verás cómo avanza." />
+            <EmptyState title="Buzón vacío" body="Cuando envíes una solicitud, aquí verás si ya te respondieron." />
           ) : (
             <div className="space-y-2.5">
               {mias.map((s) => {
@@ -125,12 +137,20 @@ export default function MiSolicitud() {
                       <span className="font-mono text-[12px] font-semibold">{s.numero}</span>
                       <span className="text-[13px] font-semibold">{s.tipo}</span>
                       <span className="flex-1" />
-                      <Badge tone={est.tone}>{est.label}</Badge>
+                      <Badge tone={est.tone}>{s.estado === "enviada" ? "Enviada" : est.label}</Badge>
                     </div>
                     <div className="mt-1 text-[12px] text-gris">
                       {resumenDatos(s.tipo_id, s.datos ?? {}).slice(0, 2).map(([k, v]) => `${k}: ${v}`).join(" · ")}
                     </div>
-                    {s.paso_titulo && <div className="mt-0.5 text-[11.5px] text-gris-cl">Esperando: {s.paso_titulo}</div>}
+                    {s.estado === "enviada" && (
+                      <div className="mt-1 flex items-center gap-1.5 text-[12px] font-medium text-pend">
+                        <Hourglass size={12} />
+                        Aún no hay respuesta{s.paso_titulo ? ` · esperando ${s.paso_titulo}` : ""}
+                      </div>
+                    )}
+                    {s.estado === "aprobada" && (
+                      <div className="mt-1 text-[12px] font-medium text-conf">Respondida: aprobada ✓</div>
+                    )}
                     {s.estado === "observada" && (
                       <div className="mt-2 flex items-center gap-2">
                         {s.ultimo_comentario && <span className="text-[12px] text-alerta">«{s.ultimo_comentario}»</span>}

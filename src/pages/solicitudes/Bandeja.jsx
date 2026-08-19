@@ -57,11 +57,11 @@ export default function BandejaSolicitudes() {
       <PageHeader
         code="SOL-01 · Centro de Solicitudes"
         title="Bandeja de solicitudes"
-        subtitle="Papeletas de permiso y vacaciones con su cadena de V°B°. El estado lo mueven los aprobadores; todo queda en el historial."
+        subtitle="La bandeja de los responsables: aquí se responde. Cada quien crea la suya con el botón «Mi solicitud»; las papeletas de operarios se registran a su nombre desde aquí."
         actions={
           puedeAccionar && (
-            <Button size="sm" onClick={() => navigate("/solicitudes/nueva")}>
-              <FilePlus2 size={13} /> Nueva solicitud
+            <Button variant="secondary" size="sm" onClick={() => navigate("/solicitudes/nueva")}>
+              <FilePlus2 size={13} /> Registrar a nombre de un trabajador
             </Button>
           )
         }
