@@ -175,5 +175,57 @@ export default async function handler(req, res) {
     return res.status(200).json({ enviados });
   }
 
+  if (accion === "aviso-solicitud") {
+    // Centro de Solicitudes. evento: creada (avisos del tipo + copia al jefe),
+    // estado (al solicitante), resuelta (solicitante + avisos). El correo
+    // lleva resumen y enlace, jamás el PDF ni datos sensibles; el fallo NUNCA
+    // bloquea el registro (quien llama es fire-and-forget).
+    const numero = String(cuerpo.numero ?? "").trim();
+    const evento = String(cuerpo.evento ?? "creada");
+    if (!/^[A-Z]{2,4}-[A-Z]{2,4}-\d{4}-\d{4}$/.test(numero)) {
+      return res.status(400).json({ error: "Número de solicitud inválido." });
+    }
+    const s = (await rest(`/rest/v1/v_solicitudes?numero=eq.${encodeURIComponent(numero)}&select=*&limit=1`)).json?.[0];
+    if (!s) return res.status(404).json({ error: "La solicitud no existe." });
+
+    const avisosTipo = (await rest(
+      `/rest/v1/solicitud_avisos?activo=eq.true&or=(tipo_id.is.null,tipo_id.eq.${encodeURIComponent(s.tipo_id)})&select=correo,copia`
+    )).json ?? [];
+    const correoSolicitante = (await rest(
+      `/rest/v1/personas?dni=eq.${s.solicitante_dni}&select=correo&limit=1`)).json?.[0]?.correo ?? null;
+    const correoJefe = s.supervisor_dni
+      ? ((await rest(`/rest/v1/personas?dni=eq.${s.supervisor_dni}&select=correo&limit=1`)).json?.[0]?.correo ?? null)
+      : null;
+
+    let destinos = [];
+    if (evento === "creada") {
+      destinos = avisosTipo.map((a) => a.correo);
+      if (correoJefe) destinos.push(correoJefe);  // copia al jefe inmediato
+    } else if (evento === "resuelta") {
+      destinos = avisosTipo.filter((a) => !a.copia).map((a) => a.correo);
+      if (correoSolicitante) destinos.push(correoSolicitante);
+    } else {
+      if (correoSolicitante) destinos = [correoSolicitante];
+    }
+    destinos = [...new Set(destinos)];
+    if (!destinos.length) return res.status(200).json({ enviados: 0 });
+
+    const titulo = evento === "creada" ? `Nueva solicitud ${s.numero}`
+      : evento === "resuelta" ? `Solicitud ${s.numero}: ${s.estado}`
+      : `Solicitud ${s.numero}: cambio de estado`;
+    const html = plantilla(titulo,
+      `<p><b>${s.tipo}</b> (${s.codigo_formato})</p>
+       <p>Solicitante: <b>${s.solicitante_nombre}</b>${s.sede_nombre ? ` — ${s.sede_nombre}` : ""}</p>
+       <p>Estado: <b>${s.estado}</b>${s.paso_titulo ? ` · esperando ${s.paso_titulo}` : ""}</p>
+       ${botonCorreo(`${APP}/solicitudes`, "Ver en la intranet")}`);
+    let enviados = 0, ultimoError = null;
+    for (const correo of destinos) {
+      const r = await enviar(correo, `${titulo} — GrupoER`, html);
+      if (!r.error) enviados += 1; else ultimoError = r.error;
+    }
+    if (!enviados && ultimoError) return res.status(503).json({ error: ultimoError });
+    return res.status(200).json({ enviados });
+  }
+
   return res.status(400).json({ error: "Acción desconocida." });
 }
