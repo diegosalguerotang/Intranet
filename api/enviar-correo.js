@@ -47,7 +47,8 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
   const cuerpo = typeof req.body === "string" ? JSON.parse(req.body) : (req.body ?? {});
   const { accion } = cuerpo;
-  const dni = String(cuerpo.dni ?? "").trim();
+  // Forma canónica del número de documento: mayúsculas (DNI/CE/pasaporte).
+  const dni = String(cuerpo.dni ?? "").trim().toUpperCase();
 
   if (accion === "credenciales") {
     // El acceso lo envía un usuario del BackOffice con nivel en Personal.
@@ -85,11 +86,12 @@ export default async function handler(req, res) {
     if (!quien.ok || !correoCuenta.endsWith(`@${DOMINIO_PORTAL}`)) {
       return res.status(401).json({ error: "Sesión del portal requerida." });
     }
+    // ilike sin comodines = igualdad insensible a mayúsculas (CE/pasaporte).
     const miDni = correoCuenta.split("@")[0];
-    const p = (await rest(`/rest/v1/personas?dni=eq.${miDni}&select=nombre,correo,correo_verificado&limit=1`)).json?.[0];
+    const p = (await rest(`/rest/v1/personas?dni=ilike.${encodeURIComponent(miDni)}&select=dni,nombre,correo,correo_verificado&limit=1`)).json?.[0];
     if (!p?.correo) return res.status(400).json({ error: "No tienes correo declarado." });
     if (p.correo_verificado) return res.status(200).json({ yaVerificado: true });
-    const token = await crearToken(miDni, "verificacion", p.correo, 24 * 7);
+    const token = await crearToken(p.dni, "verificacion", p.correo, 24 * 7);
     if (!token) return res.status(500).json({ error: "No se pudo generar el enlace." });
     const r = await enviar(p.correo, "Confirma tu correo — GrupoER", plantilla(
       "Confirma tu correo",
@@ -106,7 +108,7 @@ export default async function handler(req, res) {
   if (accion === "recuperacion") {
     // PÚBLICA. La respuesta jamás revela si el DNI o el correo existen.
     const generica = { mensaje: "Si tu correo está registrado y verificado, te llegará un enlace para crear una clave nueva." };
-    if (!/^[0-9]{8}$/.test(dni)) return res.status(200).json(generica);
+    if (!/^[0-9A-Z-]{4,20}$/.test(dni)) return res.status(200).json(generica);
     const p = (await rest(`/rest/v1/personas?dni=eq.${dni}&select=nombre,correo,correo_verificado&limit=1`)).json?.[0];
     const cuenta = (await rest(`/rest/v1/cuentas_portal?dni=eq.${dni}&select=dni&limit=1`)).json?.[0];
     if (!p?.correo || !p.correo_verificado || !cuenta) return res.status(200).json(generica);

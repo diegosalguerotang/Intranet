@@ -12,7 +12,8 @@ const BASE = mismoOrigen
 const APIKEY_DEV = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
 
 export const DOMINIO_PORTAL = "portal.grupoer.pe";
-export const correoDe = (dni) => `${dni}@${DOMINIO_PORTAL}`;
+// El correo técnico va SIEMPRE en minúsculas (CE/pasaporte traen letras).
+export const correoDe = (dni) => `${String(dni).toLowerCase()}@${DOMINIO_PORTAL}`;
 
 const CLAVE_SESION = "portal-sesion";
 let sesion = null;

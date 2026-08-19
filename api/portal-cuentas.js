@@ -33,11 +33,16 @@ async function buscarCuenta(correo) {
 }
 
 // crear: cuenta GoTrue + fila en cuentas_portal (primer ingreso pendiente).
+// El número puede ser DNI, CE o pasaporte (alfanumérico): la verdad es el
+// maestro, no un regex; el correo técnico va SIEMPRE en minúsculas.
 async function crearCuenta(dni, creadoPor) {
-  if (!/^[0-9]{8}$/.test(dni)) return { dni, error: "DNI inválido." };
-  const persona = (await rest(`/rest/v1/personas?dni=eq.${dni}&select=dni&limit=1`, { method: "GET" })).json?.[0];
+  if (!/^[0-9A-Za-z-]{4,20}$/.test(dni)) return { dni, error: "Número de documento inválido." };
+  const persona = (await rest(
+    `/rest/v1/personas?dni=eq.${encodeURIComponent(dni.toUpperCase())}&select=dni&limit=1`, { method: "GET" }
+  )).json?.[0];
   if (!persona) return { dni, error: "La persona no existe en el maestro." };
-  const correo = `${dni}@${DOMINIO}`;
+  dni = persona.dni; // forma canónica (mayúsculas)
+  const correo = `${dni.toLowerCase()}@${DOMINIO}`;
   const clave = CLAVE_INICIAL;
   const alta = await rest("/auth/v1/admin/users", {
     method: "POST",
@@ -57,7 +62,8 @@ async function crearCuenta(dni, creadoPor) {
 }
 
 async function restablecerCuenta(dni) {
-  const correo = `${dni}@${DOMINIO}`;
+  dni = dni.toUpperCase();
+  const correo = `${dni.toLowerCase()}@${DOMINIO}`;
   const cuenta = await buscarCuenta(correo);
   if (!cuenta) return { dni, error: "La cuenta del portal no existe: usa Crear cuenta." };
   const clave = CLAVE_INICIAL;

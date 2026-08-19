@@ -39,8 +39,10 @@ export default async function handler(req, res) {
   // Autorización: admin activo del BackOffice → todo; cuenta del portal → solo lo suyo.
   let autorizado = false;
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) {
+    // El local-part del correo técnico va en minúsculas; el número en personas
+    // en mayúsculas (CE/pasaporte). Comparación insensible a mayúsculas.
     const dni = correo.split("@")[0];
-    autorizado = doc.vinculos?.persona_dni === dni;
+    autorizado = (doc.vinculos?.persona_dni ?? "").toLowerCase() === dni;
   } else {
     const admin = (await rest(
       `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=id&limit=1`

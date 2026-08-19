@@ -40,7 +40,7 @@ export default async function handler(req, res) {
   if (esAdmin && clave.length < 12) {
     return res.status(400).json({ error: "La clave del BackOffice debe tener al menos 12 caracteres." });
   }
-  const emailCuenta = esAdmin ? t.correo.toLowerCase() : `${t.dni}@${DOMINIO_PORTAL}`;
+  const emailCuenta = esAdmin ? t.correo.toLowerCase() : `${t.dni.toLowerCase()}@${DOMINIO_PORTAL}`;
   const cuenta = (await rest(`/auth/v1/admin/users?per_page=1000`)).json?.users
     ?.find((u) => (u.email ?? "").toLowerCase() === emailCuenta);
   if (!cuenta) return res.status(404).json({ error: "La cuenta no existe." });
