@@ -4,6 +4,7 @@ import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
+  Inbox, FilePlus2, BellRing, BarChart3,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -29,6 +30,13 @@ const NAV_ADMIN = [
   { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01", modulo: "activos" },
   { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05", modulo: "activos" },
   { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos", proximamente: true },
+];
+
+const NAV_SOLICITUDES = [
+  { to: "/solicitudes", icon: Inbox, label: "Bandeja", code: "SOL-01", end: true, modulo: "solicitudes" },
+  { to: "/solicitudes/nueva", icon: FilePlus2, label: "Nueva solicitud", code: "SOL-02", modulo: "solicitudes" },
+  { to: "/solicitudes/tablero", icon: BarChart3, label: "Tablero mensual", code: "SOL-04", modulo: "solicitudes" },
+  { to: "/solicitudes/avisos", icon: BellRing, label: "Avisos por correo", code: "SOL-03", modulo: "solicitudes" },
 ];
 
 const NAV_SOPORTE = [
@@ -134,6 +142,7 @@ export default function Shell() {
         <nav className="flex-1 overflow-y-auto">
           <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} acceso={acceso} />
           <NavGroup title="Recursos Humanos" items={NAV_RRHH} acceso={acceso} />
+          <NavGroup title="Solicitudes" items={NAV_SOLICITUDES} acceso={acceso} />
           <NavGroup title="Gestión de TI" items={NAV_ADMIN} acceso={acceso} />
           <NavGroup title="Soporte" items={NAV_SOPORTE} acceso={acceso} />
         </nav>

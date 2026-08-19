@@ -31,6 +31,9 @@ const FUENTES = {
   tickets: "v_tickets",
   ticketConfig: "v_ticket_config",
   ticketAvisos: "v_ticket_avisos",
+  solicitudes: "v_solicitudes",
+  solicitudTipos: "v_solicitud_tipos",
+  solicitudAvisos: "v_solicitud_avisos",
 };
 
 const LOCAL = {
@@ -57,6 +60,9 @@ const LOCAL = {
   tickets: [],       // soporte: solo existe con conexión real
   ticketConfig: [],
   ticketAvisos: [],
+  solicitudes: [],   // centro de solicitudes: solo existe con conexión real
+  solicitudTipos: [],
+  solicitudAvisos: [],
 };
 
 // MODO DEMO: entra directo como superadministrador sin pasar por
@@ -516,6 +522,53 @@ export function AppProvider({ children }) {
       const { error } = await supabase.rpc("eliminar_ticket_aviso", { p_correo: correo });
       if (error) throw new Error(error.message);
       await recargar("ticketAvisos");
+    },
+    // SOL — Centro de Solicitudes. La creación devuelve el correlativo
+    // (PAP-NEG-2026-0001); los avisos por correo los dispara la pantalla.
+    crearSolicitudAdmin: async (dni, tipoId, datos) => {
+      if (!supabaseListo) throw new Error("Las solicitudes reales requieren conexión a Supabase.");
+      const { data, error } = await supabase.rpc("crear_solicitud_admin", {
+        p_dni: dni, p_tipo: tipoId, p_datos: datos, p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudes");
+      return data;
+    },
+    resolverSolicitud: async (id, decision, comentario) => {
+      if (!supabaseListo) throw new Error("Las solicitudes reales requieren conexión a Supabase.");
+      const { error } = await supabase.rpc("resolver_solicitud", {
+        p_id: id, p_decision: decision, p_comentario: comentario ?? null,
+        p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudes");
+    },
+    reenviarSolicitud: async (id, datos) => {
+      const { error } = await supabase.rpc("reenviar_solicitud", {
+        p_id: id, p_datos: datos, p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudes");
+    },
+    // Historial de una solicitud: se consulta al abrir el detalle.
+    eventosSolicitud: async (id) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase
+        .from("v_solicitud_eventos").select("*").eq("solicitud_id", id);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    guardarSolicitudAviso: async (tipoId, correo, copia, activo) => {
+      const { error } = await supabase.rpc("guardar_solicitud_aviso", {
+        p_tipo: tipoId, p_correo: correo, p_copia: copia, p_activo: activo,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudAvisos");
+    },
+    eliminarSolicitudAviso: async (id) => {
+      const { error } = await supabase.rpc("eliminar_solicitud_aviso", { p_id: id });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudAvisos");
     },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es

@@ -19,6 +19,10 @@ import Inventario from "./pages/admin/Inventario";
 import Lineas from "./pages/admin/Lineas";
 import Tickets from "./pages/soporte/Tickets";
 import ConfigTickets from "./pages/soporte/ConfigTickets";
+import BandejaSolicitudes from "./pages/solicitudes/Bandeja";
+import NuevaSolicitud from "./pages/solicitudes/Nueva";
+import AvisosSolicitudes from "./pages/solicitudes/Avisos";
+import TableroSolicitudes from "./pages/solicitudes/Tablero";
 // EPP (ADQ-06, «Próximamente») y Costo por sede (ADQ-07, retirado) sin ruta
 // desde 2026-08-17: sus pantallas siguen en el repo para cuando vuelvan.
 import Usuarios from "./pages/accesos/Usuarios";
@@ -82,6 +86,10 @@ export default function App() {
             <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
             <Route path="/soporte/tickets" element={<RequiereModulo modulo="soporte"><Tickets /></RequiereModulo>} />
             <Route path="/soporte/config" element={<RequiereModulo modulo="soporte"><ConfigTickets /></RequiereModulo>} />
+            <Route path="/solicitudes" element={<RequiereModulo modulo="solicitudes"><BandejaSolicitudes /></RequiereModulo>} />
+            <Route path="/solicitudes/nueva" element={<RequiereModulo modulo="solicitudes"><NuevaSolicitud /></RequiereModulo>} />
+            <Route path="/solicitudes/avisos" element={<RequiereModulo modulo="solicitudes"><AvisosSolicitudes /></RequiereModulo>} />
+            <Route path="/solicitudes/tablero" element={<RequiereModulo modulo="solicitudes"><TableroSolicitudes /></RequiereModulo>} />
             <Route path="/accesos/usuarios" element={<RequiereModulo modulo="accesos"><Usuarios /></RequiereModulo>} />
             <Route path="/accesos/perfiles" element={<RequiereModulo modulo="accesos"><Perfiles /></RequiereModulo>} />
             <Route path="/accesos/perfiles/:id" element={<RequiereModulo modulo="accesos"><PerfilEditor /></RequiereModulo>} />
