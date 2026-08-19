@@ -41,6 +41,10 @@ export const MODULOS = [
     ver: "consultar los tickets y su detalle",
     accionar: "registrar tickets, atenderlos y cambiar su estado",
     aprobar: "editar el catálogo de tipos y los avisos por correo" },
+  { id: "solicitudes", nombre: "Solicitudes", aprobacion: true,
+    ver: "consultar solicitudes dentro de su alcance y ver el tablero",
+    accionar: "registrar solicitudes a nombre de un trabajador y observarlas",
+    aprobar: "dar V°B°, rechazar y anular" },
   { id: "accesos", nombre: "Accesos y roles", aprobacion: true,
     ver: "consultar usuarios y perfiles en lectura",
     accionar: "crear usuarios y asignarles perfiles existentes",
@@ -73,6 +77,7 @@ export const RUTAS_ORDENADAS = [
   { ruta: "/rrhh", modulo: MODULOS_RRHH },
   { ruta: "/admin/activos", modulo: "activos" },
   { ruta: "/soporte/tickets", modulo: "soporte" },
+  { ruta: "/solicitudes", modulo: "solicitudes" },
   { ruta: "/accesos/registro", modulo: "auditoria" },
 ];
 
