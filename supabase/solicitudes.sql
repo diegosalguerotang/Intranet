@@ -12,6 +12,8 @@
 -- ============================================================================
 
 drop view if exists v_solicitudes, v_solicitud_tipos, v_portal_solicitudes, v_solicitud_avisos;
+drop view if exists v_mis_solicitudes;
+drop function if exists crear_solicitud_propia(text, jsonb);
 drop function if exists portal_crear_solicitud(text, jsonb);
 drop function if exists crear_solicitud_admin(text, text, jsonb, text);
 drop function if exists resolver_solicitud(bigint, text, text, text);
@@ -258,6 +260,24 @@ begin
   return fn_solicitud_insertar(v_dni, p_tipo, p_datos, (select nombre from personas where dni = v_dni));
 end $$;
 
+-- Solicitud PROPIA (botón global del BackOffice, 2026-08-19): cualquier
+-- usuario administrativo activo crea la suya, tenga o no el módulo. El
+-- solicitante es la persona vinculada a su usuario.
+create function crear_solicitud_propia(p_tipo text, p_datos jsonb)
+returns text language plpgsql security definer as $$
+declare v_dni text;
+begin
+  v_dni := fn_persona_llamador();
+  if v_dni is null then
+    raise exception 'Tu usuario no está vinculado a una persona del maestro de personal; pide a RRHH que lo corrija.';
+  end if;
+  if not exists (select 1 from solicitud_tipos where id = p_tipo and activo and backoffice) then
+    raise exception 'Este tipo de solicitud no se crea desde el BackOffice.';
+  end if;
+  return fn_solicitud_insertar(v_dni, p_tipo, p_datos,
+    (select nombre from personas where dni = v_dni));
+end $$;
+
 -- BackOffice: a nombre de un trabajador. Nivel solicitudes ≥ 2.
 create function crear_solicitud_admin(p_dni text, p_tipo text, p_datos jsonb, p_por text default 'RRHH')
 returns text language plpgsql security definer as $$
@@ -374,7 +394,9 @@ begin
     if v_portal <> s.solicitante_dni then
       raise exception 'Solo el solicitante corrige su solicitud.';
     end if;
-  elsif fn_nivel_modulo('solicitudes') < 2 then
+  elsif fn_nivel_modulo('solicitudes') < 2
+        and coalesce(v_caller, '') <> s.solicitante_dni then
+    -- El solicitante corrige lo suyo aunque no tenga nivel en el módulo.
     raise exception 'Se necesita nivel de acción en Solicitudes.';
   end if;
 
@@ -464,6 +486,20 @@ join solicitud_tipos t on t.id = s.tipo_id
 where s.solicitante_dni = portal_dni()
 order by s.creado_en desc;
 
+-- Mis solicitudes: SOLO las del llamador administrativo (botón global). No
+-- exige módulo: cada quien ve lo suyo.
+create view v_mis_solicitudes as
+select s.id, s.numero, t.nombre as tipo, s.tipo_id, s.datos, s.estado,
+       case when s.estado = 'enviada' then s.cadena -> (s.paso_actual - 1) ->> 'titulo' end as paso_titulo,
+       to_char(s.creado_en, 'YYYY-MM-DD HH24:MI') as creado,
+       (select e.comentario from solicitud_eventos e
+        where e.solicitud_id = s.id and e.accion in ('observada','rechazada','anulada')
+        order by e.en desc limit 1) as ultimo_comentario
+from solicitudes s
+join solicitud_tipos t on t.id = s.tipo_id
+where s.solicitante_dni = fn_persona_llamador()
+order by s.creado_en desc;
+
 -- Historial de una solicitud (BackOffice).
 drop view if exists v_solicitud_eventos;
 create view v_solicitud_eventos as
@@ -476,7 +512,7 @@ from solicitud_eventos e order by e.en;
 revoke all on solicitudes, solicitud_tipos, solicitud_eventos, solicitud_avisos, solicitud_correlativos
   from anon, authenticated;
 grant select on v_solicitudes, v_solicitud_tipos, v_solicitud_avisos, v_solicitud_eventos to authenticated;
-grant select on v_portal_solicitudes to authenticated;
+grant select on v_portal_solicitudes, v_mis_solicitudes to authenticated;
 
 -- --------------------------- seed ------------------------------------------
 -- Los dos tipos iniciales. La papeleta NO se crea desde el portal: el permiso

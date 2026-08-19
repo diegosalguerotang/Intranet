@@ -34,6 +34,7 @@ const FUENTES = {
   solicitudes: "v_solicitudes",
   solicitudTipos: "v_solicitud_tipos",
   solicitudAvisos: "v_solicitud_avisos",
+  misSolicitudes: "v_mis_solicitudes",
   rits: "v_rits",
 };
 
@@ -64,6 +65,7 @@ const LOCAL = {
   solicitudes: [],   // centro de solicitudes: solo existe con conexión real
   solicitudTipos: [],
   solicitudAvisos: [],
+  misSolicitudes: [],
   rits: [],          // reglamentos internos: solo existen con conexión real
 };
 
@@ -567,7 +569,18 @@ export function AppProvider({ children }) {
         p_id: id, p_datos: datos, p_por: user?.nombre ?? "RRHH",
       });
       if (error) throw new Error(error.message);
-      await recargar("solicitudes");
+      await recargar("solicitudes", "misSolicitudes");
+    },
+    // Botón global: la solicitud PROPIA del usuario administrativo (sin
+    // requisito de módulo; el solicitante sale de su usuario).
+    crearSolicitudPropia: async (tipoId, datos) => {
+      if (!supabaseListo) throw new Error("Las solicitudes reales requieren conexión a Supabase.");
+      const { data, error } = await supabase.rpc("crear_solicitud_propia", {
+        p_tipo: tipoId, p_datos: datos,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("solicitudes", "misSolicitudes");
+      return data;
     },
     // Historial de una solicitud: se consulta al abrir el detalle.
     eventosSolicitud: async (id) => {

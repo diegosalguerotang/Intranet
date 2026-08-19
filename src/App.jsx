@@ -20,6 +20,7 @@ import Lineas from "./pages/admin/Lineas";
 import Tickets from "./pages/soporte/Tickets";
 import ConfigTickets from "./pages/soporte/ConfigTickets";
 import BandejaSolicitudes from "./pages/solicitudes/Bandeja";
+import MiSolicitud from "./pages/solicitudes/MiSolicitud";
 import NuevaSolicitud from "./pages/solicitudes/Nueva";
 import AvisosSolicitudes from "./pages/solicitudes/Avisos";
 import TableroSolicitudes from "./pages/solicitudes/Tablero";
@@ -86,6 +87,9 @@ export default function App() {
             <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
             <Route path="/soporte/tickets" element={<RequiereModulo modulo="soporte"><Tickets /></RequiereModulo>} />
             <Route path="/soporte/config" element={<RequiereModulo modulo="soporte"><ConfigTickets /></RequiereModulo>} />
+            {/* Mi solicitud: SIN guard de módulo — cualquier usuario autenticado
+                registra la suya (botón flotante global del Shell). */}
+            <Route path="/mi-solicitud" element={<MiSolicitud />} />
             <Route path="/solicitudes" element={<RequiereModulo modulo="solicitudes"><BandejaSolicitudes /></RequiereModulo>} />
             <Route path="/solicitudes/nueva" element={<RequiereModulo modulo="solicitudes"><NuevaSolicitud /></RequiereModulo>} />
             <Route path="/solicitudes/avisos" element={<RequiereModulo modulo="solicitudes"><AvisosSolicitudes /></RequiereModulo>} />

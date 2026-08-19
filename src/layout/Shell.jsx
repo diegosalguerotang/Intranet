@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
-  Inbox, FilePlus2, BellRing, BarChart3, ChevronDown,
+  Inbox, FilePlus2, BellRing, BarChart3, ChevronDown, ClipboardPen,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -213,6 +213,20 @@ export default function Shell() {
           <Outlet />
         </main>
       </div>
+      {/* Botón global «Mi solicitud» (Diego, 2026-08-19): cualquier usuario
+          autenticado registra su propia solicitud, tenga o no el módulo. */}
+      <NavLink
+        to="/mi-solicitud"
+        title="Mi solicitud"
+        className={({ isActive }) =>
+          `fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full px-4 py-3 text-[13px] font-semibold shadow-[0_4px_16px_rgba(53,105,160,0.4)] transition-transform hover:-translate-y-0.5 ${
+            isActive ? "bg-tinta text-white" : "bg-petroleo text-white"
+          }`
+        }
+      >
+        <ClipboardPen size={16} />
+        Mi solicitud
+      </NavLink>
     </div>
   );
 }
