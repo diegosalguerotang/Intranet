@@ -37,6 +37,10 @@ export const MODULOS = [
     ver: "consultar el inventario y el costeo",
     accionar: "dar de alta, asignar, registrar devoluciones y entregas de EPP",
     aprobar: "dar de baja activos y registrar pérdidas o robos con responsable" },
+  { id: "soporte", nombre: "Soporte", aprobacion: true,
+    ver: "consultar los tickets y su detalle",
+    accionar: "registrar tickets, atenderlos y cambiar su estado",
+    aprobar: "editar el catálogo de tipos y los avisos por correo" },
   { id: "accesos", nombre: "Accesos y roles", aprobacion: true,
     ver: "consultar usuarios y perfiles en lectura",
     accionar: "crear usuarios y asignarles perfiles existentes",
@@ -68,6 +72,7 @@ export const RUTAS_ORDENADAS = [
   { ruta: "/accesos/usuarios", modulo: "accesos" },
   { ruta: "/rrhh", modulo: MODULOS_RRHH },
   { ruta: "/admin/activos", modulo: "activos" },
+  { ruta: "/soporte/tickets", modulo: "soporte" },
   { ruta: "/accesos/registro", modulo: "auditoria" },
 ];
 

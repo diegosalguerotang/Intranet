@@ -28,6 +28,9 @@ const FUENTES = {
   registroAccesos: "v_registro_accesos",
   tiposSancion: "v_tipos_sancion",
   ritFaltas: "v_rit_faltas",
+  tickets: "v_tickets",
+  ticketConfig: "v_ticket_config",
+  ticketAvisos: "v_ticket_avisos",
 };
 
 const LOCAL = {
@@ -51,6 +54,9 @@ const LOCAL = {
   registroAccesos: MOCK.REGISTRO_ACCESOS,
   tiposSancion: [],  // catálogos del RIT: solo existen con conexión real
   ritFaltas: [],
+  tickets: [],       // soporte: solo existe con conexión real
+  ticketConfig: [],
+  ticketAvisos: [],
 };
 
 // MODO DEMO: entra directo como superadministrador sin pasar por
@@ -467,6 +473,49 @@ export function AppProvider({ children }) {
       });
       if (error) throw new Error(error.message);
       return data;
+    },
+    // SOP — Soporte: tickets de incidencias TI. La creación devuelve el número
+    // (TK-000N); el aviso por correo lo dispara la pantalla (fire-and-forget).
+    crearTicketAdmin: async (dni, tipoId, subtipoId, comentario) => {
+      if (!supabaseListo) throw new Error("Los tickets reales requieren conexión a Supabase.");
+      const { data, error } = await supabase.rpc("crear_ticket_admin", {
+        p_dni: dni, p_tipo: tipoId, p_subtipo: subtipoId ?? null,
+        p_comentario: comentario ?? null, p_por: user?.nombre ?? "Soporte",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("tickets");
+      return data;
+    },
+    actualizarTicket: async (id, { estado, atendidoPor, nota }) => {
+      if (!supabaseListo) throw new Error("Los tickets reales requieren conexión a Supabase.");
+      const { error } = await supabase.rpc("actualizar_ticket", {
+        p_id: id, p_estado: estado ?? null, p_atendido_por: atendidoPor ?? null,
+        p_nota: nota ?? null, p_por: user?.nombre ?? "Soporte",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("tickets");
+    },
+    guardarTicketTipo: async (id, nombre) => {
+      const { error } = await supabase.rpc("guardar_ticket_tipo", { p_id: id, p_nombre: nombre });
+      if (error) throw new Error(error.message);
+      await recargar("ticketConfig");
+    },
+    guardarTicketSubtipo: async (id, tipoId, nombre) => {
+      const { error } = await supabase.rpc("guardar_ticket_subtipo", { p_id: id, p_tipo: tipoId, p_nombre: nombre });
+      if (error) throw new Error(error.message);
+      await recargar("ticketConfig");
+    },
+    alternarTicketTipo: (id, activo) => rpc("alternar_ticket_tipo", { p_id: id, p_activo: activo }, "ticketConfig"),
+    alternarTicketSubtipo: (id, activo) => rpc("alternar_ticket_subtipo", { p_id: id, p_activo: activo }, "ticketConfig"),
+    guardarTicketAviso: async (correo, activo) => {
+      const { error } = await supabase.rpc("guardar_ticket_aviso", { p_correo: correo, p_activo: activo });
+      if (error) throw new Error(error.message);
+      await recargar("ticketAvisos");
+    },
+    eliminarTicketAviso: async (correo) => {
+      const { error } = await supabase.rpc("eliminar_ticket_aviso", { p_correo: correo });
+      if (error) throw new Error(error.message);
+      await recargar("ticketAvisos");
     },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es

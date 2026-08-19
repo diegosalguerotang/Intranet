@@ -3,7 +3,7 @@ import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
-  UserCog, ShieldCheck, KeyRound, ScrollText, MapPin,
+  UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -29,6 +29,11 @@ const NAV_ADMIN = [
   { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01", modulo: "activos" },
   { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05", modulo: "activos" },
   { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos", proximamente: true },
+];
+
+const NAV_SOPORTE = [
+  { to: "/soporte/tickets", icon: LifeBuoy, label: "Tickets", code: "SOP-01", modulo: "soporte" },
+  { to: "/soporte/config", icon: Settings2, label: "Config. de tickets", code: "SOP-02", modulo: "soporte" },
 ];
 
 const NAV_ACCESOS = [
@@ -130,6 +135,7 @@ export default function Shell() {
           <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} acceso={acceso} />
           <NavGroup title="Recursos Humanos" items={NAV_RRHH} acceso={acceso} />
           <NavGroup title="Gestión de TI" items={NAV_ADMIN} acceso={acceso} />
+          <NavGroup title="Soporte" items={NAV_SOPORTE} acceso={acceso} />
         </nav>
 
         <div className="mt-4 border-t border-borde px-3 pt-4">

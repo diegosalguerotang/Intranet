@@ -17,6 +17,8 @@ import Contratos from "./pages/rrhh/Contratos";
 import Tardanzas from "./pages/rrhh/Tardanzas";
 import Inventario from "./pages/admin/Inventario";
 import Lineas from "./pages/admin/Lineas";
+import Tickets from "./pages/soporte/Tickets";
+import ConfigTickets from "./pages/soporte/ConfigTickets";
 // EPP (ADQ-06, «Próximamente») y Costo por sede (ADQ-07, retirado) sin ruta
 // desde 2026-08-17: sus pantallas siguen en el repo para cuando vuelvan.
 import Usuarios from "./pages/accesos/Usuarios";
@@ -78,6 +80,8 @@ export default function App() {
             <Route path="/rrhh/tardanzas" element={<RequiereModulo modulo="tardanzas"><Tardanzas /></RequiereModulo>} />
             <Route path="/admin/activos" element={<RequiereModulo modulo="activos"><Inventario /></RequiereModulo>} />
             <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
+            <Route path="/soporte/tickets" element={<RequiereModulo modulo="soporte"><Tickets /></RequiereModulo>} />
+            <Route path="/soporte/config" element={<RequiereModulo modulo="soporte"><ConfigTickets /></RequiereModulo>} />
             <Route path="/accesos/usuarios" element={<RequiereModulo modulo="accesos"><Usuarios /></RequiereModulo>} />
             <Route path="/accesos/perfiles" element={<RequiereModulo modulo="accesos"><Perfiles /></RequiereModulo>} />
             <Route path="/accesos/perfiles/:id" element={<RequiereModulo modulo="accesos"><PerfilEditor /></RequiereModulo>} />
