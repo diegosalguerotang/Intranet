@@ -40,7 +40,7 @@ create table rits (
   vigente_desde date
 );
 insert into rits (id, nombre, vigente_desde)
-values ('clean-2025', 'Reglamento Interno de Trabajo — CONSORCIO CLEAN 2025', '2025-01-01');
+values ('general-2025', 'Reglamento Interno de Trabajo — General (2025)', '2025-01-01');
 
 create table empresas (
   id        text primary key,
@@ -52,7 +52,7 @@ create table empresas (
     check (regimen in ('Régimen general','Micro empresa','Pequeña empresa','Por confirmar')),
   estado    text not null default 'activa' check (estado in ('activa','retirada')),
   direccion text,
-  rit_id    text not null default 'clean-2025' references rits(id),
+  rit_id    text not null default 'general-2025' references rits(id),
   creado_en timestamptz not null default now()
 );
 
@@ -252,56 +252,56 @@ create table if not exists rit_faltas (
 );
 
 insert into rit_faltas (rit_id, articulo, item, texto) values
-  ('clean-2025', 20, 'a', 'Disminuya intencionalmente el ritmo de trabajo o lo suspenda unilateralmente en forma intempestiva.'),
-  ('clean-2025', 20, 'b', 'Marque la tarjeta de control de asistencia diaria de otro trabajador, deje de marcar la suya, se haga reemplazar y/o borre o altere cualquiera de ellas.'),
-  ('clean-2025', 20, 'c', 'Deje su puesto sin la debida autorización de su jefe inmediato.'),
-  ('clean-2025', 20, 'd', 'Maneje u opere equipos, máquinas, vehículos, etc., de la empresa, sin la debida autorización.'),
-  ('clean-2025', 20, 'e', 'Introduzca al centro de trabajo o distribuya dentro de él, material impreso ajeno al desempeño de su labor.'),
-  ('clean-2025', 20, 'f', 'Comunique o difunda, por cualquier medio, expresiones atentatorias contra la moral, la armonía laboral, el buen nombre de la empresa, la dignidad y el prestigio de sus trabajadores.'),
-  ('clean-2025', 20, 'g', 'Ingrese o egrese del centro de trabajo con teléfonos, radio, grabadora, máquina fotográfica, paquetes, bolsos, maletines, etc., sin la debida autorización previa del jefe inmediato.'),
-  ('clean-2025', 20, 'h', 'Duerma durante la jornada de trabajo, en el puesto asignado.'),
-  ('clean-2025', 20, 'i', 'Efectúe colectas, rifas, polladas, suscripciones, o ventas de cualquier índole o clase de artículos en el centro de trabajo.'),
-  ('clean-2025', 20, 'j', 'Coloque carteles o efectúe inscripciones impertinentes en los locales y/o bienes de la empresa.'),
-  ('clean-2025', 20, 'k', 'Leer periódicos, revistas, libros, etc., dentro de su jornada de trabajo, salvo los que estén autorizados y guarden relación con la función que desempeñe.'),
-  ('clean-2025', 20, 'l', 'Utilice el teléfono, fax, etc., para asuntos particulares y sin la debida autorización de su jefe inmediato.'),
-  ('clean-2025', 20, 'm', 'Fume en las instalaciones del centro de trabajo.'),
-  ('clean-2025', 20, 'n', 'Ingrese a las zonas de labor fuera de las horas correspondientes a su turno de trabajo, o quedarse en las instalaciones después de haber concluido su jornada de trabajo.'),
-  ('clean-2025', 20, 'ñ', 'Ingrese a otras dependencias de la empresa usuaria que no sean sus respectivas áreas de trabajo, excepto cuando sea por asuntos propios de sus obligaciones laborales y tengan la debida autorización.'),
-  ('clean-2025', 20, 'o', 'Viole o fracture un escritorio, gavetero o casillero asignado a otro trabajador.'),
-  ('clean-2025', 20, 'p', 'Se niegue a usar durante la jornada laboral el uniforme de trabajo que le proporciona la empresa.'),
-  ('clean-2025', 20, 'q', 'Falte a las normas y estándares de calidad y productividad vigentes en la empresa.'),
-  ('clean-2025', 20, 'r', 'Hacer valer su condición de servidor de la empresa para obtener ventajas de cualquier índole ante terceros.'),
-  ('clean-2025', 56, '1', 'Incurrir en las prohibiciones señaladas en el artículo 20.'),
-  ('clean-2025', 56, '2', 'Faltar injustificadamente al trabajo.'),
-  ('clean-2025', 56, '3', 'Llegar con frecuencia fuera de la hora de ingreso al trabajo, o retirarse antes del horario de salida.'),
-  ('clean-2025', 56, '4', 'Cometer dentro de las horas de trabajo o fuera de ellas, actos contrarios a la moral y las buenas costumbres.'),
-  ('clean-2025', 56, '5', 'Incurrir en faltamiento de palabra o agresión física al superior o compañeros de trabajo durante la jornada de trabajo o durante el refrigerio.'),
-  ('clean-2025', 56, '6', 'Evidenciar negligencia e ineficacia en la realización del trabajo o al cargo encomendado.'),
-  ('clean-2025', 56, '7', 'Emitir o difundir públicamente informaciones sobre asuntos relacionados con la empresa sin autorización previa.'),
-  ('clean-2025', 56, '8', 'Simular enfermedad.'),
-  ('clean-2025', 56, '9', 'Colocar ilustraciones, afiches, grabados, cuadros, leyendas y almanaques inapropiados, en oficinas, talleres o cualquier otro ambiente de la empresa.'),
-  ('clean-2025', 56, '10', 'Aceptar recompensa o dádiva de cualquier persona, por realizar u omitir actos vinculados con su función.'),
-  ('clean-2025', 56, '11', 'Valerse de su condición de trabajador de la empresa para obtener beneficios personales.'),
-  ('clean-2025', 56, '12', 'Aprovechar los poderes y atribuciones que le confiere el cargo o puesto de trabajo para beneficio propio o de terceros.'),
-  ('clean-2025', 56, '13', 'Utilizar indebidamente el fotocheck o la tarjeta de identificación u otros dispositivos de control interno y vigilancia de la empresa.'),
-  ('clean-2025', 56, '14', 'Impedir o dificultar la labor de control a cargo del personal de vigilancia y de protección de planta.'),
-  ('clean-2025', 56, '15', 'Adulterar o falsificar documentos de la empresa.'),
-  ('clean-2025', 56, '16', 'Cambiarse de ropa, asearse fuera de los lugares establecidos o indicados por la empresa durante la jornada de trabajo.'),
-  ('clean-2025', 56, '17', 'Proferir palabras injuriosas en contra de sus superiores y/o compañeros de trabajo, dentro o fuera de la empresa.'),
-  ('clean-2025', 56, '18', 'Efectuar celebraciones y festejos en oficinas y talleres, o en cualquier otro ambiente de la empresa no asignado ni autorizado para tal efecto.'),
-  ('clean-2025', 56, '19', 'Distraer a sus compañeros en horas de labor, proporcionando periódicos, revistas, libros, folletos, etc., o formando aglomeraciones o tertulias que alteren la disciplina y el normal desenvolvimiento del trabajo.'),
-  ('clean-2025', 56, '20', 'Realizar negocios, actividades particulares de lucro (polladas), juegos de azar, envite, erogaciones, rifas y/o desatender sus labores para atender a vendedores o cobradores particulares, o cualquier otra actividad ajena al cumplimiento de sus obligaciones.'),
-  ('clean-2025', 56, '21', 'Concurrir al trabajo con síntomas de ebriedad o embriagarse en horas de labor, alterar el orden y la disciplina.'),
-  ('clean-2025', 56, '22', 'Portar armas en el centro de trabajo.'),
-  ('clean-2025', 56, '23', 'Cometer robos o hurtos, sustracción de bienes en agravio de la empresa o sus compañeros de trabajo.'),
-  ('clean-2025', 56, '24', 'Fumar en los ambientes de la empresa o hacer fuego en lugares prohibidos.'),
-  ('clean-2025', 56, '25', 'Hacer uso de términos impropios que lesionen a cualquiera de las partes a través de comunicados, avisos o publicaciones que se hagan en pizarrines, vitrinas o en cualquier otro medio de comunicación.'),
-  ('clean-2025', 56, '26', 'Permitir a otros trabajadores o personas ajenas a la empresa la conducción de vehículos, la operación de máquinas, equipos, instrumentos y aparatos confiados a su cuidado y responsabilidad.'),
-  ('clean-2025', 56, '27', 'Negarse injustificadamente a participar y asistir a los cursos de entrenamiento o capacitación que programe y organice la empresa.'),
-  ('clean-2025', 56, '28', 'Intimidar a los compañeros de trabajo para encubrir actos de negligencia en perjuicio de la empresa, de otros trabajadores o que pongan en riesgo la seguridad.'),
-  ('clean-2025', 56, '29', 'Usar temerariamente los bienes e instalaciones de la empresa o de nuestros clientes, causando intencionalmente o por descuido inexcusable, daños, averías o cualquier otro perjuicio a la empresa, servicios sanitarios, muebles, materiales, útiles, maquinarias, herramientas, equipos o aparatos.'),
-  ('clean-2025', 56, '30', 'Extraviar por descuido o negligencia los materiales, útiles, herramientas, equipos o aparatos que proporciona la empresa para el desempeño de su función.'),
-  ('clean-2025', 56, '31', 'Discriminar y/o estigmatizar a algún trabajador en razón de su fe religiosa, por portar enfermedad incurable u otras razones; constituye infracción grave.')
+  ('general-2025', 20, 'a', 'Disminuya intencionalmente el ritmo de trabajo o lo suspenda unilateralmente en forma intempestiva.'),
+  ('general-2025', 20, 'b', 'Marque la tarjeta de control de asistencia diaria de otro trabajador, deje de marcar la suya, se haga reemplazar y/o borre o altere cualquiera de ellas.'),
+  ('general-2025', 20, 'c', 'Deje su puesto sin la debida autorización de su jefe inmediato.'),
+  ('general-2025', 20, 'd', 'Maneje u opere equipos, máquinas, vehículos, etc., de la empresa, sin la debida autorización.'),
+  ('general-2025', 20, 'e', 'Introduzca al centro de trabajo o distribuya dentro de él, material impreso ajeno al desempeño de su labor.'),
+  ('general-2025', 20, 'f', 'Comunique o difunda, por cualquier medio, expresiones atentatorias contra la moral, la armonía laboral, el buen nombre de la empresa, la dignidad y el prestigio de sus trabajadores.'),
+  ('general-2025', 20, 'g', 'Ingrese o egrese del centro de trabajo con teléfonos, radio, grabadora, máquina fotográfica, paquetes, bolsos, maletines, etc., sin la debida autorización previa del jefe inmediato.'),
+  ('general-2025', 20, 'h', 'Duerma durante la jornada de trabajo, en el puesto asignado.'),
+  ('general-2025', 20, 'i', 'Efectúe colectas, rifas, polladas, suscripciones, o ventas de cualquier índole o clase de artículos en el centro de trabajo.'),
+  ('general-2025', 20, 'j', 'Coloque carteles o efectúe inscripciones impertinentes en los locales y/o bienes de la empresa.'),
+  ('general-2025', 20, 'k', 'Leer periódicos, revistas, libros, etc., dentro de su jornada de trabajo, salvo los que estén autorizados y guarden relación con la función que desempeñe.'),
+  ('general-2025', 20, 'l', 'Utilice el teléfono, fax, etc., para asuntos particulares y sin la debida autorización de su jefe inmediato.'),
+  ('general-2025', 20, 'm', 'Fume en las instalaciones del centro de trabajo.'),
+  ('general-2025', 20, 'n', 'Ingrese a las zonas de labor fuera de las horas correspondientes a su turno de trabajo, o quedarse en las instalaciones después de haber concluido su jornada de trabajo.'),
+  ('general-2025', 20, 'ñ', 'Ingrese a otras dependencias de la empresa usuaria que no sean sus respectivas áreas de trabajo, excepto cuando sea por asuntos propios de sus obligaciones laborales y tengan la debida autorización.'),
+  ('general-2025', 20, 'o', 'Viole o fracture un escritorio, gavetero o casillero asignado a otro trabajador.'),
+  ('general-2025', 20, 'p', 'Se niegue a usar durante la jornada laboral el uniforme de trabajo que le proporciona la empresa.'),
+  ('general-2025', 20, 'q', 'Falte a las normas y estándares de calidad y productividad vigentes en la empresa.'),
+  ('general-2025', 20, 'r', 'Hacer valer su condición de servidor de la empresa para obtener ventajas de cualquier índole ante terceros.'),
+  ('general-2025', 56, '1', 'Incurrir en las prohibiciones señaladas en el artículo 20.'),
+  ('general-2025', 56, '2', 'Faltar injustificadamente al trabajo.'),
+  ('general-2025', 56, '3', 'Llegar con frecuencia fuera de la hora de ingreso al trabajo, o retirarse antes del horario de salida.'),
+  ('general-2025', 56, '4', 'Cometer dentro de las horas de trabajo o fuera de ellas, actos contrarios a la moral y las buenas costumbres.'),
+  ('general-2025', 56, '5', 'Incurrir en faltamiento de palabra o agresión física al superior o compañeros de trabajo durante la jornada de trabajo o durante el refrigerio.'),
+  ('general-2025', 56, '6', 'Evidenciar negligencia e ineficacia en la realización del trabajo o al cargo encomendado.'),
+  ('general-2025', 56, '7', 'Emitir o difundir públicamente informaciones sobre asuntos relacionados con la empresa sin autorización previa.'),
+  ('general-2025', 56, '8', 'Simular enfermedad.'),
+  ('general-2025', 56, '9', 'Colocar ilustraciones, afiches, grabados, cuadros, leyendas y almanaques inapropiados, en oficinas, talleres o cualquier otro ambiente de la empresa.'),
+  ('general-2025', 56, '10', 'Aceptar recompensa o dádiva de cualquier persona, por realizar u omitir actos vinculados con su función.'),
+  ('general-2025', 56, '11', 'Valerse de su condición de trabajador de la empresa para obtener beneficios personales.'),
+  ('general-2025', 56, '12', 'Aprovechar los poderes y atribuciones que le confiere el cargo o puesto de trabajo para beneficio propio o de terceros.'),
+  ('general-2025', 56, '13', 'Utilizar indebidamente el fotocheck o la tarjeta de identificación u otros dispositivos de control interno y vigilancia de la empresa.'),
+  ('general-2025', 56, '14', 'Impedir o dificultar la labor de control a cargo del personal de vigilancia y de protección de planta.'),
+  ('general-2025', 56, '15', 'Adulterar o falsificar documentos de la empresa.'),
+  ('general-2025', 56, '16', 'Cambiarse de ropa, asearse fuera de los lugares establecidos o indicados por la empresa durante la jornada de trabajo.'),
+  ('general-2025', 56, '17', 'Proferir palabras injuriosas en contra de sus superiores y/o compañeros de trabajo, dentro o fuera de la empresa.'),
+  ('general-2025', 56, '18', 'Efectuar celebraciones y festejos en oficinas y talleres, o en cualquier otro ambiente de la empresa no asignado ni autorizado para tal efecto.'),
+  ('general-2025', 56, '19', 'Distraer a sus compañeros en horas de labor, proporcionando periódicos, revistas, libros, folletos, etc., o formando aglomeraciones o tertulias que alteren la disciplina y el normal desenvolvimiento del trabajo.'),
+  ('general-2025', 56, '20', 'Realizar negocios, actividades particulares de lucro (polladas), juegos de azar, envite, erogaciones, rifas y/o desatender sus labores para atender a vendedores o cobradores particulares, o cualquier otra actividad ajena al cumplimiento de sus obligaciones.'),
+  ('general-2025', 56, '21', 'Concurrir al trabajo con síntomas de ebriedad o embriagarse en horas de labor, alterar el orden y la disciplina.'),
+  ('general-2025', 56, '22', 'Portar armas en el centro de trabajo.'),
+  ('general-2025', 56, '23', 'Cometer robos o hurtos, sustracción de bienes en agravio de la empresa o sus compañeros de trabajo.'),
+  ('general-2025', 56, '24', 'Fumar en los ambientes de la empresa o hacer fuego en lugares prohibidos.'),
+  ('general-2025', 56, '25', 'Hacer uso de términos impropios que lesionen a cualquiera de las partes a través de comunicados, avisos o publicaciones que se hagan en pizarrines, vitrinas o en cualquier otro medio de comunicación.'),
+  ('general-2025', 56, '26', 'Permitir a otros trabajadores o personas ajenas a la empresa la conducción de vehículos, la operación de máquinas, equipos, instrumentos y aparatos confiados a su cuidado y responsabilidad.'),
+  ('general-2025', 56, '27', 'Negarse injustificadamente a participar y asistir a los cursos de entrenamiento o capacitación que programe y organice la empresa.'),
+  ('general-2025', 56, '28', 'Intimidar a los compañeros de trabajo para encubrir actos de negligencia en perjuicio de la empresa, de otros trabajadores o que pongan en riesgo la seguridad.'),
+  ('general-2025', 56, '29', 'Usar temerariamente los bienes e instalaciones de la empresa o de nuestros clientes, causando intencionalmente o por descuido inexcusable, daños, averías o cualquier otro perjuicio a la empresa, servicios sanitarios, muebles, materiales, útiles, maquinarias, herramientas, equipos o aparatos.'),
+  ('general-2025', 56, '30', 'Extraviar por descuido o negligencia los materiales, útiles, herramientas, equipos o aparatos que proporciona la empresa para el desempeño de su función.'),
+  ('general-2025', 56, '31', 'Discriminar y/o estigmatizar a algún trabajador en razón de su fe religiosa, por portar enfermedad incurable u otras razones; constituye infracción grave.')
 on conflict (rit_id, articulo, item) do nothing;
 
 -- 3 · Tipos de proceso disciplinario (art. 53 + preavisos del art. 31 LPCL).
@@ -325,12 +325,12 @@ create table if not exists tipos_sancion (
 
 insert into tipos_sancion (id, rit_id, nombre, naturaleza, notificable, plazo_descargo_dias,
                            plazo_habil, tope_suspension_dias, nivel_minimo, fuente_plazo, via_notificacion) values
-  ('amonestacion-verbal',  'clean-2025', 'Amonestación verbal',            'sancion',    false, null, true,  null, 2, null, 'Registro interno; reporte a RR.HH. dentro de 24 horas (art. 53 a)'),
-  ('amonestacion-escrita', 'clean-2025', 'Amonestación escrita',           'sancion',    true,  3,    true,  null, 2, 'Parámetro (RIT por modificar)', 'Electrónica con acuse; física con cargo si no acusa'),
-  ('suspension',           'clean-2025', 'Suspensión sin goce de haber',   'sancion',    true,  5,    true,  3,    3, 'Parámetro (RIT por modificar)', 'Electrónica con acuse; física con cargo si no acusa'),
-  ('preaviso-conducta',    'clean-2025', 'Preaviso de despido — conducta', 'imputacion', true,  6,    false, null, 3, 'Art. 31 LPCL (imperativo)', 'Notarial obligatoria'),
-  ('preaviso-capacidad',   'clean-2025', 'Preaviso de despido — capacidad','imputacion', true,  30,   false, null, 3, 'Art. 31 LPCL (imperativo)', 'Notarial obligatoria'),
-  ('despido',              'clean-2025', 'Carta de despido',               'decision',   true,  null, true,  null, 3, null, 'Notarial / juez de paz / policía (art. 32 LPCL)')
+  ('amonestacion-verbal',  'general-2025', 'Amonestación verbal',            'sancion',    false, null, true,  null, 2, null, 'Registro interno; reporte a RR.HH. dentro de 24 horas (art. 53 a)'),
+  ('amonestacion-escrita', 'general-2025', 'Amonestación escrita',           'sancion',    true,  3,    true,  null, 2, 'Parámetro (RIT por modificar)', 'Electrónica con acuse; física con cargo si no acusa'),
+  ('suspension',           'general-2025', 'Suspensión sin goce de haber',   'sancion',    true,  5,    true,  3,    3, 'Parámetro (RIT por modificar)', 'Electrónica con acuse; física con cargo si no acusa'),
+  ('preaviso-conducta',    'general-2025', 'Preaviso de despido — conducta', 'imputacion', true,  6,    false, null, 3, 'Art. 31 LPCL (imperativo)', 'Notarial obligatoria'),
+  ('preaviso-capacidad',   'general-2025', 'Preaviso de despido — capacidad','imputacion', true,  30,   false, null, 3, 'Art. 31 LPCL (imperativo)', 'Notarial obligatoria'),
+  ('despido',              'general-2025', 'Carta de despido',               'decision',   true,  null, true,  null, 3, null, 'Notarial / juez de paz / policía (art. 32 LPCL)')
 on conflict (id, rit_id) do nothing;
 
 -- 4 · Feriados (para el cómputo de días hábiles: SÁBADO cuenta, domingos y
@@ -679,7 +679,7 @@ set falta_id = f.id,
     articulo = 'Art. 20 c) conc. 56.1 RIT',
     falta_texto = 'Art. 20 inciso c): «' || f.texto || '» — concordado con el Art. 56 numeral 1'
 from rit_faltas f
-where m.id = '0141-2026' and f.rit_id = 'clean-2025' and f.articulo = 20 and f.item = 'c'
+where m.id = '0141-2026' and f.rit_id = 'general-2025' and f.articulo = 20 and f.item = 'c'
   and m.falta_id is null;
 
 insert into descargos (memorandum_id, presentado_en, texto, adjuntos) values
@@ -1000,6 +1000,36 @@ begin
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);
+end $$;
+
+-- Publicación del RIT con acuse (2026-08-19): un documento por vínculo
+-- VIGENTE que aún no lo tenga (constancia probatoria de conocimiento, mismo
+-- motor de acuses de las boletas). Idempotente: re-ejecutable tras altas.
+create function publicar_rit(
+  p_archivo_url text, p_hash text,
+  p_titulo text default 'Reglamento Interno de Trabajo (2025)'
+) returns int language plpgsql security definer as $$
+declare v_n int;
+begin
+  if fn_nivel_modulo('personal') < 2 then
+    raise exception 'Se necesita nivel de acción en Personal.';
+  end if;
+  if coalesce(trim(p_archivo_url), '') = '' or coalesce(trim(p_hash), '') = '' then
+    raise exception 'La publicación necesita la ruta del PDF y su huella.';
+  end if;
+  insert into documentos (vinculo_id, tipo, titulo, hash_sha256, archivo_url, exige_acuse)
+  select v.id, 'Reglamento interno', p_titulo, p_hash, p_archivo_url, true
+  from vinculos v
+  where v.fecha_fin is null
+    and not exists (
+      select 1 from documentos d
+      where d.vinculo_id = v.id and d.tipo = 'Reglamento interno' and d.estado = 'vigente'
+    );
+  get diagnostics v_n = row_count;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('PUBLICAR_RIT', 'documentos',
+    jsonb_build_object('archivo', p_archivo_url, 'asignados', v_n), null);
+  return v_n;
 end $$;
 
 -- Eliminación: solo para registros creados por error. Si la persona ya tiene
