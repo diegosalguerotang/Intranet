@@ -11,6 +11,7 @@ import Boletas from "./pages/Boletas";
 import Documento from "./pages/Documento";
 import Comunicado from "./pages/Comunicado";
 import MisDatos from "./pages/MisDatos";
+import Soporte from "./pages/Soporte";
 import { Cargando } from "./components/ui";
 
 // Guards centralizados: sin sesión → Ingreso; primer ingreso pendiente →
@@ -38,6 +39,7 @@ function Pantallas() {
   else if (ruta.startsWith("/documento/")) pantalla = <Documento id={ruta.split("/")[2]} />;
   else if (ruta.startsWith("/comunicado/")) pantalla = <Comunicado id={ruta.split("/")[2]} />;
   else if (ruta === "/yo") pantalla = <MisDatos />;
+  else if (ruta === "/soporte") pantalla = <Soporte />;
   else pantalla = <Inicio />;
 
   return <Marco>{pantalla}</Marco>;

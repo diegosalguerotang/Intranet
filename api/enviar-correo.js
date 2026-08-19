@@ -147,5 +147,33 @@ export default async function handler(req, res) {
     return res.status(200).json(generica);
   }
 
+  if (accion === "aviso-ticket") {
+    // Aviso de ticket nuevo (SOP): a los correos configurados en ticket_avisos.
+    // La dispara el portal o el BackOffice tras crear; solo necesita el número
+    // de un ticket EXISTENTE (no crea nada ni revela más que el aviso).
+    const numero = String(cuerpo.numero ?? "").trim();
+    if (!/^TK-[0-9]+$/.test(numero)) return res.status(400).json({ error: "Número de ticket inválido." });
+    const t = (await rest(`/rest/v1/v_tickets?numero=eq.${encodeURIComponent(numero)}&select=*&limit=1`)).json?.[0];
+    if (!t) return res.status(404).json({ error: "El ticket no existe." });
+    const avisos = (await rest(`/rest/v1/ticket_avisos?activo=eq.true&select=correo`)).json ?? [];
+    const destinos = avisos.map((a) => a.correo);
+    if (!destinos.length) return res.status(200).json({ enviados: 0 });
+    const html = plantilla(
+      `Nuevo ticket ${t.numero}`,
+      `<p><b>${t.tipo}</b>${t.subtipo ? ` · ${t.subtipo}` : ""}</p>
+       <p>Solicitante: <b>${t.solicitante_nombre}</b>${t.area ? ` — ${t.area}` : ""}${t.solicitante_dni ? ` (DNI ${t.solicitante_dni})` : ""}</p>
+       ${t.comentario ? `<p style="border-left:3px solid #3569a0;padding-left:10px;color:#555">${t.comentario}</p>` : ""}
+       ${botonCorreo(`${APP}/soporte/tickets`, "Ver en la intranet")}`);
+    let enviados = 0;
+    for (const correo of destinos) {
+      const r = await enviar(correo, `Ticket ${t.numero}: ${t.tipo} — GrupoER`, html);
+      if (!r.error) enviados += 1;
+      else if (enviados === 0 && correo === destinos[destinos.length - 1]) {
+        return res.status(503).json({ error: r.error });
+      }
+    }
+    return res.status(200).json({ enviados });
+  }
+
   return res.status(400).json({ error: "Acción desconocida." });
 }
