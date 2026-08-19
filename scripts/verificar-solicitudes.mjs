@@ -134,7 +134,7 @@ await prueba("papeleta CON adjunto se aprueba en 2 pasos y queda inmutable (solo
 });
 
 await prueba("vacaciones: 1 paso y la superposición con otra aprobada se ADVIERTE", async () => {
-  const vac = { tipo_goce: "Efectivas", desde: "2026-10-01", hasta: "2026-10-07", dias_gozados: 7, periodo: "ZZPRUEBA" };
+  const vac = { tipo_goce: "Efectivas / Gozadas", desde: "2026-10-01", hasta: "2026-10-07", dias_gozados: 7, periodo: "ZZPRUEBA" };
   const [{ n: nA }] = await sql(`select crear_solicitud_admin('${DNI}', 'vacaciones', ${j(vac)}, 'verificar-solicitudes') as n`);
   const [{ id: idA }] = await sql(`select id from solicitudes where numero='${nA}'`);
   await sql(`select resolver_solicitud(${idA}, 'aprobar', null, 'rrhh-de-prueba')`);
@@ -149,15 +149,15 @@ await prueba("vacaciones: 1 paso y la superposición con otra aprobada se ADVIER
 
 await prueba("negativa: vacaciones con hasta < desde y días 0 se rechazan", async () => {
   await esperaError(
-    `select crear_solicitud_admin('${DNI}', 'vacaciones', ${j({ tipo_goce: "Efectivas", desde: "2026-10-10", hasta: "2026-10-01", dias_gozados: 5 })}, 'x')`,
+    `select crear_solicitud_admin('${DNI}', 'vacaciones', ${j({ tipo_goce: "Efectivas / Gozadas", desde: "2026-10-10", hasta: "2026-10-01", dias_gozados: 5 })}, 'x')`,
     "no puede ser anterior", "rango invertido");
   await esperaError(
-    `select crear_solicitud_admin('${DNI}', 'vacaciones', ${j({ tipo_goce: "Efectivas", desde: "2026-10-01", hasta: "2026-10-02", dias_gozados: 0 })}, 'x')`,
+    `select crear_solicitud_admin('${DNI}', 'vacaciones', ${j({ tipo_goce: "Efectivas / Gozadas", desde: "2026-10-01", hasta: "2026-10-02", dias_gozados: 0 })}, 'x')`,
     "mayores a cero", "cero días");
 });
 
 await prueba("portal: sin sesión no se crea nada y la vista propia está vacía", async () => {
-  await esperaError(`select portal_crear_solicitud('vacaciones', ${j({ tipo_goce: "Efectivas", desde: "2026-11-01", hasta: "2026-11-02", dias_gozados: 2 })})`,
+  await esperaError(`select portal_crear_solicitud('vacaciones', ${j({ tipo_goce: "Efectivas / Gozadas", desde: "2026-11-01", hasta: "2026-11-02", dias_gozados: 2 })})`,
     "Sesión del portal inválida", "creó sin sesión");
   const [v] = await sql("select count(*)::int n from v_portal_solicitudes");
   igual(v.n, 0, "vista propia sin sesión");
