@@ -467,6 +467,8 @@ create table activos (
   usuario_anterior text,                     -- historial textual del archivo
   observaciones text,
   por_corregir  boolean not null default false, -- código repetido en el archivo: falta corregir
+  ip            text,                        -- IP del equipo (Gestión de TI 2026-08-19)
+  clave_equipo  text,                        -- SOLO superadmin la lee (ver_clave_equipo, auditada)
   constraint imei_solo_comunicaciones check (imei is null or categoria = 'Comunicaciones')
 );
 
@@ -479,6 +481,8 @@ create table asignaciones (
   condicion_entrega    text not null default 'Buen estado',
   devuelto_en          date,
   condicion_devolucion text,
+  antivirus            boolean,               -- ¿el equipo entregado lleva antivirus? (Gestión de TI)
+  comentario           text,
   destino              text check (destino in ('disponible','mantenimiento','baja'))
 );
 -- Un activo solo puede estar asignado a una persona a la vez.
@@ -872,11 +876,13 @@ select ac.codigo, ac.categoria, ac.marca, ac.modelo, ac.serie, ac.imei,
             when asg.id is not null then 'asignado'
             else 'disponible' end as estado,
        asg.persona_dni as asignado,
+       asg.antivirus, asg.comentario as comentario_asignacion,
        coalesce(vi.sede_id, ac.sede_id) as sede,
        ac.empresa_id as empresa, ac.valor,
        to_char(ac.compra, 'YYYY-MM-DD') as compra,
        ac.tipo, ac.area, ac.asignado_sin_confirmar, ac.usuario_anterior, ac.observaciones,
-       ac.por_corregir
+       ac.por_corregir, ac.ip,
+       (ac.clave_equipo is not null) as tiene_clave
 from activos ac
 left join asignaciones asg on asg.activo_codigo = ac.codigo and asg.devuelto_en is null
 left join vinculos vi on vi.persona_dni = asg.persona_dni and vi.fecha_fin is null;
@@ -1269,8 +1275,10 @@ end $$;
 
 -- Asignación de activo: abre un registro de historial. La devolución lo cierra
 -- registrando condición y destino.
-create function asignar_activo(p_codigo text, p_dni text, p_condicion text default 'Buen estado')
-returns void language plpgsql security definer as $$
+create function asignar_activo(
+  p_codigo text, p_dni text, p_condicion text default 'Buen estado',
+  p_antivirus boolean default null, p_comentario text default null
+) returns void language plpgsql security definer as $$
 begin
   if exists (select 1 from asignaciones where activo_codigo = p_codigo and devuelto_en is null) then
     raise exception 'El activo % ya está asignado. Regístrese la devolución primero.', p_codigo;
@@ -1278,8 +1286,8 @@ begin
   if (select estado_fisico from activos where codigo = p_codigo) <> 'operativo' then
     raise exception 'El activo % no está operativo.', p_codigo;
   end if;
-  insert into asignaciones (activo_codigo, persona_dni, condicion_entrega)
-  values (p_codigo, p_dni, p_condicion);
+  insert into asignaciones (activo_codigo, persona_dni, condicion_entrega, antivirus, comentario)
+  values (p_codigo, p_dni, p_condicion, p_antivirus, nullif(trim(coalesce(p_comentario,'')), ''));
 end $$;
 
 create function devolver_activo(p_codigo text, p_destino text, p_condicion text default 'Buen estado')
@@ -1602,7 +1610,7 @@ end $$;
 create function editar_activo(
   p_codigo text, p_nuevo_codigo text, p_tipo text, p_marca text, p_modelo text,
   p_serie text, p_area text, p_asignado_sin_confirmar text, p_observaciones text,
-  p_por text default 'Administración'
+  p_por text default 'Gestión de TI', p_ip text default null
 ) returns void language plpgsql security definer as $$
 declare v_nuevo text; j_antes jsonb; j_despues jsonb;
 begin
@@ -1617,7 +1625,7 @@ begin
     raise exception 'Ya existe un activo con el código %.', v_nuevo;
   end if;
 
-  select to_jsonb(ac) into j_antes from activos ac where codigo = p_codigo;
+  select to_jsonb(ac) - 'clave_equipo' into j_antes from activos ac where codigo = p_codigo;
   update activos set
     codigo = v_nuevo,
     tipo = nullif(trim(coalesce(p_tipo, '')), ''),
@@ -1625,15 +1633,47 @@ begin
     modelo = nullif(trim(coalesce(p_modelo, '')), ''),
     serie = nullif(trim(coalesce(p_serie, '')), ''),
     area = nullif(trim(coalesce(p_area, '')), ''),
+    ip = nullif(trim(coalesce(p_ip, '')), ''),
     asignado_sin_confirmar = nullif(trim(coalesce(p_asignado_sin_confirmar, '')), ''),
     observaciones = nullif(trim(coalesce(p_observaciones, '')), ''),
     por_corregir = case when v_nuevo <> p_codigo then false else por_corregir end
   where codigo = p_codigo;
-  select to_jsonb(ac) into j_despues from activos ac where codigo = v_nuevo;
+  select to_jsonb(ac) - 'clave_equipo' into j_despues from activos ac where codigo = v_nuevo;
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('EDITAR_ACTIVO', 'activos',
     j_antes || jsonb_build_object('por', p_por), j_despues);
+end $$;
+
+-- Clave del equipo: escribir y leer SOLO superadmin (fn_nivel_modulo devuelve 99
+-- para superadmin y para llamadas de servicio sin JWT). Todo acceso queda auditado.
+create function guardar_clave_equipo(p_codigo text, p_clave text, p_por text default 'Gestión de TI')
+returns void language plpgsql security definer as $$
+begin
+  if fn_nivel_modulo('activos') < 99 then
+    raise exception 'Solo el superadministrador administra claves de equipos.';
+  end if;
+  if not exists (select 1 from activos where codigo = p_codigo) then
+    raise exception 'El activo % no existe.', p_codigo;
+  end if;
+  update activos set clave_equipo = nullif(trim(coalesce(p_clave,'')), '') where codigo = p_codigo;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('CLAVE_EQUIPO_GUARDADA', 'activos',
+    jsonb_build_object('codigo', p_codigo, 'por', p_por), null);
+end $$;
+
+create function ver_clave_equipo(p_codigo text, p_por text default 'Gestión de TI')
+returns text language plpgsql security definer as $$
+declare v text;
+begin
+  if fn_nivel_modulo('activos') < 99 then
+    raise exception 'Solo el superadministrador puede ver claves de equipos.';
+  end if;
+  select clave_equipo into v from activos where codigo = p_codigo;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('CLAVE_EQUIPO_VISTA', 'activos',
+    jsonb_build_object('codigo', p_codigo, 'por', p_por), null);
+  return v;
 end $$;
 
 -- Vista previa sin rastro: mismo patrón PV999 que previsualizar_importacion.
