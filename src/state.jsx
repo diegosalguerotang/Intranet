@@ -570,6 +570,13 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("solicitudAvisos");
     },
+    // Al aprobar: genera el PDF con membrete de la RS y lo archiva al legajo.
+    // Idempotente por número; devuelve { documentoId } o { error }.
+    generarPdfSolicitud: async (numero) => {
+      const r = await llamarServerless("/api/solicitud-pdf", { numero });
+      if (!r.error) await recargar("solicitudes");
+      return r;
+    },
     // ADQ-08 — Importación de inventario de activos (Formato 7.1). La vista
     // previa es de solo lectura (patrón PV999 en Postgres); la confirmación es
     // un único RPC transaccional. Los bloqueos (duplicado, otra empresa)

@@ -124,7 +124,7 @@ export default function BandejaSolicitudes() {
 // Detalle: datos + historial + decisiones del paso. La BD re-valida permisos,
 // autoaprobación y motivos: la UI solo esconde lo que no corresponde.
 function DetalleSolicitud({ solicitud, onClose, onListo }) {
-  const { user, resolverSolicitud, reenviarSolicitud, eventosSolicitud } = useApp();
+  const { user, resolverSolicitud, reenviarSolicitud, eventosSolicitud, generarPdfSolicitud } = useApp();
   const acceso = user?.acceso ?? { esSuperadmin: user?.esSuperadmin, matriz: {} };
   const nivel = nivelDe(acceso, "solicitudes");
   const [eventos, setEventos] = useState(null);
@@ -145,9 +145,18 @@ function DetalleSolicitud({ solicitud, onClose, onListo }) {
     setOcupado(true);
     try {
       await resolverSolicitud(solicitud.id, decision, comentario || null);
-      const evento = decision === "aprobar" ? "resuelta" : "estado";
-      avisarSolicitud(solicitud.numero, evento);
-      onListo(`Solicitud ${solicitud.numero}: decisión «${decision}» registrada.`);
+      const aprobadaFinal = decision === "aprobar" && esUltimoPaso;
+      avisarSolicitud(solicitud.numero, aprobadaFinal || decision === "rechazar" ? "resuelta" : "estado");
+      if (aprobadaFinal) {
+        // El PDF con membrete se archiva en el legajo; si falla, se reintenta
+        // volviendo a abrir la solicitud (el endpoint es idempotente).
+        const r = await generarPdfSolicitud(solicitud.numero);
+        onListo(r.error
+          ? `Solicitud ${solicitud.numero} aprobada, pero el PDF no se generó (${r.error}). Ábrela de nuevo para reintentar.`
+          : `Solicitud ${solicitud.numero} aprobada: el PDF quedó archivado en el legajo del trabajador.`);
+      } else {
+        onListo(`Solicitud ${solicitud.numero}: decisión «${decision}» registrada.`);
+      }
       onClose();
     } catch (err) {
       setError(err.message);
@@ -229,9 +238,22 @@ function DetalleSolicitud({ solicitud, onClose, onListo }) {
             <Button size="sm" variant="secondary" onClick={() => setDecision("rechazar")}>Rechazar</Button>
           </div>
         )}
+        {solicitud.estado === "aprobada" && !solicitud.documento_id && nivel >= 2 && (
+          <Note tone="pend">
+            El PDF de esta solicitud aún no está en el legajo.{" "}
+            <Button size="sm" variant="secondary" disabled={ocupado} onClick={async () => {
+              setOcupado(true);
+              const r = await generarPdfSolicitud(solicitud.numero);
+              setOcupado(false);
+              if (r.error) setError(r.error);
+              else { onListo(`PDF de ${solicitud.numero} archivado en el legajo.`); onClose(); }
+            }}>Generar PDF ahora</Button>
+          </Note>
+        )}
         {solicitud.estado === "aprobada" && nivel >= 3 && !decision && (
           <Button size="sm" variant="secondary" onClick={() => setDecision("anular")}>Anular (deja sin efecto)</Button>
         )}
+        {error && !decision && <Note tone="alerta">{error}</Note>}
         {solicitud.estado === "observada" && nivel >= 2 && !corrigiendo && (
           <Button size="sm" onClick={() => setCorrigiendo(true)}>Corregir y reenviar</Button>
         )}

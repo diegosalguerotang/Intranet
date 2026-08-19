@@ -11,6 +11,9 @@
 -- 1 · Columnas nuevas en tablas existentes -----------------------------------
 -- guarda la RUTA del bucket (lotes/...), no una URL — ver migración de privacidad
 alter table documentos add column if not exists archivo_url text;
+-- Un documento archivado puede NO exigir acuse (solicitudes aprobadas cuyo
+-- tipo no lo pide): default true para que boletas y cargos sigan igual.
+alter table documentos add column if not exists exige_acuse boolean not null default true;
 
 -- 2 · Tablas -----------------------------------------------------------------
 create table if not exists cuentas_portal (
@@ -319,7 +322,7 @@ select 'documento' as clase, d.id::text as ref, d.titulo, d.tipo as etiqueta,
        to_char(d.publicado_en, 'YYYY-MM-DD') as fecha, 2 as urgencia
 from documentos d
 join vinculos v on v.id = d.vinculo_id
-where v.persona_dni = portal_dni() and d.estado = 'vigente'
+where v.persona_dni = portal_dni() and d.estado = 'vigente' and d.exige_acuse
   and not exists (select 1 from acuses a where a.documento_id = d.id)
 union all
 select 'comunicado', c.id::text, c.titulo, 'Comunicado',
