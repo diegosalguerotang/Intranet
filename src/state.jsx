@@ -34,6 +34,7 @@ const FUENTES = {
   solicitudes: "v_solicitudes",
   solicitudTipos: "v_solicitud_tipos",
   solicitudAvisos: "v_solicitud_avisos",
+  rits: "v_rits",
 };
 
 const LOCAL = {
@@ -63,6 +64,7 @@ const LOCAL = {
   solicitudes: [],   // centro de solicitudes: solo existe con conexión real
   solicitudTipos: [],
   solicitudAvisos: [],
+  rits: [],          // reglamentos internos: solo existen con conexión real
 };
 
 // MODO DEMO: entra directo como superadministrador sin pasar por
@@ -440,15 +442,31 @@ export function AppProvider({ children }) {
     },
     // RRH-21 — Alta manual de sede: el código S-NNNN lo asigna la BD (misma
     // secuencia que usa la importación de personal al crear sedes).
-    crearSede: async ({ empresaId: empresaIdArg, nombre, cliente, direccion }) => {
+    crearSede: async ({ empresaId: empresaIdArg, nombre, cliente, direccion, rit }) => {
       if (!supabaseListo) throw new Error("El alta real de sedes requiere conexión a Supabase.");
       const { data, error } = await supabase.rpc("crear_sede", {
         p_empresa: empresaIdArg, p_nombre: nombre, p_cliente: cliente || null,
         p_direccion: direccion || null, p_por: user?.nombre ?? "RRHH",
+        p_rit: rit || null,
       });
       if (error) throw new Error(error.message);
       await recargar("sedes");
       return data; // { id, codigo }
+    },
+    // RIT por sede/contrato: el reglamento se sube UNA vez y las sedes lo
+    // declaran; el personal de esa planilla lo lee resuelto (sede → empresa).
+    crearRit: async (nombre, archivoRuta, hash, vigente) => {
+      const { data, error } = await supabase.rpc("crear_rit", {
+        p_nombre: nombre, p_archivo: archivoRuta, p_hash: hash, p_vigente: vigente || null,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("rits");
+      return data; // id del rit
+    },
+    asignarRitSede: async (sedeId, ritId) => {
+      const { error } = await supabase.rpc("asignar_rit_sede", { p_sede: sedeId, p_rit: ritId || null });
+      if (error) throw new Error(error.message);
+      await recargar("sedes", "rits");
     },
     // ADQ — Edición manual de un activo: corregir el código (caso «falta
     // corregir» de la importación) y los datos del equipo. Lo escrito MANDA.

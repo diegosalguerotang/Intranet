@@ -1,8 +1,53 @@
 import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
-import { vista, rpc } from "../lib/api";
+import { LogOut, BookOpen } from "lucide-react";
+import { vista, rpc, tokenSesion } from "../lib/api";
 import { usePortal } from "../state";
 import { Tarjeta, Boton, Nota, Cargando } from "../components/ui";
+
+// El RIT SIEMPRE está disponible para leer (pedido de Diego 2026-08-19): el
+// reglamento del trabajador se resuelve por su planilla (sede → empresa) y la
+// URL firmada se pide fresca en cada lectura (bucket privado).
+function ReglamentoInterno() {
+  const [rit, setRit] = useState(null);
+  const [error, setError] = useState(null);
+  const [abriendo, setAbriendo] = useState(false);
+  useEffect(() => {
+    vista("v_portal_rit", "select=*&limit=1").then(({ data }) => setRit(data?.[0] ?? null));
+  }, []);
+  if (!rit) return null;
+
+  const leer = async () => {
+    setError(null);
+    setAbriendo(true);
+    try {
+      const r = await fetch("/api/rit", { headers: { "x-sesion": tokenSesion() ?? "" } });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "No se pudo abrir el reglamento.");
+      window.open(j.url, "_blank");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setAbriendo(false);
+    }
+  };
+
+  return (
+    <Tarjeta>
+      <div className="flex items-center gap-2 text-[13px] font-semibold text-tinta">
+        <BookOpen size={16} className="text-petroleo" /> Reglamento Interno de Trabajo
+      </div>
+      <div className="mt-1 text-[12.5px] text-gris-cl">
+        {rit.nombre} · vigente desde {rit.vigente_desde}. Es el reglamento que aplica a tu sede.
+      </div>
+      {error && <div className="mt-2"><Nota tono="alerta">{error}</Nota></div>}
+      <div className="mt-3">
+        <Boton variante="secundario" type="button" onClick={leer} disabled={abriendo || !rit.disponible}>
+          {abriendo ? "Abriendo…" : "Leer el reglamento (PDF)"}
+        </Boton>
+      </div>
+    </Tarjeta>
+  );
+}
 
 // TRB-12 · Mis datos: contacto actualizable sin abrir la puerta a fraude.
 // La cuenta de haberes JAMÁS se edita aquí: genera solicitud para RRHH.
@@ -95,6 +140,8 @@ export default function MisDatos() {
           )}
         </Tarjeta>
       </form>
+
+      <ReglamentoInterno />
 
       <Tarjeta>
         <div className="text-[13px] font-semibold text-tinta">Cuenta de haberes</div>

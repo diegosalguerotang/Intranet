@@ -15,7 +15,7 @@
 -- ---------------------------------------------------------------------------
 drop view if exists v_personal, v_sedes, v_acuses, v_lotes, v_activos,
   v_contratos, v_epp_entregas, v_comunicados, v_memorandums,
-  v_rit_faltas, v_tipos_sancion cascade;
+  v_rit_faltas, v_tipos_sancion, v_rits cascade;
 drop table if exists auditoria, epp_entregas, lineas, asignaciones, activos,
   contratos, plantillas, tardanzas, descargos, memorandums, comunicados,
   acuses, documentos, lotes, vinculos, personas, sedes, empresas, cargos,
@@ -34,13 +34,20 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
 -- ---------------------------------------------------------------------------
 -- RIT por empresa (2026-08-17): hoy todas usan el de CLEAN (decisión de
 -- Diego); los números de artículo NO son transferibles entre reglamentos.
+-- Un reglamento por sede/contrato es posible (2026-08-19): la sede declara su
+-- RIT y su personal lo lee resuelto (sede → empresa). El PDF vive en el bucket
+-- privado y se consulta SIEMPRE desde el portal (api/rit.js, URL firmada).
 create table rits (
   id            text primary key,
   nombre        text not null,
-  vigente_desde date
+  vigente_desde date,
+  archivo_url   text,               -- PDF en el bucket privado (rit/…)
+  hash_sha256   text
 );
-insert into rits (id, nombre, vigente_desde)
-values ('general-2025', 'Reglamento Interno de Trabajo — General (2025)', '2025-01-01');
+insert into rits (id, nombre, vigente_desde, archivo_url, hash_sha256)
+values ('general-2025', 'Reglamento Interno de Trabajo — General (2025)', '2025-01-01',
+        'rit/rit-general-2025.pdf',
+        'e002251aebf0a5273874e87288913b68426df7c3fef0a0bf837e47f99658287b');
 
 create table empresas (
   id        text primary key,
@@ -101,6 +108,7 @@ create table sedes (
   direccion      text,
   estado         text not null default 'activa' check (estado in ('activa','cerrada')),
   supervisor_dni text references personas(dni),
+  rit_id         text references rits(id),   -- RIT propio del contrato; null = el de la empresa
   creado_en      timestamptz not null default now()
 );
 
@@ -762,8 +770,20 @@ end $$;
 -- ---------------------------------------------------------------------------
 create view v_sedes as
 select s.id, s.empresa_id as empresa, s.nombre, s.cliente, p.nombre as supervisor,
-       s.codigo, s.direccion, s.estado
-from sedes s left join personas p on p.dni = s.supervisor_dni;
+       s.codigo, s.direccion, s.estado,
+       s.rit_id, coalesce(s.rit_id, e.rit_id) as rit_efectivo,
+       r.nombre as rit_nombre
+from sedes s
+left join personas p on p.dni = s.supervisor_dni
+left join empresas e on e.id = s.empresa_id
+left join rits r on r.id = coalesce(s.rit_id, e.rit_id);
+
+create view v_rits as
+select r.id, r.nombre, to_char(r.vigente_desde, 'YYYY-MM-DD') as vigente_desde,
+       r.archivo_url, (r.archivo_url is not null) as tiene_pdf,
+       (select count(*)::int from sedes s where s.rit_id = r.id) as sedes_propias,
+       (select count(*)::int from empresas e where e.rit_id = r.id) as empresas
+from rits r order by r.nombre;
 
 create view v_personal as
 select p.dni, p.tipo_documento, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
@@ -1423,7 +1443,7 @@ end $$;
 -- Alta manual de sede (RRH-21): id slug estable + código de secuencia.
 create function crear_sede(
   p_empresa text, p_nombre text, p_cliente text,
-  p_direccion text default null, p_por text default 'RRHH'
+  p_direccion text default null, p_por text default 'RRHH', p_rit text default null
 ) returns jsonb language plpgsql security definer as $$
 declare v_id text; v_codigo text;
 begin
@@ -1437,20 +1457,64 @@ begin
              where empresa_id = p_empresa and upper(trim(nombre)) = upper(trim(p_nombre))) then
     raise exception 'Ya existe una sede «%» en esa empresa.', trim(p_nombre);
   end if;
+  if p_rit is not null and not exists (select 1 from rits where id = p_rit) then
+    raise exception 'El reglamento % no existe.', p_rit;
+  end if;
   v_id := p_empresa || '-' || lower(regexp_replace(trim(p_nombre), '\s+', '-', 'g'));
   if exists (select 1 from sedes where id = v_id) then
     raise exception 'Ya existe una sede con ese identificador (%).', v_id;
   end if;
   v_codigo := 'S-' || lpad(nextval('seq_sede_codigo')::text, 4, '0');
-  insert into sedes (id, empresa_id, nombre, cliente, direccion, codigo)
+  insert into sedes (id, empresa_id, nombre, cliente, direccion, codigo, rit_id)
   values (v_id, p_empresa, trim(p_nombre),
           coalesce(nullif(trim(p_cliente), ''), 'Por asignar'),
-          nullif(trim(coalesce(p_direccion, '')), ''), v_codigo);
+          nullif(trim(coalesce(p_direccion, '')), ''), v_codigo, p_rit);
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('CREAR_SEDE', 'sedes', null, jsonb_build_object(
     'id', v_id, 'codigo', v_codigo, 'empresa', p_empresa,
-    'nombre', trim(p_nombre), 'por', p_por));
+    'nombre', trim(p_nombre), 'rit', p_rit, 'por', p_por));
   return jsonb_build_object('id', v_id, 'codigo', v_codigo);
+end $$;
+
+-- Alta/actualización de un reglamento (el PDF lo sube la pantalla al bucket)
+-- y asignación del RIT propio de una sede (null = volver al de la empresa).
+create function crear_rit(
+  p_nombre text, p_archivo text, p_hash text, p_vigente date default current_date
+) returns text language plpgsql security definer as $$
+declare v_id text;
+begin
+  if fn_nivel_modulo('personal') < 3 then
+    raise exception 'Administrar reglamentos exige nivel de aprobación en Personal.';
+  end if;
+  if trim(coalesce(p_nombre, '')) = '' or trim(coalesce(p_archivo, '')) = '' then
+    raise exception 'El reglamento necesita nombre y PDF.';
+  end if;
+  v_id := lower(regexp_replace(trim(p_nombre), '[^a-zA-Z0-9]+', '-', 'g'));
+  insert into rits (id, nombre, vigente_desde, archivo_url, hash_sha256)
+  values (v_id, trim(p_nombre), p_vigente, trim(p_archivo), p_hash)
+  on conflict (id) do update
+    set nombre = excluded.nombre, vigente_desde = excluded.vigente_desde,
+        archivo_url = excluded.archivo_url, hash_sha256 = excluded.hash_sha256;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('CREAR_RIT', 'rits', null, jsonb_build_object('id', v_id, 'nombre', trim(p_nombre)));
+  return v_id;
+end $$;
+
+create function asignar_rit_sede(p_sede text, p_rit text)
+returns void language plpgsql security definer as $$
+begin
+  if fn_nivel_modulo('personal') < 3 then
+    raise exception 'Asignar reglamentos exige nivel de aprobación en Personal.';
+  end if;
+  if p_rit is not null and not exists (select 1 from rits where id = p_rit) then
+    raise exception 'El reglamento % no existe.', p_rit;
+  end if;
+  update sedes set rit_id = p_rit where id = p_sede;
+  if not found then
+    raise exception 'La sede % no existe.', p_sede;
+  end if;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('ASIGNAR_RIT_SEDE', 'sedes', null, jsonb_build_object('sede', p_sede, 'rit', p_rit));
 end $$;
 
 create function importar_planilla(p_empresa text, p_filas jsonb, p_por text)

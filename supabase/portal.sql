@@ -301,6 +301,21 @@ left join sedes s on s.id = coalesce(vig.sede_id, ult.sede_id)
 left join empresas em on em.id = coalesce(vig.empresa_id, ult.empresa_id)
 where pe.dni = portal_dni();
 
+-- El reglamento del trabajador, SIEMPRE consultable (2026-08-19): resuelto por
+-- su planilla (sede → empresa). El PDF se lee vía api/rit.js (URL firmada).
+drop view if exists v_portal_rit;
+create view v_portal_rit as
+select r.nombre, to_char(r.vigente_desde, 'YYYY-MM-DD') as vigente_desde,
+       (r.archivo_url is not null) as disponible
+from personas pe
+left join lateral (select * from vinculos v where v.persona_dni = pe.dni
+                   order by (v.fecha_fin is null) desc, v.fecha_inicio desc limit 1) vi on true
+left join sedes s on s.id = vi.sede_id
+left join empresas e on e.id = vi.empresa_id
+left join rits r on r.id = coalesce(s.rit_id, e.rit_id)
+where pe.dni = portal_dni() and r.id is not null;
+grant select on v_portal_rit to authenticated;
+
 drop view if exists v_portal_boletas;
 create view v_portal_boletas as
 select d.id, d.tipo, d.titulo, d.periodo,
