@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, Navigate, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
-  Inbox, FilePlus2, BellRing, BarChart3,
+  Inbox, FilePlus2, BellRing, BarChart3, ChevronDown,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -52,14 +52,43 @@ const NAV_ACCESOS = [
 ];
 
 function NavGroup({ title, items, acceso }) {
+  const { pathname } = useLocation();
   const visibles = items.filter((i) => nivelDe(acceso, i.modulo) >= 1);
+  // Plegable (pedido de Diego 2026-08-19): la flechita despliega o contrae el
+  // grupo y la preferencia se recuerda por grupo. Si la ruta activa vive
+  // dentro, el grupo arranca abierto aunque estuviera contraído.
+  const contieneActiva = visibles.some((i) => pathname === i.to || pathname.startsWith(i.to + "/"));
+  const [abierto, setAbierto] = useState(() => {
+    if (contieneActiva) return true;
+    return localStorage.getItem(`nav-abierto:${title}`) !== "0";
+  });
+  const alternar = () => {
+    setAbierto((v) => {
+      localStorage.setItem(`nav-abierto:${title}`, v ? "0" : "1");
+      return !v;
+    });
+  };
+  // Al navegar HACIA un grupo contraído (enlace directo, aterrizaje), se abre
+  // solo; contraerlo estando dentro sí se respeta (no cambia la ruta).
+  useEffect(() => {
+    if (contieneActiva) setAbierto(true);
+  }, [pathname]);
   if (!visibles.length) return null;
   return (
     <div>
-      <h3 className="mb-2 mt-6 px-3 text-[10.5px] font-bold uppercase tracking-[0.14em] text-gris-cl first:mt-0">
-        {title}
-      </h3>
-      {visibles.map(({ to, icon: Icon, label, code, end, proximamente }) =>
+      <button
+        type="button"
+        onClick={alternar}
+        aria-expanded={abierto}
+        className="mb-2 mt-6 flex w-full items-center gap-1.5 px-3 text-left text-[10.5px] font-bold uppercase tracking-[0.14em] text-gris-cl transition-colors hover:text-tinta first:mt-0"
+      >
+        <span className="flex-1">{title}</span>
+        <ChevronDown
+          size={13}
+          className={`shrink-0 transition-transform duration-200 ${abierto ? "" : "-rotate-90"}`}
+        />
+      </button>
+      {abierto && visibles.map(({ to, icon: Icon, label, code, end, proximamente }) =>
         proximamente ? (
           // Módulo anunciado pero aún sin función: gris y sin click.
           <div
