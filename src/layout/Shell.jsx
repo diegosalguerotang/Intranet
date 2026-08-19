@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, Navigate, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
@@ -54,24 +54,18 @@ const NAV_ACCESOS = [
 function NavGroup({ title, items, acceso }) {
   const { pathname } = useLocation();
   const visibles = items.filter((i) => nivelDe(acceso, i.modulo) >= 1);
-  // Plegable (pedido de Diego 2026-08-19): la flechita despliega o contrae el
-  // grupo y la preferencia se recuerda por grupo. Si la ruta activa vive
-  // dentro, el grupo arranca abierto aunque estuviera contraído.
+  // Plegable (Diego, 2026-08-19): TODO arranca contraído siempre; la flechita
+  // despliega o contrae. Al navegar HACIA una pantalla de un grupo contraído
+  // (enlace directo), ese grupo se abre para orientar; contraerlo estando
+  // dentro se respeta (no cambia la ruta). Nada se persiste: cada carga de la
+  // app vuelve a empezar con el menú corto.
   const contieneActiva = visibles.some((i) => pathname === i.to || pathname.startsWith(i.to + "/"));
-  const [abierto, setAbierto] = useState(() => {
-    if (contieneActiva) return true;
-    return localStorage.getItem(`nav-abierto:${title}`) !== "0";
-  });
-  const alternar = () => {
-    setAbierto((v) => {
-      localStorage.setItem(`nav-abierto:${title}`, v ? "0" : "1");
-      return !v;
-    });
-  };
-  // Al navegar HACIA un grupo contraído (enlace directo, aterrizaje), se abre
-  // solo; contraerlo estando dentro sí se respeta (no cambia la ruta).
+  const [abierto, setAbierto] = useState(false);
+  const rutaPrevia = useRef(pathname);
+  const alternar = () => setAbierto((v) => !v);
   useEffect(() => {
-    if (contieneActiva) setAbierto(true);
+    if (rutaPrevia.current !== pathname && contieneActiva) setAbierto(true);
+    rutaPrevia.current = pathname;
   }, [pathname]);
   if (!visibles.length) return null;
   return (
