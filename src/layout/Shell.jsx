@@ -129,7 +129,7 @@ export default function Shell() {
         <nav className="flex-1 overflow-y-auto">
           <NavGroup title="Accesos y Roles" items={NAV_ACCESOS} acceso={acceso} />
           <NavGroup title="Recursos Humanos" items={NAV_RRHH} acceso={acceso} />
-          <NavGroup title="Administración" items={NAV_ADMIN} acceso={acceso} />
+          <NavGroup title="Gestión de TI" items={NAV_ADMIN} acceso={acceso} />
         </nav>
 
         <div className="mt-4 border-t border-borde px-3 pt-4">
