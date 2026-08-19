@@ -114,7 +114,7 @@ export default function Personal() {
             <EmptyState title="Sin resultados" body="Ningún trabajador coincide con los filtros aplicados." />
           </div>
         ) : (
-          <Table head={["DNI", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", ""]}>
+          <Table head={["Documento", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", ""]}>
             {filas.map((p) => {
               const pb = PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo;
               return (
