@@ -551,7 +551,7 @@ insert into empresas (id, nombre, corto, ruc, logo, regimen, direccion) values
   ('bremco',     'BREMCO S.C.R.L.',           'BREMCO',       '20512345678', null,                             'Régimen general', null),
   ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20523456789', '/logos/promant.jpeg',            'Pequeña empresa', null),
   ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20601705185', '/logos/limpieza-americana.jpeg', 'Régimen general', 'Av. San Borja Sur Nro. 1184, Urb. San Borja Sur'),
-  ('clean',      'Consorcio Clean',           'CLEAN',        '20614759870', '/logos/clean.png',               'Por confirmar',    'Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)');
+  ('clean',      'Consorcio Clean',           'CLEAN',        '20614759870', '/logos/clean.png',               'Régimen general',  'Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)');
 
 insert into personas (dni, nombre, celular, banco, cuenta, portal) values
   ('45231876', 'Rosa Quispe Huamán',    '987654321', 'BCP',       '191-23456789-0-11',  'activo'),
