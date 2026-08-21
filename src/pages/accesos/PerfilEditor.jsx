@@ -8,6 +8,9 @@ import { MODULOS, NIVELES, CASILLAS } from "../../data/modulos";
 const slug = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
+// Reconoce un fallo por sesión vencida (401/JWT) para dar un mensaje accionable.
+const esErrorSesion = (msg) => /jwt|expired|PGRST301|invalid (api key|claim)|\b401\b|sesión/i.test(msg ?? "");
+
 // Resumen en lenguaje natural: requisito, no adorno. Quien crea perfiles no
 // siempre lee matrices, y una casilla marcada por error es invisible en una
 // tabla de once filas.
@@ -65,6 +68,8 @@ export default function PerfilEditor() {
   });
   const [paso, setPaso] = useState(null); // "superadmin" | "cambios"
   const [historial, setHistorial] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState(null);
 
   if (!nuevo && !base) {
     return (
@@ -123,8 +128,11 @@ export default function PerfilEditor() {
 
   const valido = nombre.trim().length > 0 && !nombreRepetido && (superadmin || empresas.length > 0);
 
-  const persistir = () => {
-    guardarPerfil({
+  const persistir = async () => {
+    if (guardando) return;
+    setGuardando(true);
+    setErrorGuardar(null);
+    const r = await guardarPerfil({
       id: idActual,
       nombre: nombre.trim(),
       descripcion: descripcion.trim(),
@@ -135,6 +143,17 @@ export default function PerfilEditor() {
       matriz: superadmin ? {} : matriz,
       empresas: superadmin ? [] : empresas,
     });
+    setGuardando(false);
+    if (r?.error) {
+      // El guardado NO se dio por hecho: la categoría solo "existe" si la BD
+      // la confirmó. Sesión vencida se explica aparte para que Diego sepa qué hacer.
+      setErrorGuardar(
+        esErrorSesion(r.error)
+          ? "Tu sesión venció. Vuelve a iniciar sesión y guarda de nuevo — no se pierde lo que escribiste aquí."
+          : `No se pudo guardar la categoría: ${r.error}`
+      );
+      return;
+    }
     navigate("/accesos/perfiles");
   };
 
@@ -180,10 +199,16 @@ export default function PerfilEditor() {
               </>
             )}
             <Button variant="ghost" onClick={() => navigate("/accesos/perfiles")}>Cancelar</Button>
-            <Button onClick={guardar} disabled={!valido}><Save size={14} /> Guardar versión</Button>
+            <Button onClick={guardar} disabled={!valido || guardando}><Save size={14} /> {guardando ? "Guardando…" : "Guardar versión"}</Button>
           </>
         }
       />
+
+      {errorGuardar && (
+        <div className="mb-5">
+          <Note tone="alerta">{errorGuardar}</Note>
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <div className="space-y-5">

@@ -204,11 +204,21 @@ export function AppProvider({ children }) {
   // Cada acción: actualización optimista local + RPC en el backend (la lógica
   // de negocio vive en Postgres) + recarga de las vistas afectadas.
   const local = (clave, fn) => setDb((d) => ({ ...d, [clave]: fn(d[clave]) }));
+  // Un token de sesión vencido viaja caduco al proxy, que lo pone como
+  // Authorization; PostgREST lo rechaza con 401 (JWT expired / PGRST301) aunque
+  // la apikey esté. Antes esto se tragaba a consola y el guardado "desaparecía"
+  // al refrescar. Se detecta por el mensaje para refrescar y reintentar.
+  const esErrorSesion = (msg) => /jwt|expired|PGRST301|invalid (api key|claim)|\b401\b/i.test(msg ?? "");
   const rpc = async (nombre, args, ...refrescar) => {
-    if (!supabaseListo) return;
-    const { error } = await supabase.rpc(nombre, args);
+    if (!supabaseListo) return { error: null };
+    let { error } = await supabase.rpc(nombre, args);
+    if (error && esErrorSesion(error.message)) {
+      const { error: eRefresh } = await supabase.auth.refreshSession();
+      if (!eRefresh) ({ error } = await supabase.rpc(nombre, args));
+    }
     if (error) console.error(`RPC ${nombre}:`, error.message);
     await recargar(...refrescar);
+    return { error: error?.message ?? null };
   };
 
   const acciones = {
@@ -309,15 +319,22 @@ export function AppProvider({ children }) {
       }
     },
     // ---- Accesos y Roles ----
-    guardarPerfil: (perfil) => {
-      const previa = db.perfiles.find((p) => p.id === perfil.id);
-      const version = (previa?.version ?? 0) + 1;
-      const ahora = new Date().toISOString().slice(0, 16).replace("T", " ");
+    // Devuelve { error } para que el editor confirme el guardado ANTES de
+    // navegar: sin esto, un 401 por sesión vencida se tragaba y la categoría
+    // "aparecía y desaparecía al refrescar" (el update optimista sin respaldo
+    // en BD). En modo local/demo sí se actualiza en memoria.
+    guardarPerfil: async (perfil) => {
       const autor = user?.nombre ?? "BackOffice";
-      const fila = { ...perfil, version, estado: "activo", usuarios: previa?.usuarios ?? 0, modificado: ahora, modificadoPor: autor };
-      local("perfiles", (xs) => [fila, ...xs.filter((p) => p.id !== perfil.id)]);
-      local("perfilVersiones", (xs) => [{ perfilId: perfil.id, version, nombre: perfil.nombre, esSuperadmin: perfil.esSuperadmin, matriz: perfil.matriz, creado: ahora, por: autor }, ...xs]);
-      rpc("guardar_perfil", {
+      if (!supabaseListo) {
+        const previa = db.perfiles.find((p) => p.id === perfil.id);
+        const version = (previa?.version ?? 0) + 1;
+        const ahora = new Date().toISOString().slice(0, 16).replace("T", " ");
+        const fila = { ...perfil, version, estado: "activo", usuarios: previa?.usuarios ?? 0, modificado: ahora, modificadoPor: autor };
+        local("perfiles", (xs) => [fila, ...xs.filter((p) => p.id !== perfil.id)]);
+        local("perfilVersiones", (xs) => [{ perfilId: perfil.id, version, nombre: perfil.nombre, esSuperadmin: perfil.esSuperadmin, matriz: perfil.matriz, creado: ahora, por: autor }, ...xs]);
+        return { error: null };
+      }
+      return rpc("guardar_perfil", {
         p_id: perfil.id, p_nombre: perfil.nombre, p_descripcion: perfil.descripcion,
         p_superadmin: perfil.esSuperadmin, p_ver_remuneracion: perfil.verRemuneracion,
         p_ver_documentos: perfil.verDocumentosTerceros, p_exportar: perfil.exportarDatosPersonales,
