@@ -128,14 +128,6 @@ export default function MisDatos() {
 
       <ReglamentoInterno />
 
-      <Tarjeta>
-        <div className="text-[13px] font-semibold text-tinta">Cuenta de haberes</div>
-        <div className="mt-1 text-[14px] text-gris">{datos.banco ?? "—"} · <span className="font-mono">{datos.cuentaEnmascarada ?? "—"}</span></div>
-        <p className="mt-2 text-[12px] leading-snug text-gris-cl">
-          Es la cuenta donde recibes tu pago. Cualquier cambio lo gestiona Recursos Humanos directamente.
-        </p>
-      </Tarjeta>
-
       <Boton variante="secundario" type="button" onClick={salir}>
         <span className="inline-flex items-center gap-2"><LogOut size={16} /> Cerrar sesión</span>
       </Boton>
