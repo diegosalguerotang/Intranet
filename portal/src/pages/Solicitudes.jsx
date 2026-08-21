@@ -148,7 +148,6 @@ function FormVacacionesPortal({ inicial = {}, onEnviar, onCancelar, texto = "Env
   const [f, setF] = useState({
     tipo_goce: inicial.tipo_goce ?? "Efectivas / Gozadas", desde: inicial.desde ?? "", hasta: inicial.hasta ?? "",
     dias_gozados: inicial.dias_gozados ?? "", dias_trabajados: inicial.dias_trabajados ?? "",
-    periodo: inicial.periodo ?? "", horario: inicial.horario ?? "",
   });
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
@@ -205,16 +204,6 @@ function FormVacacionesPortal({ inicial = {}, onEnviar, onCancelar, texto = "Env
         <div>
           <label className="mb-1 block text-[12.5px] font-semibold text-gris">Días trabajados</label>
           <input inputMode="numeric" className={cajaCls} value={f.dias_trabajados} onChange={set("dias_trabajados")} />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="mb-1 block text-[12.5px] font-semibold text-gris">Periodo</label>
-          <input className={cajaCls} value={f.periodo} onChange={set("periodo")} placeholder="2025-2026" />
-        </div>
-        <div>
-          <label className="mb-1 block text-[12.5px] font-semibold text-gris">Horario</label>
-          <input className={cajaCls} value={f.horario} onChange={set("horario")} placeholder="L-V 8:00-17:00" />
         </div>
       </div>
       {error && <Nota tono="alerta">{error}</Nota>}
