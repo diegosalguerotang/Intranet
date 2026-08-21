@@ -37,7 +37,6 @@ export default function PrimerIngreso() {
   const [verClave, setVerClave] = useState(false);
   const [verClave2, setVerClave2] = useState(false);
   const [celular, setCelular] = useState("");
-  const [sinCelular, setSinCelular] = useState(false);
   const [correo, setCorreo] = useState("");
   const [acepta, setAcepta] = useState(false);
   const [politica, setPolitica] = useState(null); // { version, texto }
@@ -53,7 +52,8 @@ export default function PrimerIngreso() {
     e.preventDefault();
     if (clave.length < 6) return setError("Tu clave nueva debe tener al menos 6 caracteres.");
     if (clave !== clave2) return setError("Las claves no coinciden.");
-    if (!sinCelular && !/^[0-9]{9}$/.test(celular)) return setError("El celular tiene 9 dígitos, o marca «No tengo celular».");
+    if (!/^[0-9]{9}$/.test(celular)) return setError("El celular es obligatorio: 9 dígitos.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo.trim())) return setError("El correo es obligatorio y debe ser válido.");
     if (!acepta) return setError("Para continuar debes aceptar la política de datos personales.");
     setError(null);
     setCargando(true);
@@ -66,10 +66,10 @@ export default function PrimerIngreso() {
         return;
       }
       const rRpc = await rpc("portal_primer_ingreso", {
-        p_celular: sinCelular ? null : celular,
-        p_sin_celular: sinCelular,
+        p_celular: celular,
+        p_sin_celular: false,
         p_politica_version: politica?.version ?? 1,
-        p_correo: correo.trim() || null,
+        p_correo: correo.trim(),
       });
       if (rRpc.error) { setError(rRpc.error.message); return; }
       // Si declaró correo, se dispara el enlace de verificación (mejor
@@ -124,23 +124,13 @@ export default function PrimerIngreso() {
           </p>
           <input
             type="text" inputMode="numeric" maxLength={9} placeholder="9 dígitos"
-            value={celular} disabled={sinCelular}
+            value={celular}
             onInput={(e) => setCelular(e.currentTarget.value.replace(/\D/g, ""))}
-            className="w-full rounded-caja border border-borde-f px-4 py-3 text-[16px] disabled:bg-papel disabled:text-gris-cl focus:border-petroleo focus:outline-none"
+            className="w-full rounded-caja border border-borde-f px-4 py-3 text-[16px] focus:border-petroleo focus:outline-none"
           />
-          <label className="mt-3 flex cursor-pointer items-center gap-2 text-[13.5px] text-gris">
-            <input type="checkbox" className="accent-petroleo" checked={sinCelular}
-                   onChange={(e) => { setSinCelular(e.currentTarget.checked); if (e.currentTarget.checked) setCelular(""); }} />
-            No tengo celular
-          </label>
-          {sinCelular && (
-            <div className="mt-2">
-              <Nota tono="pend">Sin celular no recibirás avisos; tu supervisor podrá ayudarte con las confirmaciones.</Nota>
-            </div>
-          )}
 
           <div className="mt-4 border-t border-borde pt-4">
-            <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu correo (opcional)</span>
+            <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu correo</span>
             <p className="mb-2 text-[12px] leading-snug text-gris-cl">
               Con un correo confirmado podrás recuperar tu clave tú mismo si la olvidas.
             </p>
