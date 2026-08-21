@@ -59,8 +59,6 @@ export default function MisDatos() {
   const [aviso, setAviso] = useState(null);
   const [error, setError] = useState(null);
   const [ocupado, setOcupado] = useState(false);
-  const [solicitud, setSolicitud] = useState(false);
-  const [motivo, setMotivo] = useState("");
 
   const cargar = async () => {
     const { data } = await vista("v_portal_datos", "select=*&limit=1");
@@ -83,19 +81,6 @@ export default function MisDatos() {
     setOcupado(false);
     if (r.error) return setError(r.error.message);
     setAviso("Tus datos quedaron guardados.");
-    await cargar();
-  };
-
-  const enviarSolicitud = async () => {
-    if (motivo.trim().length < 5) return setError("Cuéntanos brevemente el motivo del cambio.");
-    setError(null);
-    setOcupado(true);
-    const r = await rpc("portal_solicitar_cambio_cuenta", { p_motivo: motivo });
-    setOcupado(false);
-    setSolicitud(false);
-    setMotivo("");
-    if (r.error) return setError(r.error.message);
-    setAviso("Tu solicitud fue enviada. Recursos Humanos verificará tu identidad antes del cambio.");
     await cargar();
   };
 
@@ -147,40 +132,13 @@ export default function MisDatos() {
         <div className="text-[13px] font-semibold text-tinta">Cuenta de haberes</div>
         <div className="mt-1 text-[14px] text-gris">{datos.banco ?? "—"} · <span className="font-mono">{datos.cuentaEnmascarada ?? "—"}</span></div>
         <p className="mt-2 text-[12px] leading-snug text-gris-cl">
-          Por tu seguridad, la cuenta donde recibes tu pago solo se cambia con verificación de identidad por
-          Recursos Humanos.
+          Es la cuenta donde recibes tu pago. Cualquier cambio lo gestiona Recursos Humanos directamente.
         </p>
-        {datos.solicitudPendiente ? (
-          <div className="mt-3"><Nota tono="pend">Tienes una solicitud de cambio en revisión.</Nota></div>
-        ) : !soloLectura && (
-          <div className="mt-3">
-            <Boton variante="secundario" type="button" onClick={() => setSolicitud(true)}>Solicitar cambio de cuenta</Boton>
-          </div>
-        )}
       </Tarjeta>
 
       <Boton variante="secundario" type="button" onClick={salir}>
         <span className="inline-flex items-center gap-2"><LogOut size={16} /> Cerrar sesión</span>
       </Boton>
-
-      {solicitud && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-tinta/60" onClick={() => setSolicitud(false)}>
-          <div className="animar-aparicion w-full max-w-md rounded-t-[16px] bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-[16px] font-bold text-tinta">Solicitar cambio de cuenta</h2>
-            <p className="mt-1 text-[12.5px] text-gris-cl">Recursos Humanos te contactará para verificar tu identidad.</p>
-            <textarea
-              value={motivo}
-              onInput={(e) => setMotivo(e.currentTarget.value)}
-              placeholder="Ej.: cambié de banco, mi cuenta anterior está cerrada…"
-              className="mt-3 min-h-24 w-full rounded-caja border border-borde-f px-4 py-3 text-[14px] focus:border-petroleo focus:outline-none"
-            />
-            <div className="mt-3 space-y-2">
-              <Boton onClick={enviarSolicitud} disabled={ocupado}>{ocupado ? "Enviando…" : "Enviar solicitud"}</Boton>
-              <Boton variante="secundario" type="button" onClick={() => setSolicitud(false)}>Cancelar</Boton>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
