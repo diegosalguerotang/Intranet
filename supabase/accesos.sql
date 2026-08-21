@@ -61,14 +61,14 @@ create table perfil_permisos (
   perfil_version integer not null,
   modulo         text not null check (modulo in
     ('personal','boletas','acuses','comunicados','memorandums','contratos',
-     'tardanzas','activos','accesos','auditoria','configuracion')),
+     'tardanzas','activos','soporte','solicitudes','accesos','auditoria','configuracion')),
   nivel          integer not null check (nivel between 0 and 3),
   primary key (perfil_id, perfil_version, modulo),
   foreign key (perfil_id, perfil_version) references perfiles (id, version),
   -- El nivel 3 solo existe donde hay algo que aprobar.
   constraint nivel_3_solo_con_aprobacion check (
     nivel < 3 or modulo in ('personal','boletas','comunicados','memorandums',
-                            'contratos','activos','accesos','configuracion'))
+                            'contratos','activos','soporte','solicitudes','accesos','configuracion'))
 );
 
 -- Invariante: un perfil superadmin NO lleva matriz (nadie debe leerla nunca).
