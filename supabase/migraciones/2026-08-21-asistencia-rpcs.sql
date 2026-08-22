@@ -26,6 +26,9 @@ begin
   end if;
 
   drop table if exists tmp_asist; drop table if exists tmp_doc;
+  -- with ordinality: conserva el orden del archivo (ord) para poder decidir
+  -- después, ante una colisión de mismo canónico+fecha, cuál fila es "la
+  -- última" sin depender de ON CONFLICT (ver INSERT más abajo).
   create temp table tmp_asist on commit drop as
   select trim(x->>'codigo')                as codigo,
          ltrim(trim(x->>'codigo'), '0')    as canonico,
@@ -33,8 +36,9 @@ begin
          nullif(trim(coalesce(x->>'m1','')), '') as m1,
          nullif(trim(coalesce(x->>'m2','')), '') as m2,
          nullif(trim(coalesce(x->>'m3','')), '') as m3,
-         nullif(trim(coalesce(x->>'m4','')), '') as m4
-  from jsonb_array_elements(p_registros) x;
+         nullif(trim(coalesce(x->>'m4','')), '') as m4,
+         ord
+  from jsonb_array_elements(p_registros) with ordinality as t(x, ord);
 
   select min(fecha), max(fecha), count(*)::int into v_desde, v_hasta, v_filas from tmp_asist;
   -- Defensa del servidor: el parser ya descartó los días futuros en el cliente.
@@ -70,15 +74,22 @@ begin
   -- Reemplazo por rango: lo que había de esa empresa en el periodo se va.
   delete from marcaciones where empresa_id = p_empresa and fecha between v_desde and v_hasta;
 
-  -- Tras el delete solo puede chocar el caso de dos códigos del archivo que
-  -- resuelven a la misma persona y fecha (p. ej. 9972665 y 09972665): la
-  -- última fila manda, no revienta.
+  -- Si dos códigos del archivo resuelven a la misma persona y fecha (p. ej.
+  -- 9972665 y 09972665), no se puede usar ON CONFLICT DO UPDATE: dentro de
+  -- un mismo INSERT, Postgres no permite que la cláusula afecte la misma
+  -- fila dos veces ("ON CONFLICT DO UPDATE command cannot affect row a
+  -- second time") y como el DELETE por rango ya barrió lo previo, ese es el
+  -- único caso en que se podría disparar. Se resuelve antes del INSERT:
+  -- nos quedamos con la fila de mayor `ord` (la última del archivo) por
+  -- (documento, fecha) — "la última fila manda", sin depender de conflicto.
   insert into marcaciones (empresa_id, documento, fecha, m1, m2, m3, m4, lote_id)
-  select p_empresa, coalesce(d.dni, t.canonico), t.fecha, t.m1, t.m2, t.m3, t.m4, v_lote
-  from tmp_asist t left join tmp_doc d using (canonico)
-  on conflict (empresa_id, documento, fecha) do update
-    set m1 = excluded.m1, m2 = excluded.m2, m3 = excluded.m3, m4 = excluded.m4,
-        lote_id = excluded.lote_id;
+  select p_empresa, dedup.documento, dedup.fecha, dedup.m1, dedup.m2, dedup.m3, dedup.m4, v_lote
+  from (
+    select distinct on (coalesce(d.dni, t.canonico), t.fecha)
+           coalesce(d.dni, t.canonico) as documento, t.fecha, t.m1, t.m2, t.m3, t.m4
+    from tmp_asist t left join tmp_doc d using (canonico)
+    order by coalesce(d.dni, t.canonico), t.fecha, t.ord desc
+  ) dedup;
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('IMPORTAR_ASISTENCIA', 'marcaciones', null,
