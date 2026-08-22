@@ -62,7 +62,7 @@ create table perfil_permisos (
   perfil_version integer not null,
   modulo         text not null check (modulo in
     ('personal','boletas','acuses','comunicados','memorandums','contratos',
-     'tardanzas','activos','soporte','solicitudes','accesos','auditoria','configuracion')),
+     'tardanzas','asistencia','activos','soporte','solicitudes','accesos','auditoria','configuracion')),
   nivel          integer not null check (nivel between 0 and 3),
   primary key (perfil_id, perfil_version, modulo),
   foreign key (perfil_id, perfil_version) references perfiles (id, version),
@@ -160,7 +160,8 @@ create table politica_acceso (
   -- Longitud mínima DIFERENCIADA (Cierre de Acceso v1.0): el operario tipea
   -- en celulares de gama baja; el usuario administrativo no tiene esa excusa.
   clave_longitud_min_portal     int not null default 6  check (clave_longitud_min_portal >= 6),
-  clave_longitud_min_backoffice int not null default 12 check (clave_longitud_min_backoffice >= 12),
+  clave_longitud_min_backoffice int not null default 6
+    constraint chk_clave_min_backoffice check (clave_longitud_min_backoffice >= 6),
   clave_provisional_dias  int not null default 7 check (clave_provisional_dias > 0),
   actualizado_por text,
   actualizado_en  timestamptz

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
 import { supabase } from "../lib/supabase";
+import { validarClave } from "../lib/campos";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 
 // Campo de clave con ojito de mostrar/ocultar (mismo patrón del login).
@@ -26,7 +27,7 @@ function CampoClave({ ver, setVer, ...props }) {
 // Así, ni siquiera quien configuró el despliegue conserva la clave operativa.
 export default function CambioClave() {
   const { user, db, claveCambiada } = useApp();
-  const minimo = Math.max(12, db.politica[0]?.claveLongitudMinBackoffice ?? 12);
+  const minimo = Math.max(6, db.politica[0]?.claveLongitudMinBackoffice ?? 6);
   const [clave, setClave] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [ver, setVer] = useState(false);
@@ -36,7 +37,8 @@ export default function CambioClave() {
 
   const guardar = async (e) => {
     e.preventDefault();
-    if (clave.length < minimo) return setError(`La clave nueva debe tener al menos ${minimo} caracteres.`);
+    const errClave = validarClave(clave, minimo);
+    if (errClave) return setError(errClave);
     if (clave !== confirmar) return setError("Las claves no coinciden.");
     setError(null);
     setCargando(true);
@@ -62,7 +64,7 @@ export default function CambioClave() {
           </p>
         </div>
         <form onSubmit={guardar} className="space-y-4">
-          <Field label="Clave nueva" required hint={`Mínimo ${minimo} caracteres. No se guarda en texto plano en ningún entorno.`}>
+          <Field label="Clave nueva" required hint={`Mínimo ${minimo} caracteres, con al menos un número y una letra. No se guarda en texto plano en ningún entorno.`}>
             <CampoClave ver={ver} setVer={setVer} autoComplete="new-password" autoFocus value={clave} onChange={(e) => setClave(e.target.value)} />
           </Field>
           <Field label="Confirmar clave nueva" required>

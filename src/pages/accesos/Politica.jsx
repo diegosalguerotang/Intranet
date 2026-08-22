@@ -7,7 +7,7 @@ const RECOMENDADOS = {
   sesionBackofficeHoras: 8, sesionPortalDias: 30,
   multisesionBackoffice: false, multisesionPortal: true,
   intentosBloqueo: 5, bloqueoMinutos: 15,
-  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 12,
+  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 6,
   claveProvisionalDias: 7,
 };
 
@@ -102,9 +102,9 @@ export default function Politica() {
               <Input type="number" min={6} value={p.claveLongitudMinPortal}
                 onChange={(e) => set("claveLongitudMinPortal", Math.max(6, Number(e.target.value) || 6))} />
             </Field>
-            <Field label="Clave mínima — BackOffice" hint="No menor de 12.">
-              <Input type="number" min={12} value={p.claveLongitudMinBackoffice}
-                onChange={(e) => set("claveLongitudMinBackoffice", Math.max(12, Number(e.target.value) || 12))} />
+            <Field label="Clave mínima — BackOffice" hint="No menor de 6. La clave exige además un número y una letra.">
+              <Input type="number" min={6} value={p.claveLongitudMinBackoffice}
+                onChange={(e) => set("claveLongitudMinBackoffice", Math.max(6, Number(e.target.value) || 6))} />
             </Field>
           </div>
         </Card>

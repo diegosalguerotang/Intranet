@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 import { supabase } from "../lib/supabase";
+import { validarClave } from "../lib/campos";
 
 // Aterrizaje de los enlaces de acceso del BackOffice. Dos modos:
 //  · Correo NATIVO de Supabase (invitación al crear el usuario, o
@@ -50,7 +51,8 @@ export default function RestablecerAdmin() {
 
   const guardar = async (e) => {
     e.preventDefault();
-    if (clave.length < 12) return setError("La clave nueva debe tener al menos 12 caracteres.");
+    const errClave = validarClave(clave, 6);
+    if (errClave) return setError(errClave);
     if (clave !== confirmar) return setError("Las claves no coinciden.");
     setError(null);
     setCargando(true);
@@ -110,7 +112,7 @@ export default function RestablecerAdmin() {
           </Note>
         ) : (
           <form onSubmit={guardar} className="space-y-4">
-            <Field label="Clave nueva" required hint="Mínimo 12 caracteres.">
+            <Field label="Clave nueva" required hint="Mínimo 6 caracteres, con al menos un número y una letra.">
               <CampoClave ver={ver1} setVer={setVer1} autoComplete="new-password" autoFocus
                           value={clave} onChange={(e) => setClave(e.target.value)} />
             </Field>

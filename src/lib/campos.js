@@ -13,3 +13,14 @@ export function normalizarCelular(valor) {
   if (d.length > 9 && d.startsWith("51")) d = d.slice(2);
   return d.slice(0, 9);
 }
+
+// Validación de clave del BackOffice (decisión de Diego 2026-08-21): mínimo 6
+// caracteres, con al menos un número y al menos una letra. Devuelve el mensaje
+// de error o null si es válida.
+export function validarClave(clave, minimo = 6) {
+  const c = String(clave ?? "");
+  if (c.length < minimo) return `La clave debe tener al menos ${minimo} caracteres.`;
+  if (!/[0-9]/.test(c)) return "La clave debe incluir al menos un número.";
+  if (!/[a-zA-Z]/.test(c)) return "La clave debe incluir al menos una letra.";
+  return null;
+}
