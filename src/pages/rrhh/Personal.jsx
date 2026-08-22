@@ -67,8 +67,8 @@ export default function Personal() {
   return (
     <>
       <PageHeader
-        code="RRH-02 · Maestro de personal"
-        title="Personal"
+        code="RRH-02 · Maestro de planilla"
+        title="Planilla"
         subtitle="Consulta y administra la dotación, y detecta quién no está usando el portal."
         actions={
           <>

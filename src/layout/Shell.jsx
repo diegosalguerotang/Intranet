@@ -14,7 +14,7 @@ import CambioClave from "../pages/CambioClave";
 // usuario concede (enforcement de Accesos v2; el guard de ruta lo respalda).
 const NAV_RRHH = [
   { to: "/rrhh", icon: LayoutDashboard, label: "Tablero", code: "RRH-01", end: true, modulo: MODULOS_RRHH },
-  { to: "/rrhh/personal", icon: Users, label: "Personal", code: "RRH-02", modulo: "personal" },
+  { to: "/rrhh/personal", icon: Users, label: "Planilla", code: "RRH-02", modulo: "personal" },
   { to: "/rrhh/sedes", icon: MapPin, label: "Sedes", code: "RRH-21", modulo: "personal" },
   { to: "/rrhh/boletas", icon: FileText, label: "Carga de boletas", code: "RRH-06", modulo: "boletas" },
   { to: "/rrhh/acuses", icon: CheckSquare, label: "Acuses", code: "RRH-11", modulo: "acuses" },
