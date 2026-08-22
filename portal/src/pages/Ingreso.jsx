@@ -131,7 +131,7 @@ export default function Ingreso() {
 
         {error && <div className="mb-4"><Nota tono="alerta">{error}</Nota></div>}
 
-        <Boton type="submit" disabled={cargando || dni.length !== 8 || !clave}>
+        <Boton type="submit" disabled={cargando || !TIPOS_DOC[tipoDoc].regex.test(dni) || !clave}>
           {cargando ? "Verificando…" : "Entrar"}
         </Boton>
 
