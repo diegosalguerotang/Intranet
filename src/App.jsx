@@ -15,6 +15,7 @@ import Comunicados from "./pages/rrhh/Comunicados";
 import Memorandums from "./pages/rrhh/Memorandums";
 import Contratos from "./pages/rrhh/Contratos";
 import Tardanzas from "./pages/rrhh/Tardanzas";
+import Asistencia from "./pages/rrhh/Asistencia";
 import Inventario from "./pages/admin/Inventario";
 import Lineas from "./pages/admin/Lineas";
 import Tickets from "./pages/soporte/Tickets";
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/rrhh/memorandums" element={<RequiereModulo modulo="memorandums"><Memorandums /></RequiereModulo>} />
             <Route path="/rrhh/contratos" element={<RequiereModulo modulo="contratos"><Contratos /></RequiereModulo>} />
             <Route path="/rrhh/tardanzas" element={<RequiereModulo modulo="tardanzas"><Tardanzas /></RequiereModulo>} />
+            <Route path="/rrhh/asistencia" element={<RequiereModulo modulo="asistencia"><Asistencia /></RequiereModulo>} />
             <Route path="/admin/activos" element={<RequiereModulo modulo="activos"><Inventario /></RequiereModulo>} />
             <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
             <Route path="/soporte/tickets" element={<RequiereModulo modulo="soporte"><Tickets /></RequiereModulo>} />

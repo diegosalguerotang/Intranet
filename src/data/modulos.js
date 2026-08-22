@@ -33,6 +33,10 @@ export const MODULOS = [
     ver: "consultar el consolidado del periodo",
     accionar: "importar marcaciones",
     aprobar: null },
+  { id: "asistencia", nombre: "Asistencia", aprobacion: false,
+    ver: "consultar las marcaciones importadas y los lotes",
+    accionar: "importar el reporte de marcaciones del reloj",
+    aprobar: null },
   { id: "activos", nombre: "Activos y equipos", aprobacion: true,
     ver: "consultar el inventario y el costeo",
     accionar: "dar de alta, asignar, registrar devoluciones y entregas de EPP",
@@ -64,7 +68,7 @@ export const MODULOS = [
 // lea igual que navegar. `configuracion` no está en el menú → va en «Sistema».
 export const GRUPOS_MODULOS = [
   { titulo: "Accesos y Roles", modulos: ["accesos", "auditoria"] },
-  { titulo: "Recursos Humanos", modulos: ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas"] },
+  { titulo: "Recursos Humanos", modulos: ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas", "asistencia"] },
   { titulo: "Solicitudes", modulos: ["solicitudes"] },
   { titulo: "Gestión de TI", modulos: ["activos"] },
   { titulo: "Soporte", modulos: ["soporte"] },
@@ -81,7 +85,7 @@ export function nivelDe(acceso, modulo) {
   return Math.max(0, ...mods.map((m) => acceso.matriz?.[m] ?? 0));
 }
 
-export const MODULOS_RRHH = ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas"];
+export const MODULOS_RRHH = ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas", "asistencia"];
 
 // Orden canónico de aterrizaje: la primera ruta con nivel >= 1 es el inicio.
 export const RUTAS_ORDENADAS = [

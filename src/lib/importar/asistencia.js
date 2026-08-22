@@ -25,6 +25,26 @@ const aMinutos = (hhmm) => {
 // manda; DNI de 7→8 y CE de 9 se resuelven igual). "0" no desaparece del todo.
 export const sinCeros = (cod) => String(cod ?? "").trim().replace(/^0+(?=\d)/, "");
 
+// Anomalías calculables desde la secuencia de marcas (se reusa en la consulta
+// diaria de la pantalla; "hueco" no va aquí: necesita las posiciones crudas).
+export function anomaliasDeMarcas(marcas, umbralDobleMin = 15) {
+  const anomalias = [];
+  if (marcas.length % 2 === 1) anomalias.push("incompleto");
+  const mins = marcas.map(aMinutos);
+  for (let k = 1; k < mins.length; k++) {
+    if (mins[k] != null && mins[k - 1] != null && mins[k] - mins[k - 1] < umbralDobleMin && mins[k] - mins[k - 1] >= 0) {
+      anomalias.push("doble"); break;
+    }
+  }
+  for (let k = 1; k < mins.length; k++) {
+    if (mins[k] != null && mins[k - 1] != null && mins[k] < mins[k - 1]) { anomalias.push("invertido"); break; }
+  }
+  if (marcas.length === 2 && mins[0] != null && mins[1] != null && mins[1] - mins[0] >= 12 * 60) {
+    anomalias.push("sin_refrigerio");
+  }
+  return anomalias;
+}
+
 // Analiza las filas ya leídas (función pura, testeable sin BD).
 export function analizarAsistencia(filas, { umbralDobleMin = 15, hoy } = {}) {
   if (!Array.isArray(filas) || filas.length < 2) {
@@ -53,25 +73,9 @@ export function analizarAsistencia(filas, { umbralDobleMin = 15, hoy } = {}) {
     const primerVacio = presentes.indexOf(false);
     const hueco = primerVacio !== -1 && presentes.slice(primerVacio).some((p) => p);
     const marcas = crudas.filter((c) => c !== "");
-    const anomalias = [];
     const nMarcas = marcas.length;
-    if (hueco) anomalias.push("hueco");
-    if (nMarcas % 2 === 1) anomalias.push("incompleto");
-    // Doble marcación: dos consecutivas separadas por menos del umbral.
-    const mins = marcas.map(aMinutos);
-    for (let k = 1; k < mins.length; k++) {
-      if (mins[k] != null && mins[k - 1] != null && mins[k] - mins[k - 1] < umbralDobleMin && mins[k] - mins[k - 1] >= 0) {
-        anomalias.push("doble"); break;
-      }
-    }
-    // Salida anterior a entrada: orden invertido en la secuencia.
-    for (let k = 1; k < mins.length; k++) {
-      if (mins[k] != null && mins[k - 1] != null && mins[k] < mins[k - 1]) { anomalias.push("invertido"); break; }
-    }
-    // Jornada sin refrigerio: un solo par que abarca 12 h o más.
-    if (nMarcas === 2 && mins[0] != null && mins[1] != null && mins[1] - mins[0] >= 12 * 60) {
-      anomalias.push("sin_refrigerio");
-    }
+    const anomalias = hueco ? ["hueco"] : [];
+    anomalias.push(...anomaliasDeMarcas(marcas, umbralDobleMin));
     registros.push({ codigo, codigoCanonico: sinCeros(codigo), fecha, marcas, nMarcas, anomalias, futura: fecha > hoyISO });
   }
 

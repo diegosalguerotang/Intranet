@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
-  Inbox, BellRing, BarChart3, ChevronDown, ClipboardPen,
+  Inbox, BellRing, BarChart3, ChevronDown, ClipboardPen, CalendarClock,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -22,6 +22,7 @@ const NAV_RRHH = [
   { to: "/rrhh/memorandums", icon: AlertTriangle, label: "Memorándums", code: "RRH-18", modulo: "memorandums" },
   { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14", modulo: "contratos" },
   { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas" },
+  { to: "/rrhh/asistencia", icon: CalendarClock, label: "Asistencia", code: "RRH-22", modulo: "asistencia" },
 ];
 
 // Costo por sede (ADQ-07) retirado a pedido de Diego (2026-08-17): no sirve

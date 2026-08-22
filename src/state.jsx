@@ -16,6 +16,8 @@ const FUENTES = {
   comunicados: "v_comunicados",
   memorandums: "v_memorandums",
   tardanzas: "tardanzas",
+  asistenciaLotes: "v_asistencia_lotes",
+  asistenciaConfig: "asistencia_config",
   plantillas: "plantillas",
   contratos: "v_contratos",
   activos: "v_activos",
@@ -47,6 +49,8 @@ const LOCAL = {
   comunicados: MOCK.COMUNICADOS,
   memorandums: MOCK.MEMORANDUMS,
   tardanzas: MOCK.TARDANZAS,
+  asistenciaLotes: [],  // asistencia: solo existe con conexión real
+  asistenciaConfig: [],
   plantillas: MOCK.PLANTILLAS,
   contratos: MOCK.CONTRATOS,
   activos: MOCK.ACTIVOS,
@@ -698,6 +702,36 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("activos");
       return data;
+    },
+    // RRH-22 — Importación de asistencias (#8). Vista previa PV999; la
+    // importación reemplaza el rango completo (idempotente). La consulta de
+    // marcaciones NO va por FUENTES: se pide por empresa+fecha bajo demanda
+    // (la tabla crece por día y una recarga completa truncaría en 1000 filas).
+    previsualizarAsistencia: async (empresaIdArg, registros, archivo, resumen) => {
+      if (!supabaseListo) throw new Error("La importación de asistencia requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("previsualizar_asistencia", {
+        p_empresa: empresaIdArg, p_registros: registros, p_archivo: archivo, p_resumen: resumen,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    importarAsistencia: async (empresaIdArg, registros, archivo, resumen) => {
+      if (!supabaseListo) throw new Error("La importación de asistencia requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_asistencia", {
+        p_empresa: empresaIdArg, p_registros: registros, p_archivo: archivo,
+        p_resumen: resumen, p_por: user?.nombre ?? user?.correo ?? "Administración",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("asistenciaLotes");
+      return data;
+    },
+    cargarMarcaciones: async (empresaIdArg, fecha) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_marcaciones").select("*")
+        .eq("empresa", empresaIdArg).eq("fecha", fecha)
+        .order("reconocido", { ascending: false }).order("nombre");
+      if (error) throw new Error(error.message);
+      return data ?? [];
     },
     // RRH-06→10 — Carga real de boletas desde PDF consolidado (Task 14). El
     // análisis/división/hash/subida a Storage ocurren en la pantalla (Boletas.jsx,
