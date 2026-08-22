@@ -59,6 +59,18 @@ export const MODULOS = [
     aprobar: "editar los parámetros del motor de acuses y la política de retención" },
 ];
 
+// Agrupación de módulos para la matriz del constructor de categorías: refleja
+// las secciones del menú lateral (Shell.jsx) para que crear una categoría se
+// lea igual que navegar. `configuracion` no está en el menú → va en «Sistema».
+export const GRUPOS_MODULOS = [
+  { titulo: "Accesos y Roles", modulos: ["accesos", "auditoria"] },
+  { titulo: "Recursos Humanos", modulos: ["personal", "boletas", "acuses", "comunicados", "memorandums", "contratos", "tardanzas"] },
+  { titulo: "Solicitudes", modulos: ["solicitudes"] },
+  { titulo: "Gestión de TI", modulos: ["activos"] },
+  { titulo: "Soporte", modulos: ["soporte"] },
+  { titulo: "Sistema", modulos: ["configuracion"] },
+];
+
 // ---- Enforcement en la app (Accesos v2) ------------------------------------
 // Nivel efectivo del usuario en un módulo (o el mayor de una lista de
 // módulos). El superadmin siempre es 3; sin acceso cargado, 0.

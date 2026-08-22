@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Save, Copy, History, ShieldCheck } from "lucide-react";
 import { useApp } from "../../state";
 import { PageHeader, Card, Button, Field, Input, Textarea, Select, Badge, Modal, Note, EmptyState } from "../../components/ui";
-import { MODULOS, NIVELES, CASILLAS } from "../../data/modulos";
+import { MODULOS, NIVELES, CASILLAS, GRUPOS_MODULOS } from "../../data/modulos";
 
 const slug = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -266,24 +266,39 @@ export default function PerfilEditor() {
                   </select>
                 </div>
               </div>
-              <div className="divide-y divide-borde">
-                {MODULOS.map((m) => (
-                  <div key={m.id} className="flex items-center gap-4 px-5 py-2.5">
-                    <div className="flex-1">
-                      <div className="text-[13px] font-semibold text-tinta">{m.nombre}</div>
-                      <div className="text-[11px] leading-snug text-gris-cl">Solo ver: {m.ver}</div>
+              <div>
+                {GRUPOS_MODULOS.map((g) => {
+                  // Cada grupo refleja una sección del menú lateral; solo se
+                  // dibuja si tiene módulos conocidos.
+                  const mods = g.modulos.map((id) => MODULOS.find((m) => m.id === id)).filter(Boolean);
+                  if (!mods.length) return null;
+                  return (
+                    <div key={g.titulo}>
+                      <div className="border-b border-borde bg-papel/60 px-5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-gris-cl">
+                        {g.titulo}
+                      </div>
+                      <div className="divide-y divide-borde">
+                        {mods.map((m) => (
+                          <div key={m.id} className="flex items-center gap-4 px-5 py-2.5">
+                            <div className="flex-1">
+                              <div className="text-[13px] font-semibold text-tinta">{m.nombre}</div>
+                              <div className="text-[11px] leading-snug text-gris-cl">Solo ver: {m.ver}</div>
+                            </div>
+                            <select
+                              className="w-[210px] rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[12.5px] text-gris focus:border-petroleo focus:outline-none"
+                              value={matriz[m.id]}
+                              onChange={(e) => setMatriz((mx) => ({ ...mx, [m.id]: Number(e.target.value) }))}
+                            >
+                              {NIVELES.slice(0, m.aprobacion ? 4 : 3).map((n, i) => (
+                                <option key={i} value={i}>{i} · {n}</option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <select
-                      className="w-[210px] rounded-caja border border-borde-f bg-white px-2.5 py-1.5 text-[12.5px] text-gris focus:border-petroleo focus:outline-none"
-                      value={matriz[m.id]}
-                      onChange={(e) => setMatriz((mx) => ({ ...mx, [m.id]: Number(e.target.value) }))}
-                    >
-                      {NIVELES.slice(0, m.aprobacion ? 4 : 3).map((n, i) => (
-                        <option key={i} value={i}>{i} · {n}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           )}
