@@ -23,6 +23,7 @@ create table if not exists cuentas_portal (
   sin_celular boolean not null default false,
   politica_version text,
   politica_aceptada_en timestamptz,
+  sesion_actual text,  -- marcador de sesión única (gana el login nuevo)
   creado_por text not null,
   creado_en timestamptz not null default now()
 );
@@ -95,6 +96,20 @@ create or replace function portal_dni() returns text language sql stable as $$
     and lower(p.dni) = split_part(auth.jwt()->>'email','@',1)
   limit 1
 $$;
+
+-- Sesión única del portal (gana el login nuevo): el login registra un marcador;
+-- la app se autoexpulsa si el del servidor cambió.
+create or replace function portal_registrar_sesion(p_marker text)
+returns void language plpgsql security definer as $$
+begin
+  update cuentas_portal set sesion_actual = p_marker where dni = portal_dni();
+end $$;
+
+create or replace function portal_mi_sesion()
+returns text language sql security definer as $$
+  select sesion_actual from cuentas_portal where dni = portal_dni()
+$$;
+grant execute on function portal_registrar_sesion(text), portal_mi_sesion() to authenticated, anon;
 
 -- Modo del trabajador: vigente | solo-lectura (cesado ≤ 12 meses) | expirado.
 create or replace function portal_modo(p_dni text) returns text language sql stable as $$

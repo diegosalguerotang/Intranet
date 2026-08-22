@@ -19,6 +19,7 @@ drop function if exists guardar_perfil, desactivar_perfil, eliminar_perfil, fn_n
   actualizar_usuario_admin, suspender_usuario_admin, reactivar_usuario_admin,
   eliminar_usuario_admin, reenviar_clave, guardar_politica, puede,
   verificar_bloqueo, registrar_ingreso, marcar_clave_cambiada,
+  registrar_sesion_backoffice, mi_sesion_backoffice,
   fn_perfil_nombre_unico, fn_superadmin_sin_matriz,
   fn_proteger_ultimo_superadmin, fn_registro_solo_desvincular cascade;
 -- es_admin_activo() NO se dropea aquí: las políticas de storage.objects
@@ -110,6 +111,7 @@ create table usuarios_admin (
   clave_entregada   text check (clave_entregada in ('correo','pantalla')),
   requiere_cambio_clave boolean not null default false,
   ultimo_ingreso timestamptz,
+  sesion_actual  text,  -- marcador de sesión única (gana el login nuevo)
   creado_por     text not null,
   creado_en      timestamptz not null default now(),
   foreign key (perfil_id, perfil_version) references perfiles (id, version)
@@ -467,6 +469,26 @@ begin
   set requiere_cambio_clave = false, clave_provisional = null
   where correo = p_correo;
 end $$;
+
+-- Sesión única (gana el login nuevo): el login registra un marcador; la app se
+-- autoexpulsa si el del servidor cambió. El usuario se resuelve por el email
+-- del JWT (usuarios_admin.id es bigint, no el uuid de Auth).
+create function registrar_sesion_backoffice(p_marker text)
+returns void language plpgsql security definer set search_path = public, auth as $$
+begin
+  update usuarios_admin u
+  set sesion_actual = p_marker
+  from auth.users au
+  where au.id = auth.uid() and au.email = u.correo;
+end $$;
+
+create function mi_sesion_backoffice()
+returns text language sql security definer set search_path = public, auth as $$
+  select u.sesion_actual from usuarios_admin u
+  join auth.users au on au.email = u.correo
+  where au.id = auth.uid()
+$$;
+grant execute on function registrar_sesion_backoffice(text), mi_sesion_backoffice() to authenticated, anon;
 
 -- Task 12: helper para políticas RLS que necesitan saber si el JWT actual
 -- pertenece a un usuario del BackOffice activo (p. ej. storage.objects del

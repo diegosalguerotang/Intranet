@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
@@ -56,6 +56,15 @@ export default function AdminLogin() {
   const [cargando, setCargando] = useState(false);
   const [verClave, setVerClave] = useState(false);
   const [recuperado, setRecuperado] = useState(null);
+  // Motivo por el que se cerró la sesión anterior (inactividad / otro equipo),
+  // dejado por state.jsx en sessionStorage al forzar el cierre.
+  const [avisoSesion, setAvisoSesion] = useState(null);
+  useEffect(() => {
+    try {
+      const a = sessionStorage.getItem("aviso-sesion");
+      if (a) { setAvisoSesion(a); sessionStorage.removeItem("aviso-sesion"); }
+    } catch { /* sin sessionStorage */ }
+  }, []);
 
   // ?probar=1 deja ver el formulario aunque el MODO DEMO ya haya puesto un
   // usuario: sin esta puerta no hay forma de diagnosticar el login real
@@ -139,6 +148,14 @@ export default function AdminLogin() {
         return;
       }
       await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "exitoso", p_dispositivo: dispositivo });
+      // Sesión única (gana el login nuevo): se registra el marcador de ESTE
+      // ingreso; el equipo anterior se autoexpulsa en su próximo chequeo. Si
+      // falla, no se bloquea el ingreso.
+      try {
+        const marca = crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem("backoffice-sesion-marker", marca);
+        await supabase.rpc("registrar_sesion_backoffice", { p_marker: marca });
+      } catch { /* la política de sesión no bloquea el login */ }
       // El listener de sesión en state.jsx carga el usuario y el guard redirige.
       // En MODO DEMO ese listener está apagado y nada redirige: sin esta señal
       // un login correcto sería indistinguible de un botón muerto.
@@ -171,6 +188,8 @@ export default function AdminLogin() {
                 Intranet · BackOffice
               </div>
             </div>
+
+            {avisoSesion && <div className="mb-6"><Note tone="pend">{avisoSesion}</Note></div>}
 
             <div className="group relative mb-7">
               <div className="flex items-center gap-3 border-b-2 border-borde-f pb-2">

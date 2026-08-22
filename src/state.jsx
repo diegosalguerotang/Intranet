@@ -100,6 +100,10 @@ async function llamarServerless(ruta, cuerpo) {
 }
 const cuentaAdmin = (accion, usuarioId) => llamarServerless("/api/admin-usuarios", { accion, usuario_id: usuarioId });
 
+// Política de sesión (BackOffice): cierre por inactividad y sesión única.
+const INACTIVIDAD_MS = 10 * 60 * 1000; // 10 minutos sin actividad → cierre
+const CLAVE_MARCADOR = "backoffice-sesion-marker";
+
 export function AppProvider({ children }) {
   // undefined = verificando sesión · null = sin sesión · objeto = autenticado
   const [user, setUser] = useState(MODO_DEMO ? USUARIO_DEMO : supabaseListo ? undefined : null);
@@ -174,11 +178,58 @@ export function AppProvider({ children }) {
     return () => { activo = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  const salir = async () => {
+  const salir = async (aviso = null) => {
     if (MODO_DEMO) return; // en demo no hay sesión que cerrar
+    try {
+      localStorage.removeItem(CLAVE_MARCADOR);
+      // El motivo del cierre forzado lo lee AdminLogin tras redirigir.
+      if (aviso) sessionStorage.setItem("aviso-sesion", aviso);
+    } catch { /* modo privado */ }
     if (supabaseListo) await supabase.auth.signOut();
     setUser(null);
   };
+
+  // Política de sesión: cierre por inactividad (10 min) y sesión única (el
+  // login nuevo gana; este equipo se autoexpulsa si el marcador del servidor
+  // cambió). Activo solo mientras hay usuario autenticado.
+  useEffect(() => {
+    if (MODO_DEMO || !supabaseListo || !user) return;
+    let vivo = true;
+    let idle;
+    const reiniciarIdle = () => {
+      clearTimeout(idle);
+      idle = setTimeout(() => {
+        if (vivo) salir("Tu sesión se cerró por inactividad. Vuelve a ingresar.");
+      }, INACTIVIDAD_MS);
+    };
+    const eventosActividad = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    eventosActividad.forEach((e) => window.addEventListener(e, reiniciarIdle, { passive: true }));
+    reiniciarIdle();
+
+    const revisarSesion = async () => {
+      if (!vivo || document.hidden) return;
+      const marca = (() => { try { return localStorage.getItem(CLAVE_MARCADOR); } catch { return null; } })();
+      const { data, error } = await supabase.rpc("mi_sesion_backoffice");
+      if (!vivo || error) return;
+      // Solo expulsa si el servidor tiene un marcador y NO es el nuestro.
+      if (data && marca && data !== marca) {
+        salir("Tu sesión se cerró porque tu cuenta ingresó desde otro equipo.");
+      }
+    };
+    const poll = setInterval(revisarSesion, 60000);
+    const alEnfocar = () => revisarSesion();
+    window.addEventListener("focus", alEnfocar);
+    document.addEventListener("visibilitychange", alEnfocar);
+
+    return () => {
+      vivo = false;
+      clearTimeout(idle);
+      clearInterval(poll);
+      eventosActividad.forEach((e) => window.removeEventListener(e, reiniciarIdle));
+      window.removeEventListener("focus", alEnfocar);
+      document.removeEventListener("visibilitychange", alEnfocar);
+    };
+  }, [user?.id]);
 
   // El primer ingreso exige reemplazar la clave provisional antes de operar.
   const claveCambiada = async () => {

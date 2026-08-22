@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { rpc } from "../lib/api";
 import { usePortal } from "../state";
@@ -24,6 +24,14 @@ export default function Ingreso() {
   const [ver, setVer] = useState(false);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
+  // Motivo del cierre forzado (inactividad / otro equipo), dejado por state.jsx.
+  const [avisoSesion, setAvisoSesion] = useState(null);
+  useEffect(() => {
+    try {
+      const a = sessionStorage.getItem("aviso-sesion-portal");
+      if (a) { setAvisoSesion(a); sessionStorage.removeItem("aviso-sesion-portal"); }
+    } catch { /* sin sessionStorage */ }
+  }, []);
 
   const ingresar = async (e) => {
     e.preventDefault();
@@ -68,6 +76,8 @@ export default function Ingreso() {
             <Nota tono="pend">Tu acceso al portal terminó. Si necesitas tus documentos, acércate a Recursos Humanos.</Nota>
           </div>
         )}
+
+        {avisoSesion && <div className="mb-4"><Nota tono="pend">{avisoSesion}</Nota></div>}
 
         <label className="mb-3 block">
           <span className="mb-1 block text-[13px] font-semibold text-tinta">Tu documento</span>
