@@ -12,10 +12,12 @@ const PORTAL_BADGE = {
   activo: { tone: "conf", label: "Activo" },
   nunca_ingreso: { tone: "alerta", label: "Nunca ingresó" },
   sin_celular: { tone: "pend", label: "Sin celular" },
+  // Estado derivado: sin fila en cuentas_portal (v_personal."tieneCuenta").
+  sin_cuenta: { tone: "alerta", label: "Sin cuenta" },
 };
 
 export default function Personal() {
-  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal, enviarAccesoPortal } = useApp();
+  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal, cuentasPortalLote, refrescarPersonal } = useApp();
   const [q, setQ] = useState("");
   const [fSede, setFSede] = useState("");
   const [fPortal, setFPortal] = useState("");
@@ -26,13 +28,15 @@ export default function Personal() {
   const [aviso, setAviso] = useState(null);
   const [cuenta, setCuenta] = useState(null);      // persona → modal cuenta portal
   const [cuentaOcupado, setCuentaOcupado] = useState(false);
-  const [cuentaResultado, setCuentaResultado] = useState(null); // { clave } | { error }
+  const [cuentaResultado, setCuentaResultado] = useState(null); // { clave, enviado?, errorCorreo? } | { error }
+  const [conCorreo, setConCorreo] = useState(true); // checkbox del modal individual
+  const [masa, setMasa] = useState(false);          // modal masivo
 
   const accionCuenta = async (accion) => {
     if (cuentaOcupado) return;
     setCuentaOcupado(true);
     setCuentaResultado(null);
-    const r = await cuentaPortal(accion, cuenta.dni);
+    const r = await cuentaPortal(accion, cuenta.dni, { enviarCorreo: conCorreo && !!cuenta.correo });
     setCuentaOcupado(false);
     setCuentaResultado(r);
   };
@@ -46,7 +50,7 @@ export default function Personal() {
           p.empresa === empresaId &&
           (!fEstado || p.estado === fEstado) &&
           (!fSede || p.sede === fSede) &&
-          (!fPortal || p.portal === fPortal) &&
+          (!fPortal || (fPortal === "sin_cuenta" ? !p.tieneCuenta : p.portal === fPortal)) &&
           (!q || p.dni.includes(q) || p.nombre.toLowerCase().includes(q.toLowerCase()))
       ),
     [db.personal, empresaId, q, fSede, fPortal, fEstado]
@@ -75,6 +79,9 @@ export default function Personal() {
             <Button variant="secondary" size="sm" onClick={() => setImportar(true)}>
               <Upload size={13} /> Importar planilla
             </Button>
+            <Button variant="secondary" size="sm" onClick={() => setMasa(true)}>
+              <Smartphone size={13} /> Cuentas del portal
+            </Button>
             <Button variant="secondary" size="sm">
               <Download size={13} /> Exportar
             </Button>
@@ -98,6 +105,7 @@ export default function Personal() {
           </Select>
           <Select value={fPortal} onChange={(e) => setFPortal(e.target.value)} style={{ maxWidth: 190 }}>
             <option value="">Estado del portal</option>
+            <option value="sin_cuenta">Sin cuenta</option>
             <option value="activo">Activo</option>
             <option value="nunca_ingreso">Nunca ingresó</option>
             <option value="sin_celular">Sin celular</option>
@@ -116,7 +124,7 @@ export default function Personal() {
         ) : (
           <Table head={["Documento", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", ""]}>
             {filas.map((p) => {
-              const pb = PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo;
+              const pb = !p.tieneCuenta ? PORTAL_BADGE.sin_cuenta : (PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo);
               return (
                 <tr key={p.dni} className="hover:bg-papel/60">
                   <Td className="font-mono text-[12px]">{p.dni}</Td>
@@ -144,7 +152,7 @@ export default function Personal() {
                       >
                         Ver detalle
                       </Link>
-                      <Button variant="ghost" size="sm" onClick={() => { setCuenta(p); setCuentaResultado(null); }}>
+                      <Button variant="ghost" size="sm" onClick={() => { setCuenta(p); setCuentaResultado(null); setConCorreo(!!p.correo); }}>
                         <Smartphone size={12} /> Portal
                       </Button>
                       <button
@@ -167,42 +175,37 @@ export default function Personal() {
         {cuenta && (
           <div className="space-y-4">
             <p className="text-[13px] leading-relaxed text-gris">
-              El trabajador entra al portal con su <b>DNI {cuenta.dni}</b> y la clave inicial <b>111111</b>
-              (igual para todos: no hay medio de contacto para repartir claves). En su primer ingreso el
-              portal lo obliga a crear una clave propia y declarar su celular antes de poder usar nada.
+              El trabajador entra al portal con su <b>documento {cuenta.dni}</b>. La clave inicial es
+              <b> aleatoria de 6 dígitos</b>: se muestra aquí al crearla o restablecerla (para entrega en
+              mano) y, si tiene correo, se le puede enviar directamente. En su primer ingreso el portal lo
+              obliga a crear una clave propia antes de poder usar nada.
             </p>
             {cuentaResultado?.clave && (
               <div className="rounded-caja border border-borde bg-papel px-4 py-5 text-center">
                 <KeyRound size={18} className="mx-auto mb-2 text-petroleo" />
                 <div className="font-mono text-[26px] font-bold tracking-[0.25em] text-tinta">{cuentaResultado.clave}</div>
                 <div className="mt-1 text-[11.5px] text-gris-cl">
-                  Clave inicial de {cuenta.nombre}. Deberá crear la suya y declarar su celular en el primer ingreso.
+                  Clave inicial de {cuenta.nombre}. No se puede volver a consultar: anótala o descárgala ahora.
                 </div>
               </div>
             )}
             {cuentaResultado?.enviado && (
               <Note tone="conf">Acceso enviado por correo a <b>{cuentaResultado.enviado}</b>.</Note>
             )}
+            {cuentaResultado?.errorCorreo && (
+              <Note tone="pend">La cuenta quedó lista, pero el correo falló: {cuentaResultado.errorCorreo}. Entrega la clave en mano o reintenta con Restablecer.</Note>
+            )}
             {cuentaResultado?.error && <Note tone="alerta">{cuentaResultado.error}</Note>}
             {cuenta.correo ? (
-              <Note tone="neutral">
-                Tiene correo registrado (<b>{cuenta.correo}</b>): puedes enviarle su acceso por ahí en vez de
-                entregarlo en mano.
-              </Note>
+              <label className="flex items-center gap-2 text-[13px] text-gris">
+                <input type="checkbox" checked={conCorreo} onChange={(e) => setConCorreo(e.target.checked)} />
+                Enviar el acceso a su correo (<b>{cuenta.correo}</b>)
+              </label>
             ) : (
               <Note tone="neutral">Sin correo registrado: la clave se entrega en mano. El correo se captura en el alta o cuando el trabajador lo declare en su primer ingreso.</Note>
             )}
             <div className="flex flex-wrap justify-end gap-2 border-t border-borde pt-4">
               <Button variant="secondary" onClick={() => setCuenta(null)}>Cerrar</Button>
-              {cuenta.correo && (
-                <Button variant="secondary" disabled={cuentaOcupado} onClick={async () => {
-                  setCuentaOcupado(true);
-                  setCuentaResultado(await enviarAccesoPortal(cuenta.dni));
-                  setCuentaOcupado(false);
-                }}>
-                  {cuentaOcupado ? "Procesando…" : "Enviar acceso por correo"}
-                </Button>
-              )}
               <Button variant="secondary" disabled={cuentaOcupado} onClick={() => accionCuenta("restablecer")}>
                 {cuentaOcupado ? "Procesando…" : "Restablecer clave"}
               </Button>
@@ -216,6 +219,10 @@ export default function Personal() {
 
       <AltaTrabajador open={alta} onClose={() => setAlta(false)} onGuardar={guardarAlta} sedes={sedesEmpresa} personal={db.personal} />
       <ImportarPlanilla open={importar} onClose={() => setImportar(false)} />
+      <CuentasMasa
+        open={masa} onClose={() => setMasa(false)} personal={db.personal} empresaId={empresaId}
+        sedes={sedesEmpresa} cuentasPortalLote={cuentasPortalLote} refrescarPersonal={refrescarPersonal}
+      />
 
       <Modal open={!!eliminar} onClose={() => setEliminar(null)} title="Eliminar trabajador">
         {eliminar && (
@@ -236,6 +243,150 @@ export default function Personal() {
         )}
       </Modal>
     </>
+  );
+}
+
+// #13 — Creación masiva de cuentas del portal: toma a los vigentes SIN cuenta
+// de la razón social activa, las crea por tramos de 10 (tope del endpoint:
+// cada envío SMTP suma segundos) y entrega un CSV con las claves — que no se
+// pueden volver a consultar — para quienes no tienen correo.
+function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalLote, refrescarPersonal }) {
+  const [fSede, setFSede] = useState("");
+  const [enviarCorreo, setEnviarCorreo] = useState(true);
+  const [paso, setPaso] = useState(1);
+  const [avance, setAvance] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [resultados, setResultados] = useState([]);
+  // Cerrar no cancela un tramo en vuelo, pero su resultado tardío se descarta
+  // (mismo patrón sesionRef del modal de importación).
+  const sesionRef = useRef(0);
+
+  const candidatos = useMemo(
+    () => personal.filter((p) =>
+      p.empresa === empresaId && p.estado === "vigente" && !p.tieneCuenta && (!fSede || p.sede === fSede)),
+    [personal, empresaId, fSede]
+  );
+  const conCorreoN = candidatos.filter((p) => p.correo).length;
+  const envios = enviarCorreo ? conCorreoN : 0;
+
+  const cerrar = () => {
+    sesionRef.current += 1;
+    setPaso(1); setAvance(0); setTotal(0); setResultados([]); setFSede(""); setEnviarCorreo(true);
+    onClose();
+  };
+
+  const crear = async () => {
+    const sesion = sesionRef.current;
+    const lista = candidatos.map((p) => p.dni);
+    setTotal(lista.length); setAvance(0); setPaso(2);
+    const acumulado = [];
+    for (let i = 0; i < lista.length; i += 10) {
+      const tramo = lista.slice(i, i + 10);
+      const r = await cuentasPortalLote(tramo, enviarCorreo);
+      if (sesionRef.current !== sesion) return;
+      acumulado.push(...(r.resultados ?? tramo.map((d) => ({ dni: d, error: r.error ?? "Sin respuesta del servidor." }))));
+      setAvance(Math.min(i + 10, lista.length));
+    }
+    setResultados(acumulado);
+    setPaso(3);
+    refrescarPersonal();
+  };
+
+  const creadas = resultados.filter((r) => r.clave);
+  const enviados = resultados.filter((r) => r.enviado).length;
+  const fallidas = resultados.filter((r) => r.error);
+  const correosFallidos = resultados.filter((r) => r.errorCorreo).length;
+
+  const descargarCsv = () => {
+    const nombreDe = (dni) => personal.find((p) => p.dni === dni)?.nombre ?? "";
+    const head = ["Documento", "Trabajador", "Clave inicial", "Correo", "Acceso enviado"];
+    const rows = creadas.map((r) => [r.dni, r.nombre ?? nombreDe(r.dni), r.clave, personal.find((p) => p.dni === r.dni)?.correo ?? "", r.enviado ? "Sí" : "No"]);
+    const csv = [head, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `claves-portal-${empresaId}.csv`;
+    a.click();
+  };
+
+  return (
+    <Modal open={open} onClose={cerrar} title="Cuentas del portal en masa" wide>
+      <div className="space-y-4">
+        {paso === 1 && (
+          <>
+            <p className="text-[13px] leading-relaxed text-gris">
+              Crea de una sola vez las cuentas del portal de los trabajadores <b>vigentes sin cuenta</b> de la razón
+              social activa. Usuario: su número de documento. Clave inicial: <b>aleatoria de 6 dígitos</b> — se envía
+              al correo registrado y queda en un CSV descargable para entrega en mano.
+            </p>
+            <Select value={fSede} onChange={(e) => setFSede(e.target.value)} style={{ maxWidth: 260 }}>
+              <option value="">Todas las sedes</option>
+              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </Select>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-md bg-alerta-bg py-4"><div className="text-[22px] font-bold text-alerta">{candidatos.length}</div><div className="font-mono text-[10px] uppercase text-gris">Sin cuenta</div></div>
+              <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{conCorreoN}</div><div className="font-mono text-[10px] uppercase text-gris">Con correo</div></div>
+              <div className="rounded-md bg-papel py-4"><div className="text-[22px] font-bold text-tinta-2">{candidatos.length - conCorreoN}</div><div className="font-mono text-[10px] uppercase text-gris">Solo CSV</div></div>
+            </div>
+            <label className="flex items-center gap-2 text-[13px] text-gris">
+              <input type="checkbox" checked={enviarCorreo} onChange={(e) => setEnviarCorreo(e.target.checked)} />
+              Enviar el acceso por correo a quienes lo tienen registrado ({conCorreoN})
+            </label>
+            {envios > 400 && (
+              <Note tone="pend">
+                Se enviarían {envios} correos y el tope diario de Gmail ronda los 500: corre la creación por sede
+                o en varios días para no perder envíos.
+              </Note>
+            )}
+            {candidatos.length === 0 ? (
+              <Note tone="conf">Todos los vigentes {fSede ? "de esa sede " : ""}ya tienen cuenta del portal.</Note>
+            ) : (
+              <div className="flex gap-2">
+                <Button onClick={crear}>Crear {candidatos.length} {candidatos.length === 1 ? "cuenta" : "cuentas"}</Button>
+                <Button variant="secondary" onClick={cerrar}>Cancelar</Button>
+              </div>
+            )}
+          </>
+        )}
+        {paso === 2 && (
+          <div className="py-8 text-center">
+            <div className="text-[15px] font-semibold text-tinta-2">Creando cuentas… {avance} de {total}</div>
+            <div className="mx-auto mt-3 h-2 w-64 overflow-hidden rounded-full bg-papel">
+              <div className="h-full rounded-full bg-petroleo transition-all" style={{ width: `${total ? Math.round((avance / total) * 100) : 0}%` }} />
+            </div>
+            <div className="mt-2 text-[12px] text-gris-cl">No cierres esta ventana: los envíos de correo van en el mismo paso.</div>
+          </div>
+        )}
+        {paso === 3 && (
+          <>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{creadas.length}</div><div className="font-mono text-[10px] uppercase text-gris">Creadas</div></div>
+              <div className="rounded-md bg-papel py-4"><div className="text-[22px] font-bold text-tinta-2">{enviados}</div><div className="font-mono text-[10px] uppercase text-gris">Correos enviados</div></div>
+              <div className="rounded-md bg-alerta-bg py-4"><div className="text-[22px] font-bold text-alerta">{fallidas.length}</div><div className="font-mono text-[10px] uppercase text-gris">Con error</div></div>
+            </div>
+            {correosFallidos > 0 && (
+              <Note tone="pend">{correosFallidos} {correosFallidos === 1 ? "correo falló" : "correos fallaron"}: esas cuentas quedaron creadas, entrega su clave con el CSV.</Note>
+            )}
+            {fallidas.length > 0 && (
+              <Note tone="alerta">
+                No se pudieron crear:
+                <ul className="mt-1 list-disc pl-4">
+                  {fallidas.map((r) => <li key={r.dni}>{r.dni}: {r.error}</li>)}
+                </ul>
+              </Note>
+            )}
+            {creadas.length > 0 && (
+              <Note tone="pend">Descarga el CSV antes de cerrar: las claves no se pueden volver a consultar (solo restablecer).</Note>
+            )}
+            <div className="flex gap-2">
+              {creadas.length > 0 && (
+                <Button onClick={descargarCsv}><Download size={13} /> Descargar claves (CSV)</Button>
+              )}
+              <Button variant="secondary" onClick={cerrar}>Cerrar</Button>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }
 

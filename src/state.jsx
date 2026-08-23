@@ -450,11 +450,17 @@ export function AppProvider({ children }) {
     // Restablecer clave v2: cambia la clave REAL de la cuenta y exige cambio.
     reenviarClaveCuenta: async (id) => cuentaAdmin("reenviar", id),
     // Cuentas del Portal del Trabajador (RRH-02): crear / restablecer.
-    cuentaPortal: async (accion, dni) => {
-      const r = await llamarServerless("/api/portal-cuentas", { accion, dni });
+    // extras: { enviarCorreo } — el endpoint envía él mismo el acceso (solo
+    // él conoce la clave aleatoria).
+    cuentaPortal: async (accion, dni, extras = {}) => {
+      const r = await llamarServerless("/api/portal-cuentas", { accion, dni, ...extras });
       if (!r.error) await recargar("personal");
       return r;
     },
+    // Lote masivo (RRH-02): un tramo de hasta 10; el caller recarga al final.
+    cuentasPortalLote: async (dnis, enviarCorreo) =>
+      llamarServerless("/api/portal-cuentas", { accion: "crear-lote", dnis, enviarCorreo }),
+    refrescarPersonal: () => recargar("personal"),
     // RRH-03 — Edición del trabajador desde el legajo (superadmin o nivel de
     // acción en Personal; el servidor lo valida de nuevo).
     editarTrabajador: async (dni, cambios) => {
@@ -467,10 +473,6 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("personal");
     },
-    // Motor de correo: enviar el acceso del portal al correo declarado
-    // (opcional; si el motor no está configurado devuelve el error claro).
-    enviarAccesoPortal: async (dni) =>
-      llamarServerless("/api/enviar-correo", { accion: "credenciales", dni }),
     suspenderUsuarioAdmin: (id) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
       rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");

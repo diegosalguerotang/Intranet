@@ -1,7 +1,6 @@
-// Motor de correo (fase 1, 2026-08-17). Un solo webhook con tres acciones:
-//  · credenciales : un admin (nivel ≥2 en Personal) envía el acceso del portal
-//                   al correo declarado del trabajador. Opcional al crear la
-//                   cuenta: si hay correo, se ofrece; si no, se entrega en mano.
+// Motor de correo (fase 1, 2026-08-17). Un solo webhook con varias acciones:
+//  (el envío del ACCESO al portal ya no vive aquí: con claves aleatorias solo
+//   api/portal-cuentas.js conoce la clave, y él mismo manda ese correo)
 //  · verificacion : el propio trabajador (JWT del portal) recibe un enlace
 //                   para validar su correo declarado.
 //  · recuperacion : PÚBLICA («olvidé mi clave»): si el DNI tiene correo
@@ -16,7 +15,6 @@ import { enviar, plantilla, botonCorreo } from "./_correo.js";
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
-const CLAVE_INICIAL = "111111";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 const cabService = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };
@@ -49,34 +47,6 @@ export default async function handler(req, res) {
   const { accion } = cuerpo;
   // Forma canónica del número de documento: mayúsculas (DNI/CE/pasaporte).
   const dni = String(cuerpo.dni ?? "").trim().toUpperCase();
-
-  if (accion === "credenciales") {
-    // El acceso lo envía un usuario del BackOffice con nivel en Personal.
-    const jwt = limpiar(req.headers["x-sesion"] ?? "");
-    if (!jwt) return res.status(401).json({ error: "Sesión requerida." });
-    const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${jwt}`, apikey: SERVICE } });
-    const correoLlamador = (quien.json?.email ?? "").toLowerCase();
-    if (!quien.ok || !correoLlamador || correoLlamador.endsWith(`@${DOMINIO_PORTAL}`)) {
-      return res.status(401).json({ error: "Sesión inválida." });
-    }
-    const acceso = await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(correoLlamador)}&limit=1`);
-    const yo = acceso.json?.[0];
-    const nivel = yo?.esSuperadmin ? 3 : (yo?.matriz?.personal ?? 0);
-    if (!yo || nivel < 2) return res.status(403).json({ error: "Necesitas nivel de acción en Personal." });
-
-    const p = (await rest(`/rest/v1/personas?dni=eq.${dni}&select=nombre,correo&limit=1`)).json?.[0];
-    if (!p) return res.status(404).json({ error: "La persona no existe." });
-    if (!p.correo) return res.status(400).json({ error: "La persona no tiene correo registrado." });
-    const r = await enviar(p.correo, "Tu acceso al Portal del Trabajador — GrupoER", plantilla(
-      "Tu acceso al Portal del Trabajador",
-      `<p>Hola ${p.nombre.split(" ")[0]}: ya puedes entrar al portal.</p>
-       <p><b>Dirección:</b> <a href="${APP}/portal">${APP}/portal</a><br/>
-          <b>Usuario:</b> tu DNI (${dni})<br/>
-          <b>Clave inicial:</b> ${CLAVE_INICIAL}</p>
-       <p>En tu primer ingreso el portal te pedirá crear tu clave personal.</p>`));
-    if (r.error) return res.status(503).json({ error: r.error });
-    return res.status(200).json({ enviado: p.correo });
-  }
 
   if (accion === "verificacion") {
     // La pide el propio trabajador con su sesión del portal.
