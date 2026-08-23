@@ -9,3 +9,7 @@ portal/.vercel
 portal/.env.local
 .vercel
 .env*
+
+# Fixture con datos personales reales (cuentas bancarias): NUNCA al repo.
+# La suite planilla-unificada se salta sola si falta (describe.skipIf).
+tests/fixtures/OFICINA_JUL_2026_UNIFICADO.xlsx
