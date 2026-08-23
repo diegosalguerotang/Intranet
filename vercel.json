@@ -1,5 +1,6 @@
 {
   "framework": "vite",
+  "functions": { "api/portal-cuentas.js": { "maxDuration": 60 } },
   "rewrites": [
     { "source": "/supa/:path*", "destination": "https://mzpbdkrmokfxrrsotfgs.supabase.co/:path*" },
     { "source": "/portal", "destination": "https://intranet-portal-two.vercel.app/portal" },

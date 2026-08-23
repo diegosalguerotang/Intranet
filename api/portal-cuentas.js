@@ -1,12 +1,17 @@
 // Cuentas del Portal del Trabajador (service key; nunca en el navegador).
 // El llamador es un usuario del BackOffice (JWT en x-sesion) con nivel >= 2
 // en el módulo personal. La cuenta técnica es {dni}@portal.grupoer.pe y el
-// trabajador solo teclea su DNI. La clave inicial es FIJA (111111): no hay
-// medio de contacto para repartir claves aleatorias (decisión de Diego,
-// 2026-08-17; Supabase no admite menos de 6 caracteres, por eso no es 1111).
-// El primer ingreso del portal OBLIGA a crear una clave propia y declarar el
-// celular antes de poder usar nada.
+// trabajador solo teclea su DNI. La clave inicial es ALEATORIA de 6 dígitos
+// (decisión de Diego 2026-08-21, #13: la fija 111111 del 2026-08-17 se retiró
+// porque ya hay canales para repartirla — correo, o CSV/pantalla para entrega
+// en mano); este endpoint es el ÚNICO que la conoce y, si se pide, él mismo
+// envía el correo de acceso. El primer ingreso del portal OBLIGA a crear una
+// clave propia y declarar el celular antes de poder usar nada.
+import { randomInt } from "node:crypto";
+import { enviar, plantilla } from "./_correo.js";
+
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
+const APP = "https://intranet-general.vercel.app";
 const DOMINIO = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
@@ -17,7 +22,19 @@ const cabService = {
   "content-type": "application/json",
 };
 
-const CLAVE_INICIAL = "111111";
+const claveAleatoria = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
+
+// Correo de acceso: solo lo manda este endpoint (nadie más conoce la clave).
+async function correoAcceso(persona, dni, clave) {
+  const r = await enviar(persona.correo, "Tu acceso al Portal del Trabajador — GrupoER", plantilla(
+    "Tu acceso al Portal del Trabajador",
+    `<p>Hola ${persona.nombre.split(" ")[0]}: ya puedes entrar al portal.</p>
+     <p><b>Dirección:</b> <a href="${APP}/portal">${APP}/portal</a><br/>
+        <b>Usuario:</b> tu número de documento (${dni})<br/>
+        <b>Clave inicial:</b> ${clave}</p>
+     <p>En tu primer ingreso el portal te pedirá crear tu clave personal.</p>`));
+  return r.error ? { errorCorreo: r.error } : { enviado: persona.correo };
+}
 
 async function rest(ruta, opciones = {}) {
   const r = await fetch(`${SUPABASE}${ruta}`, { ...opciones, headers: { ...cabService, ...opciones.headers } });
@@ -35,15 +52,15 @@ async function buscarCuenta(correo) {
 // crear: cuenta GoTrue + fila en cuentas_portal (primer ingreso pendiente).
 // El número puede ser DNI, CE o pasaporte (alfanumérico): la verdad es el
 // maestro, no un regex; el correo técnico va SIEMPRE en minúsculas.
-async function crearCuenta(dni, creadoPor) {
+async function crearCuenta(dni, creadoPor, conCorreo = false) {
   if (!/^[0-9A-Za-z-]{4,20}$/.test(dni)) return { dni, error: "Número de documento inválido." };
   const persona = (await rest(
-    `/rest/v1/personas?dni=eq.${encodeURIComponent(dni.toUpperCase())}&select=dni&limit=1`, { method: "GET" }
+    `/rest/v1/personas?dni=eq.${encodeURIComponent(dni.toUpperCase())}&select=dni,nombre,correo&limit=1`, { method: "GET" }
   )).json?.[0];
   if (!persona) return { dni, error: "La persona no existe en el maestro." };
   dni = persona.dni; // forma canónica (mayúsculas)
   const correo = `${dni.toLowerCase()}@${DOMINIO}`;
-  const clave = CLAVE_INICIAL;
+  const clave = claveAleatoria();
   const alta = await rest("/auth/v1/admin/users", {
     method: "POST",
     body: JSON.stringify({ email: correo, password: clave, email_confirm: true }),
@@ -58,15 +75,20 @@ async function crearCuenta(dni, creadoPor) {
     headers: { prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({ dni, primer_ingreso_pendiente: true, creado_por: creadoPor }),
   });
-  return { dni, clave };
+  // El envío de correo jamás deshace la cuenta: si falla, viaja errorCorreo.
+  const aviso = conCorreo && persona.correo ? await correoAcceso(persona, dni, clave) : {};
+  return { dni, nombre: persona.nombre, clave, ...aviso };
 }
 
-async function restablecerCuenta(dni) {
+async function restablecerCuenta(dni, conCorreo = false) {
   dni = dni.toUpperCase();
   const correo = `${dni.toLowerCase()}@${DOMINIO}`;
   const cuenta = await buscarCuenta(correo);
   if (!cuenta) return { dni, error: "La cuenta del portal no existe: usa Crear cuenta." };
-  const clave = CLAVE_INICIAL;
+  const persona = (await rest(
+    `/rest/v1/personas?dni=eq.${encodeURIComponent(dni)}&select=dni,nombre,correo&limit=1`, { method: "GET" }
+  )).json?.[0];
+  const clave = claveAleatoria();
   const cambio = await rest(`/auth/v1/admin/users/${cuenta.id}`, {
     method: "PUT",
     body: JSON.stringify({ password: clave }),
@@ -77,7 +99,8 @@ async function restablecerCuenta(dni) {
     headers: { prefer: "return=minimal" },
     body: JSON.stringify({ primer_ingreso_pendiente: true }),
   });
-  return { dni, clave };
+  const aviso = conCorreo && persona?.correo ? await correoAcceso(persona, dni, clave) : {};
+  return { dni, nombre: persona?.nombre, clave, ...aviso };
 }
 
 export default async function handler(req, res) {
@@ -104,21 +127,24 @@ export default async function handler(req, res) {
   const { accion, dni, dnis } = cuerpo;
   const autor = correoLlamador;
 
+  const conCorreo = Boolean(cuerpo.enviarCorreo);
+
   if (accion === "crear") {
     if (!dni) return res.status(400).json({ error: "Falta el dni." });
-    const r = await crearCuenta(String(dni), autor);
+    const r = await crearCuenta(String(dni), autor, conCorreo);
     return res.status(r.error ? 400 : 200).json(r);
   }
   if (accion === "restablecer") {
     if (!dni) return res.status(400).json({ error: "Falta el dni." });
-    const r = await restablecerCuenta(String(dni));
+    const r = await restablecerCuenta(String(dni), conCorreo);
     return res.status(r.error ? 400 : 200).json(r);
   }
   if (accion === "crear-lote") {
     if (!Array.isArray(dnis) || dnis.length === 0) return res.status(400).json({ error: "Falta la lista de dnis." });
-    if (dnis.length > 50) return res.status(400).json({ error: "Máximo 50 por lote." });
+    // Tope corto porque cada envío SMTP suma segundos: el cliente troza en 10.
+    if (dnis.length > 10) return res.status(400).json({ error: "Máximo 10 por lote (el cliente envía por partes)." });
     const resultados = [];
-    for (const d of dnis) resultados.push(await crearCuenta(String(d), autor));
+    for (const d of dnis) resultados.push(await crearCuenta(String(d), autor, conCorreo));
     return res.status(200).json({ resultados });
   }
   return res.status(400).json({ error: "Acción desconocida." });
