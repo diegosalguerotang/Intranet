@@ -526,6 +526,27 @@ export function AppProvider({ children }) {
       await recargar("personal");
       return data;
     },
+    // #10 — Planilla UNIFICADA (varias razones sociales por RUC en un solo
+    // archivo). Mismo patrón PV999: la vista previa no escribe nada; el
+    // rechazo de una RS (no existe / retirada / fuera de alcance) llega como
+    // error del RPC y detiene TODO el archivo.
+    previsualizarPlanillaUnificada: async (filas, periodo) => {
+      if (!supabaseListo) throw new Error("La importación unificada requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("previsualizar_planilla_unificada", {
+        p_filas: filas, p_periodo: periodo,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    importarPlanillaUnificada: async (filas, periodo) => {
+      if (!supabaseListo) throw new Error("La importación unificada requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_planilla_unificada", {
+        p_filas: filas, p_periodo: periodo, p_por: user?.nombre ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("personal");
+      return data;
+    },
     // RRH-21 — Alta manual de sede: el código S-NNNN lo asigna la BD (misma
     // secuencia que usa la importación de personal al crear sedes).
     crearSede: async ({ empresaId: empresaIdArg, nombre, cliente, direccion, rit }) => {
