@@ -55,6 +55,17 @@ const colAIndice = (ref) => {
   return n - 1;
 };
 
+// Nombres de las hojas en el orden visible del libro (#10: el período de la
+// planilla unificada se lee del nombre de la hoja, p. ej. «OFICINA JUL 2026»).
+export async function nombresHojas(bytes) {
+  const { dv, entradas } = leerEntradasZip(bytes);
+  const entrada = entradas.get("xl/workbook.xml");
+  if (!entrada) return [];
+  const libro = new TextDecoder().decode(await extraer(bytes, dv, entrada));
+  return [...libro.matchAll(/<sheet [^>]*\/>/g)]
+    .map((m) => decodificarXml((m[0].match(/name="([^"]*)"/) || [])[1] ?? ""));
+}
+
 export async function leerXlsx(bytes, { hoja: nombreHoja } = {}) {
   const { dv, entradas } = leerEntradasZip(bytes);
   const texto = async (nombre) =>
