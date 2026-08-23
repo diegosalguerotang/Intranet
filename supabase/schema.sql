@@ -97,6 +97,34 @@ language sql stable as $$
   limit 1;
 $$;
 
+-- Cifrado de la cuenta bancaria (#10, 2026-08-22): pgcrypto + llave simétrica
+-- en Supabase Vault (secreto clave_cuentas, generado DENTRO de la BD). Las
+-- tres funciones son INTERNAS (revocadas a los clientes); la única lectura
+-- para usuarios es fn_ver_cuenta_bancaria (accesos.sql, con permiso+auditoría).
+create extension if not exists pgcrypto;
+do $$ begin
+  if not exists (select 1 from vault.secrets where name = 'clave_cuentas') then
+    perform vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'), 'clave_cuentas');
+  end if;
+end $$;
+create or replace function fn_clave_cuentas() returns text
+language sql stable security definer set search_path = public, vault as $$
+  select decrypted_secret from vault.decrypted_secrets where name = 'clave_cuentas'
+$$;
+revoke execute on function fn_clave_cuentas() from public, anon, authenticated;
+create or replace function fn_cifrar_cuenta(p_texto text) returns bytea
+language sql security definer set search_path = public, extensions as $$
+  select case when nullif(trim(coalesce(p_texto, '')), '') is null then null
+              else extensions.pgp_sym_encrypt(trim(p_texto), fn_clave_cuentas()) end
+$$;
+revoke execute on function fn_cifrar_cuenta(text) from public, anon, authenticated;
+create or replace function fn_descifrar_cuenta(p_cifrado bytea) returns text
+language sql stable security definer set search_path = public, extensions as $$
+  select case when p_cifrado is null then null
+              else extensions.pgp_sym_decrypt(p_cifrado, fn_clave_cuentas()) end
+$$;
+revoke execute on function fn_descifrar_cuenta(bytea) from public, anon, authenticated;
+
 create table personas (
   -- «dni» es el NÚMERO de documento (nombre histórico): DNI de 8 dígitos o,
   -- desde 2026-08-19, CE/pasaporte alfanuméricos EN MAYÚSCULAS. El formato
@@ -112,7 +140,9 @@ create table personas (
   direccion             text,
   banco                 text,  -- nombre visible; el canónico es banco_id
   banco_id              text references bancos(codigo),
-  cuenta                text,
+  cuenta                text,  -- DEPRECADA (siempre null): el dato vive cifrado
+  cuenta_cifrada        bytea, -- pgp_sym_encrypt con la llave de Vault
+  cuenta_ultimos4       text,  -- máscara pública «···· 1234»
   portal                text not null default 'nunca_ingreso'
     check (portal in ('activo','nunca_ingreso','sin_celular','suspendido')),
   nombre_por_confirmar  boolean not null default false,
@@ -992,13 +1022,15 @@ select r.id, r.nombre, to_char(r.vigente_desde, 'YYYY-MM-DD') as vigente_desde,
 from rits r order by r.nombre;
 
 -- OJO: portal.sql la redefine agregando "tieneCuenta" (depende de
--- cuentas_portal, que aún no existe cuando corre este archivo).
+-- cuentas_portal, que aún no existe cuando corre este archivo). La cuenta
+-- sale SIEMPRE enmascarada (la completa solo por fn_ver_cuenta_bancaria).
 create view v_personal as
 select p.dni, p.tipo_documento, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
        to_char(v.fecha_inicio, 'YYYY-MM-DD') as ingreso,
        p.celular, p.portal,
        case when v.fecha_fin is null then 'vigente' else 'cesado' end as estado,
-       p.banco, p.cuenta,
+       p.banco,
+       case when p.cuenta_ultimos4 is not null then '···· ' || p.cuenta_ultimos4 end as cuenta,
        to_char(v.fecha_fin, 'YYYY-MM-DD') as cese,
        v.id as vinculo_id,
        p.correo, p.correo_verificado as "correoVerificado",
@@ -1159,18 +1191,28 @@ create function alta_trabajador(
   p_banco text default null, p_cuenta text default null, p_correo text default null,
   p_cci text default null, p_tipo_documento text default 'DNI'
 ) returns void language plpgsql security definer as $$
-declare v_num text;
+declare v_num text; v_banco_id text; v_banco text; v_cifrada bytea; v_u4 text;
 begin
   v_num := fn_validar_documento(p_tipo_documento, p_dni);
-  insert into personas (dni, tipo_documento, nombre, celular, banco, cuenta, cci, portal, correo)
-  values (v_num, p_tipo_documento, p_nombre, p_celular, p_banco, p_cuenta, nullif(trim(coalesce(p_cci, '')), ''),
+  v_banco_id := fn_resolver_banco(p_banco);
+  v_banco := coalesce((select nombre from bancos where codigo = v_banco_id),
+                      nullif(trim(coalesce(p_banco, '')), ''));
+  v_cifrada := fn_cifrar_cuenta(p_cuenta);
+  v_u4 := case when v_cifrada is null then null
+               else right(regexp_replace(trim(p_cuenta), '[^0-9A-Za-z]', '', 'g'), 4) end;
+  insert into personas (dni, tipo_documento, nombre, celular, banco, banco_id,
+                        cuenta_cifrada, cuenta_ultimos4, cci, portal, correo)
+  values (v_num, p_tipo_documento, p_nombre, p_celular, v_banco, v_banco_id,
+          v_cifrada, v_u4, nullif(trim(coalesce(p_cci, '')), ''),
           case when p_celular is null then 'sin_celular' else 'nunca_ingreso' end,
           nullif(lower(trim(coalesce(p_correo, ''))), ''))
   on conflict (dni) do update
     set tipo_documento = excluded.tipo_documento,
         celular = coalesce(excluded.celular, personas.celular),
         banco   = coalesce(excluded.banco, personas.banco),
-        cuenta  = coalesce(excluded.cuenta, personas.cuenta),
+        banco_id = coalesce(excluded.banco_id, personas.banco_id),
+        cuenta_cifrada  = coalesce(excluded.cuenta_cifrada, personas.cuenta_cifrada),
+        cuenta_ultimos4 = coalesce(excluded.cuenta_ultimos4, personas.cuenta_ultimos4),
         cci     = coalesce(excluded.cci, personas.cci),
         correo  = coalesce(excluded.correo, personas.correo);
 
@@ -1187,11 +1229,14 @@ end $$;
 -- Lo escrito MANDA (vaciar sí borra); corregir el nombre limpia «por
 -- confirmar»; cambiar el correo lo deja pendiente de verificar. La cuenta
 -- bancaria no se guarda en claro en la auditoría.
+-- OJO cambio 2026-08-22 SOLO en cuenta (por el enmascarado, la UI ya no puede
+-- reenviar el valor actual): vacío/null = CONSERVAR; el literal '-' = borrar;
+-- otro texto = reemplazar (cifrado).
 create function editar_trabajador(
   p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text,
   p_cci text default null, p_tipo_documento text default null
 ) returns void language plpgsql security definer as $$
-declare j_antes jsonb; j_despues jsonb; v_correo text;
+declare j_antes jsonb; j_despues jsonb; v_correo text; v_cuenta text; v_banco text; v_banco_id text;
 begin
   if fn_nivel_modulo('personal') < 2 then
     raise exception 'Tu categoría no permite editar datos de Personal.';
@@ -1211,20 +1256,30 @@ begin
   if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
     raise exception 'El correo no tiene un formato válido.';
   end if;
+  v_cuenta := nullif(trim(coalesce(p_cuenta, '')), '');
+  v_banco := nullif(trim(coalesce(p_banco, '')), '');
+  v_banco_id := fn_resolver_banco(v_banco);
+  v_banco := coalesce((select nombre from bancos where codigo = v_banco_id), v_banco);
 
-  select to_jsonb(p) - 'cuenta' - 'cci' into j_antes from personas p where dni = p_dni;
+  select to_jsonb(p) - 'cuenta' - 'cci' - 'cuenta_cifrada' into j_antes from personas p where dni = p_dni;
   update personas set
     nombre = trim(p_nombre),
     nombre_por_confirmar = false,
     tipo_documento = coalesce(p_tipo_documento, tipo_documento),
     celular = nullif(trim(coalesce(p_celular, '')), ''),
-    banco = nullif(trim(coalesce(p_banco, '')), ''),
-    cuenta = nullif(trim(coalesce(p_cuenta, '')), ''),
+    banco = v_banco,
+    banco_id = v_banco_id,
+    cuenta_cifrada = case when v_cuenta is null then cuenta_cifrada
+                          when v_cuenta = '-' then null
+                          else fn_cifrar_cuenta(v_cuenta) end,
+    cuenta_ultimos4 = case when v_cuenta is null then cuenta_ultimos4
+                           when v_cuenta = '-' then null
+                           else right(regexp_replace(v_cuenta, '[^0-9A-Za-z]', '', 'g'), 4) end,
     cci = nullif(trim(coalesce(p_cci, '')), ''),
     correo_verificado = case when v_correo is distinct from correo then false else correo_verificado end,
     correo = v_correo
   where dni = p_dni;
-  select to_jsonb(p) - 'cuenta' - 'cci' into j_despues from personas p where dni = p_dni;
+  select to_jsonb(p) - 'cuenta' - 'cci' - 'cuenta_cifrada' into j_despues from personas p where dni = p_dni;
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);

@@ -393,6 +393,7 @@ export function AppProvider({ children }) {
         p_id: perfil.id, p_nombre: perfil.nombre, p_descripcion: perfil.descripcion,
         p_superadmin: perfil.esSuperadmin, p_ver_remuneracion: perfil.verRemuneracion,
         p_ver_documentos: perfil.verDocumentosTerceros, p_exportar: perfil.exportarDatosPersonales,
+        p_ver_bancarios: perfil.verDatosBancarios ?? false,
         p_matriz: perfil.matriz, p_empresas: perfil.empresas ?? null, p_por: autor,
       }, "perfiles", "perfilVersiones", "usuariosAdmin");
     },
@@ -461,6 +462,15 @@ export function AppProvider({ children }) {
     cuentasPortalLote: async (dnis, enviarCorreo) =>
       llamarServerless("/api/portal-cuentas", { accion: "crear-lote", dnis, enviarCorreo }),
     refrescarPersonal: () => recargar("personal"),
+    // Cuenta bancaria completa (#10): única vía de lectura, gated por la
+    // casilla «Ver datos bancarios» y auditada en la BD (devuelve null sin
+    // permiso — jamás la cuenta).
+    verCuentaBancaria: async (dni) => {
+      if (!supabaseListo) return { error: "Requiere conexión a Supabase." };
+      const { data, error } = await supabase.rpc("fn_ver_cuenta_bancaria", { p_dni: dni });
+      if (error) return { error: error.message };
+      return data ?? { sinPermiso: true };
+    },
     // RRH-03 — Edición del trabajador desde el legajo (superadmin o nivel de
     // acción en Personal; el servidor lo valida de nuevo).
     editarTrabajador: async (dni, cambios) => {

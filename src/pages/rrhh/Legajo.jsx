@@ -20,10 +20,14 @@ export default function Legajo() {
   const [tab, setTab] = useState(0);
   const [editar, setEditar] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const { db, persona, sede, empresaPor, user, editarTrabajador } = useApp();
+  const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria } = useApp();
+  const [cuentaCompleta, setCuentaCompleta] = useState(null);
   const p = persona(dni);
   // Editar exige nivel de ACCIÓN en Personal (el RPC lo vuelve a validar).
   const puedeEditar = nivelDe(user?.acceso ?? (user ? { esSuperadmin: user.esSuperadmin } : null), "personal") >= 2;
+  // La cuenta completa vive cifrada: solo con la casilla «Ver datos
+  // bancarios» (o superadmin); la BD registra cada consulta en auditoría.
+  const puedeVerCuenta = Boolean(user?.acceso?.verDatosBancarios || user?.acceso?.esSuperadmin || user?.esSuperadmin);
 
   if (!p) {
     return <EmptyState title="Trabajador no encontrado" body={`No existe un registro con DNI ${dni}.`} />;
@@ -97,8 +101,8 @@ export default function Legajo() {
               [p.tipo_documento === "CE" ? "Carné de extranjería" : p.tipo_documento === "Pasaporte" ? "Pasaporte" : "DNI", p.dni],
               ["Celular", p.celular ?? "Sin registrar"],
               ["Correo", p.correo ? `${p.correo}${p.correoVerificado ? " ✓ verificado" : " (sin verificar)"}` : "Sin registrar"],
-              ["Banco de haberes", p.banco],
-              ["N° de cuenta", p.cuenta ?? "Sin registrar"],
+              ["Banco de haberes", p.banco ?? "Sin registrar"],
+              ["N° de cuenta", cuentaCompleta?.cuenta ?? p.cuenta ?? "Sin registrar"],
               ["CCI", p.cci ?? "Sin registrar"],
               ["Estado del portal", { activo: "Activo", nunca_ingreso: "Nunca ingresó", sin_celular: "Sin celular" }[p.portal]],
             ].map(([k, v]) => (
@@ -108,8 +112,17 @@ export default function Legajo() {
               </div>
             ))}
           </div>
+          {p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta && (
+            <div className="mt-4">
+              <Button variant="secondary" size="sm" onClick={async () => setCuentaCompleta(await verCuentaBancaria(p.dni))}>
+                Ver cuenta completa
+              </Button>
+            </div>
+          )}
+          {cuentaCompleta?.error && <div className="mt-3"><Note tone="alerta">{cuentaCompleta.error}</Note></div>}
+          {cuentaCompleta?.sinPermiso && <div className="mt-3"><Note tone="alerta">Tu categoría no permite ver la cuenta completa.</Note></div>}
           <Note tone="neutral">
-            La remuneración y la cuenta de haberes son datos sensibles: esta consulta queda registrada en auditoría.
+            La cuenta de haberes vive cifrada y sale enmascarada; verla completa queda registrado en auditoría (Ley 29733).
           </Note>
         </Card>
       )}
@@ -257,7 +270,9 @@ export default function Legajo() {
 function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
   const [form, setForm] = useState({
     nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
-    banco: p.banco ?? "", cuenta: p.cuenta ?? "", cci: p.cci ?? "",
+    // La cuenta llega ENMASCARADA (vive cifrada): el campo arranca vacío y
+    // vacío significa «conservar la actual» (el RPC lo maneja así).
+    banco: p.banco ?? "", cuenta: "", cci: p.cci ?? "",
     tipoDocumento: p.tipo_documento ?? "DNI",
   });
   const [ocupado, setOcupado] = useState(false);
@@ -309,8 +324,8 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
               <option>BCP</option><option>BBVA</option><option>Interbank</option><option>Scotiabank</option>
             </Select>
           </Field>
-          <Field label="N° de cuenta" hint="Dato sensible: el cambio queda en auditoría sin guardar el número en claro.">
-            <Input value={form.cuenta} onChange={set("cuenta")} />
+          <Field label="N° de cuenta" hint="Vacío conserva la actual; escribe «-» para borrarla. Se guarda cifrada y el cambio queda en auditoría.">
+            <Input value={form.cuenta} onChange={set("cuenta")} placeholder={p.cuenta ? `Actual: ${p.cuenta}` : "Sin cuenta registrada"} />
           </Field>
         </div>
         <Field label="CCI" hint="Código interbancario (20 dígitos). Mismo tratamiento sensible que la cuenta.">

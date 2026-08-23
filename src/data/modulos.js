@@ -112,4 +112,6 @@ export const CASILLAS = [
     detalle: "La vista previa y la descarga del PDF de la boleta de otro trabajador" },
   { id: "exportarDatosPersonales", nombre: "Exportar datos personales",
     detalle: "Descargas masivas de listados, legajos y paquetes de constancias (Ley 29733)" },
+  { id: "verDatosBancarios", nombre: "Ver datos bancarios",
+    detalle: "La cuenta de haberes completa del trabajador, que vive cifrada (Ley 29733; cada consulta queda en auditoría)" },
 ];

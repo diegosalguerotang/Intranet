@@ -39,6 +39,7 @@ create table perfiles (
   ver_remuneracion          boolean not null default false,
   ver_documentos_terceros   boolean not null default false,
   exportar_datos_personales boolean not null default false,
+  ver_datos_bancarios       boolean not null default false, -- #10: cuenta de haberes completa
   estado      text not null default 'activo' check (estado in ('activo','desactivado')),
   creado_por  text not null,
   creado_en   timestamptz not null default now(),
@@ -220,16 +221,17 @@ create trigger trg_registro_accesos_inmutable
 create function guardar_perfil(
   p_id text, p_nombre text, p_descripcion text, p_superadmin boolean,
   p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean,
-  p_matriz jsonb, p_empresas text[] default null, p_por text default 'BackOffice'
+  p_matriz jsonb, p_empresas text[] default null, p_por text default 'BackOffice',
+  p_ver_bancarios boolean default false
 ) returns integer language plpgsql security definer as $$
 declare v_version int; v_mod text; v_nivel text; v_empresas text[]; e text;
 begin
   select coalesce(max(version), 0) + 1 into v_version from perfiles where id = p_id;
   insert into perfiles (id, version, nombre, descripcion, es_superadmin,
                         ver_remuneracion, ver_documentos_terceros,
-                        exportar_datos_personales, creado_por)
+                        exportar_datos_personales, ver_datos_bancarios, creado_por)
   values (p_id, v_version, p_nombre, p_descripcion, p_superadmin,
-          p_ver_remuneracion, p_ver_documentos, p_exportar, p_por);
+          p_ver_remuneracion, p_ver_documentos, p_exportar, p_ver_bancarios, p_por);
   if not p_superadmin then
     for v_mod, v_nivel in select key, value from jsonb_each_text(coalesce(p_matriz, '{}'::jsonb))
     loop
@@ -282,6 +284,32 @@ begin
   delete from perfiles where id = p_id; -- perfil_empresas cae en cascada
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('ELIMINAR_PERFIL', 'perfiles', jsonb_build_object('id', p_id, 'nombre', v_nombre), null);
+end $$;
+
+-- Único camino de lectura de la cuenta bancaria completa (#10, 2026-08-22).
+-- Registra en auditoría SIEMPRE (tenga permiso o no); devuelve null sin
+-- permiso (no excepción: la excepción desharía el registro). Ley 29733.
+create or replace function fn_ver_cuenta_bancaria(p_dni text) returns jsonb
+language plpgsql security definer as $$
+declare v_correo text; v_ok boolean; v_cuenta text; v_banco text; v_cci text;
+begin
+  begin
+    v_correo := nullif(auth.jwt() ->> 'email', '');
+  exception when others then
+    v_correo := null;
+  end;
+  select (p.es_superadmin or p.ver_datos_bancarios) into v_ok
+  from usuarios_admin u
+  join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
+  where lower(u.correo) = lower(coalesce(v_correo, '')) and u.estado = 'activo';
+  v_ok := coalesce(v_ok, false);
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('VER_CUENTA_BANCARIA', 'personas', null,
+          jsonb_build_object('dni', p_dni, 'por', v_correo, 'autorizado', v_ok));
+  if not v_ok then return null; end if;
+  select fn_descifrar_cuenta(p.cuenta_cifrada), p.banco, p.cci
+    into v_cuenta, v_banco, v_cci from personas p where p.dni = p_dni;
+  return jsonb_build_object('cuenta', v_cuenta, 'banco', v_banco, 'cci', v_cci);
 end $$;
 
 -- Nivel del llamador en el módulo memorandums (disciplinario 2026-08-17):
@@ -667,7 +695,8 @@ select p.id, p.version, p.nombre, p.descripcion,
                  where pe.perfil_id = p.id and pe.version = p.version), '[]'::jsonb) as empresas,
        (select count(*)::int from usuarios_admin u where u.perfil_id = p.id) as usuarios,
        to_char(p.creado_en, 'YYYY-MM-DD HH24:MI') as modificado,
-       p.creado_por as "modificadoPor"
+       p.creado_por as "modificadoPor",
+       p.ver_datos_bancarios as "verDatosBancarios"
 from perfiles p
 where p.version = (select max(version) from perfiles p2 where p2.id = p.id)
 order by p.es_superadmin desc, p.nombre;
@@ -721,7 +750,8 @@ select u.correo,
        pf.exportar_datos_personales as "exportarDatosPersonales",
        coalesce((select jsonb_agg(a.empresa_id order by a.empresa_id)
                  from perfil_empresas a
-                 where a.perfil_id = pf.id and a.version = pf.version), '[]'::jsonb) as empresas
+                 where a.perfil_id = pf.id and a.version = pf.version), '[]'::jsonb) as empresas,
+       pf.ver_datos_bancarios as "verDatosBancarios"
 from usuarios_admin u
 join perfiles pf on pf.id = u.perfil_id and pf.version = u.perfil_version
 where u.estado = 'activo';

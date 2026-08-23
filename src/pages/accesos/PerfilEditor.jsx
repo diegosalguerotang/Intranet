@@ -65,6 +65,7 @@ export default function PerfilEditor() {
     verRemuneracion: base?.verRemuneracion ?? false,
     verDocumentosTerceros: base?.verDocumentosTerceros ?? false,
     exportarDatosPersonales: base?.exportarDatosPersonales ?? false,
+    verDatosBancarios: base?.verDatosBancarios ?? false,
   });
   const [paso, setPaso] = useState(null); // "superadmin" | "cambios"
   const [historial, setHistorial] = useState(false);
@@ -140,6 +141,7 @@ export default function PerfilEditor() {
       verRemuneracion: casillas.verRemuneracion,
       verDocumentosTerceros: casillas.verDocumentosTerceros,
       exportarDatosPersonales: casillas.exportarDatosPersonales,
+      verDatosBancarios: casillas.verDatosBancarios,
       matriz: superadmin ? {} : matriz,
       empresas: superadmin ? [] : empresas,
     });
