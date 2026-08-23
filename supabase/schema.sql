@@ -956,6 +956,8 @@ select r.id, r.nombre, to_char(r.vigente_desde, 'YYYY-MM-DD') as vigente_desde,
        (select count(*)::int from empresas e where e.rit_id = r.id) as empresas
 from rits r order by r.nombre;
 
+-- OJO: portal.sql la redefine agregando "tieneCuenta" (depende de
+-- cuentas_portal, que aún no existe cuando corre este archivo).
 create view v_personal as
 select p.dni, p.tipo_documento, p.nombre, v.cargo, v.sede_id as sede, v.empresa_id as empresa,
        to_char(v.fecha_inicio, 'YYYY-MM-DD') as ingreso,
