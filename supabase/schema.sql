@@ -791,9 +791,9 @@ end $$;
 -- lotes históricos de la carga inicial se registren sin tropezar con el trigger
 -- fn_solo_empresa_activa; se retira al final de esta sección, como en producción.
 insert into empresas (id, nombre, corto, ruc, logo, regimen, direccion) values
-  ('negliaf',    'NEGLIAF S.R.L.',            'NEGLIAF',      '20501234567', '/logos/negliaf.jpeg',            'Régimen general', null),
+  ('negliaf',    'NEGLIAF S.R.L.',            'NEGLIAF',      '20605159398', '/logos/negliaf.jpeg',            'Régimen general', null),
   ('bremco',     'BREMCO S.C.R.L.',           'BREMCO',       '20512345678', null,                             'Régimen general', null),
-  ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20523456789', '/logos/promant.jpeg',            'Pequeña empresa', null),
+  ('promant',    'PROMANT SERVICIOS',         'PROMANT',      '20545837880', '/logos/promant.jpeg',            'Pequeña empresa', null),
   ('lamericana', 'LIMPIEZA AMERICANA S.A.C.', 'L. AMERICANA', '20601705185', '/logos/limpieza-americana.jpeg', 'Régimen general', 'Av. San Borja Sur Nro. 1184, Urb. San Borja Sur'),
   ('clean',      'Consorcio Clean',           'CLEAN',        '20614759870', '/logos/clean.png',               'Régimen general',  'Jr. Océano Ártico Nro. 226 Dpto. 201 (Frente al Colegio Odontológico del Perú)');
 
