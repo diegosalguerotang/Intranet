@@ -19,7 +19,7 @@ drop view if exists v_personal, v_sedes, v_acuses, v_lotes, v_activos,
 drop table if exists auditoria, epp_entregas, lineas, asignaciones, activos,
   contratos, plantillas, tardanzas, descargos, memorandums, comunicados,
   acuses, documentos, lotes, vinculos, personas, sedes, empresas, cargos,
-  rit_faltas, tipos_sancion, feriados, rits, correo_tokens cascade;
+  rit_faltas, tipos_sancion, feriados, rits, correo_tokens, bancos cascade;
 drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   eliminar_trabajador, publicar_lote, registrar_acuse_asistido,
   emitir_memorandum, resolver_memorandum, asignar_activo, devolver_activo,
@@ -63,6 +63,40 @@ create table empresas (
   creado_en timestamptz not null default now()
 );
 
+-- Catálogo de bancos (#10, 2026-08-22): el banco jamás se guarda como texto
+-- libre — se canoniza aquí (espejo del helper JS src/lib/importar/bancos.js).
+create table bancos (
+  codigo text primary key,
+  nombre text not null,
+  alias  text[] not null default '{}'
+);
+insert into bancos (codigo, nombre, alias) values
+  ('bcp',        'BCP',                array['banco de credito','banco de credito del peru','credito','banco credito']),
+  ('bbva',       'BBVA',               array['continental','banco continental','bbva continental']),
+  ('scotiabank', 'Scotiabank',         array['scotianbank','banco scotianbank','banco scotiabank']),
+  ('interbank',  'Interbank',          array['banco interbank','banco internacional del peru']),
+  ('nacion',     'Banco de la Nación', array['banco de la nacion','nacion']),
+  ('banbif',     'BanBif',             array['banco interamericano de finanzas']),
+  ('pichincha',  'Banco Pichincha',    array['banco financiero']);
+
+-- Resuelve texto libre → código del catálogo (o null): minúsculas, sin
+-- tildes, sin el prefijo «banco (de|del|de la)».
+create or replace function fn_resolver_banco(p_texto text) returns text
+language sql stable as $$
+  with q as (
+    select trim(regexp_replace(translate(lower(coalesce(p_texto, '')),
+      'áéíóúü', 'aeiouu'), '\s+', ' ', 'g')) as t
+  ), sp as (
+    select t, regexp_replace(t, '^banco (de |del |de la )?', '') as s from q
+  )
+  select b.codigo from bancos b, sp
+  where sp.t <> '' and (
+    translate(lower(b.nombre), 'áéíóúü', 'aeiouu') in (sp.t, sp.s)
+    or b.codigo in (sp.t, sp.s)
+    or sp.t = any(b.alias) or sp.s = any(b.alias))
+  limit 1;
+$$;
+
 create table personas (
   -- «dni» es el NÚMERO de documento (nombre histórico): DNI de 8 dígitos o,
   -- desde 2026-08-19, CE/pasaporte alfanuméricos EN MAYÚSCULAS. El formato
@@ -76,7 +110,8 @@ create table personas (
   correo_verificado     boolean not null default false,
   cci                   text,  -- código interbancario, separado del nro de cuenta
   direccion             text,
-  banco                 text,
+  banco                 text,  -- nombre visible; el canónico es banco_id
+  banco_id              text references bancos(codigo),
   cuenta                text,
   portal                text not null default 'nunca_ingreso'
     check (portal in ('activo','nunca_ingreso','sin_celular','suspendido')),
@@ -2001,7 +2036,7 @@ begin
   foreach t in array array['empresas','personas','sedes','vinculos','lotes',
     'acuses','comunicados','memorandums','descargos','tardanzas',
     'plantillas','contratos','activos','asignaciones','lineas','epp_entregas','auditoria','cargos',
-    'asistencia_config','asistencia_lotes','marcaciones']
+    'asistencia_config','asistencia_lotes','marcaciones','bancos']
   loop
     execute format('alter table %I enable row level security', t);
     execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
