@@ -199,5 +199,52 @@ export default async function handler(req, res) {
     return res.status(200).json({ enviados });
   }
 
+  if (accion === "recordatorio-acuse") {
+    // La dispara un admin del BackOffice (JWT en x-sesion, nivel ≥ 2 en el
+    // módulo Acuses): recuerda por correo al trabajador que tiene documentos
+    // sin confirmar en el portal. No "reenvía" nada — el documento ya está en
+    // su bandeja del portal desde la publicación; esto solo avisa.
+    const jwt = limpiar(req.headers["x-sesion"] ?? "");
+    const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${jwt}`, apikey: SERVICE } });
+    const correoLlamador = (quien.json?.email ?? "").toLowerCase();
+    if (!quien.ok || !correoLlamador) return res.status(401).json({ error: "Sesión inválida o vencida." });
+    if (correoLlamador.endsWith(`@${DOMINIO_PORTAL}`)) {
+      return res.status(403).json({ error: "Los trabajadores no envían recordatorios." });
+    }
+    const yo = (await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(correoLlamador)}&limit=1`)).json?.[0];
+    const nivelAcuses = yo?.esSuperadmin ? 3 : (yo?.matriz?.acuses ?? 0);
+    if (!yo || nivelAcuses < 2) {
+      return res.status(403).json({ error: "Necesitas nivel de acción en el módulo Acuses." });
+    }
+
+    if (!/^[0-9A-Z-]{4,20}$/.test(dni)) return res.status(400).json({ error: "Documento inválido." });
+    const p = (await rest(`/rest/v1/personas?dni=ilike.${encodeURIComponent(dni)}&select=dni,nombre,correo&limit=1`)).json?.[0];
+    if (!p) return res.status(404).json({ error: "La persona no existe en el maestro." });
+    if (!p.correo) {
+      return res.status(400).json({ error: "El trabajador no tiene correo registrado: se declara en su primer ingreso al portal o se agrega desde el Legajo (Editar datos)." });
+    }
+    const cuenta = (await rest(`/rest/v1/cuentas_portal?dni=ilike.${encodeURIComponent(p.dni)}&select=dni&limit=1`)).json?.[0];
+    if (!cuenta) {
+      return res.status(400).json({ error: "Aún no tiene cuenta del portal: créala desde Planilla (botón Portal) para que pueda entrar a confirmar." });
+    }
+    const pendientes = (await rest(
+      `/rest/v1/v_acuses?dni=eq.${encodeURIComponent(p.dni)}&estado=in.(pendiente,nunca_ingreso)&select=doc`
+    )).json ?? [];
+    if (!pendientes.length) return res.status(400).json({ error: "No tiene documentos pendientes de confirmar." });
+
+    const lista = pendientes.slice(0, 5).map((x) => `<li>${x.doc}</li>`).join("");
+    const demas = pendientes.length > 5 ? `<p style="font-size:12px;color:#999">…y ${pendientes.length - 5} más.</p>` : "";
+    const r = await enviar(p.correo, "Tienes documentos por confirmar — GrupoER", plantilla(
+      "Documentos pendientes de confirmar",
+      `<p>Hola ${p.nombre.split(" ")[0]}: tienes ${pendientes.length} documento${pendientes.length === 1 ? "" : "s"}
+          esperando tu confirmación de recepción en el Portal del Trabajador:</p>
+       <ul>${lista}</ul>${demas}
+       ${botonCorreo(`${APP}/portal`, "Entrar al portal y confirmar")}
+       <p style="font-size:12px;color:#999">Entra con tu documento y tu clave del portal. Confirmar la recepción
+          no significa estar de acuerdo con el contenido; solo deja constancia de que lo recibiste.</p>`));
+    if (r.error) return res.status(503).json({ error: r.error });
+    return res.status(200).json({ enviado: p.correo, pendientes: pendientes.length });
+  }
+
   return res.status(400).json({ error: "Acción desconocida." });
 }

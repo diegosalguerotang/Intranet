@@ -462,6 +462,9 @@ export function AppProvider({ children }) {
     cuentasPortalLote: async (dnis, enviarCorreo) =>
       llamarServerless("/api/portal-cuentas", { accion: "crear-lote", dnis, enviarCorreo }),
     refrescarPersonal: () => recargar("personal"),
+    // Recordatorio por correo a un trabajador con acuses pendientes (RRH-06/11).
+    // El endpoint valida nivel ≥2 en Acuses y que exista correo + cuenta portal.
+    recordarAcuse: async (dni) => llamarServerless("/api/enviar-correo", { accion: "recordatorio-acuse", dni }),
     // Cuenta bancaria completa (#10): única vía de lectura, gated por la
     // casilla «Ver datos bancarios» y auditada en la BD (devuelve null sin
     // permiso — jamás la cuenta).

@@ -10,10 +10,17 @@ import {
 const PASOS = ["Periodo y tipo", "Carga del archivo", "Excepciones", "Revisión", "Publicado"];
 
 export default function Boletas() {
-  const { db, empresaId, empresaPor, empresasActivas, publicarLotePdf, persona, sede } = useApp();
+  const { db, empresaId, empresaPor, empresasActivas, publicarLotePdf, persona, sede, recordarAcuse } = useApp();
   const [paso, setPaso] = useState(0);
   const [empresaLote, setEmpresaLote] = useState(empresaId);
   const [lotePend, setLotePend] = useState(null); // lote cuyo listado de pendientes está abierto
+  const [recordatorios, setRecordatorios] = useState({}); // dni → "enviando" | {ok} | {error}
+
+  const recordar = async (dni) => {
+    setRecordatorios((r) => ({ ...r, [dni]: "enviando" }));
+    const r = await recordarAcuse(dni);
+    setRecordatorios((prev) => ({ ...prev, [dni]: r.error ? { error: r.error } : { ok: r.enviado } }));
+  };
   const [tipo, setTipo] = useState("Boleta de pago");
   const [periodo, setPeriodo] = useState("");
 
@@ -631,9 +638,10 @@ export default function Boletas() {
                 Los «nunca ingresó» necesitan otra acción: reenviar la clave del portal o registrar acuse asistido.
               </Note>
               <Card pad={false}>
-                <Table head={["DNI", "Trabajador", "Sede", "Estado"]}>
+                <Table head={["DNI", "Trabajador", "Sede", "Estado", ""]}>
                   {faltan.map((a) => {
                     const p = persona(a.dni);
+                    const r = recordatorios[a.dni];
                     return (
                       <tr key={a.dni}>
                         <Td className="font-mono text-[12px]">{a.dni}</Td>
@@ -643,6 +651,20 @@ export default function Boletas() {
                           <Badge tone={a.estado === "nunca_ingreso" ? "alerta" : "pend"}>
                             {a.estado === "nunca_ingreso" ? "Nunca ingresó" : "Sin confirmar"}
                           </Badge>
+                        </Td>
+                        <Td>
+                          {r === "enviando" ? (
+                            <span className="text-[11.5px] text-gris-cl">Enviando…</span>
+                          ) : r?.ok ? (
+                            <span className="text-[11.5px] font-semibold text-conf">Enviado a {r.ok}</span>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Button size="sm" variant="secondary" onClick={() => recordar(a.dni)}>
+                                Recordar por correo
+                              </Button>
+                              {r?.error && <span className="max-w-[220px] text-[11px] leading-snug text-alerta">{r.error}</span>}
+                            </div>
+                          )}
                         </Td>
                       </tr>
                     );
