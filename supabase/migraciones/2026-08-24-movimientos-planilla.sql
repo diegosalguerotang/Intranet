@@ -171,9 +171,18 @@ begin
                       from personas where dni = v_canon),
             'despues', jsonb_build_object('banco', v_banco_nombre, 'ultimos4', v_u4)));
       end if;
+      -- La hoja unificada no trunca por ancho de columna: sus nombres son
+      -- completos. Adoptar (más largo) o coincidir exacto CONFIRMA el nombre
+      -- y limpia nombre_por_confirmar; un nombre distinto que no se adopta
+      -- deja la marca como está.
       update personas set
         nombre = case when fn_es_prefijo_truncado(v_nombre, nombre) then nombre
                       when length(v_nombre) > length(nombre) then v_nombre else nombre end,
+        nombre_por_confirmar = case
+          when not fn_es_prefijo_truncado(v_nombre, nombre)
+               and (length(v_nombre) > length(nombre) or v_nombre = nombre)
+            then false
+          else nombre_por_confirmar end,
         banco = v_banco_nombre,
         banco_id = f->>'bancoCodigo',
         cuenta_cifrada = case when v_cuenta_cambio then fn_cifrar_cuenta(v_cuenta) else cuenta_cifrada end,

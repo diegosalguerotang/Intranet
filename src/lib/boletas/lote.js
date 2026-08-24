@@ -120,6 +120,19 @@ export function analizarLote(paginas) {
       excepciones.push({ tipo: "periodo_distinto", pagina: pag, detalle: `Periodo ${p} distinto al del lote (${periodo}).` });
   });
 
+  // Correlativo repetido = dos páginas dicen ser la misma boleta (PDF armado
+  // a mano o página contada dos veces): excepción sobre la segunda aparición,
+  // que es la que se puede excluir del lote.
+  const correlativoVisto = new Map();
+  boletas.forEach((b) => {
+    if (!Number.isFinite(b.correlativo)) return;
+    const pag = b.paginas[0] + 1;
+    if (correlativoVisto.has(b.correlativo))
+      excepciones.push({ tipo: "correlativo_duplicado", pagina: pag,
+        detalle: `El correlativo No ${b.correlativo} ya apareció en la página ${correlativoVisto.get(b.correlativo)}.` });
+    else correlativoVisto.set(b.correlativo, pag);
+  });
+
   // Correlativo 1..N sin saltos = ninguna página perdida (excepción del LOTE).
   const correlativos = boletas.map((b) => b.correlativo).filter((n) => Number.isFinite(n));
   const max = Math.max(0, ...correlativos);

@@ -58,6 +58,14 @@ describe("analizarLote con BOLETAS.pdf", () => {
     const r = analizarLote(alteradas);
     expect(r.excepciones.some((e) => e.tipo === "codigo_distinto" && e.pagina === 1)).toBe(true);
   });
+  it("dos páginas con el mismo correlativo son excepción del lote (correlativo_duplicado)", () => {
+    const alteradas = [...paginas];
+    alteradas[1] = alteradas[1].replace(/\bNo\.?\s+2\b/, "No 1");
+    const r = analizarLote(alteradas);
+    expect(r.excepciones.some((e) => e.tipo === "correlativo_duplicado" && e.pagina === 2)).toBe(true);
+    // y el 2 que desapareció se reporta como salto, igual que una página perdida.
+    expect(r.excepciones.some((e) => e.tipo === "salto_correlativo")).toBe(true);
+  });
   it("una página sin ancla BOLETA DE PAGO pertenece a la boleta anterior", () => {
     const conContinuacion = [...paginas.slice(0, 3), "conceptos adicionales sin ancla", ...paginas.slice(3)];
     const r = analizarLote(conContinuacion);

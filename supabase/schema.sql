@@ -1411,9 +1411,12 @@ begin
   select coalesce(max(version), 0) + 1 into v_version
   from lotes where empresa_id = p_empresa and tipo = p_tipo and periodo = p_periodo;
 
+  -- El corto se sanea a alfanumérico ANTES de cortar a 3: «L. AMERICANA»
+  -- debe dar LAM, no «L. » (ids reales viejos como BOL-L. -202606-001 se
+  -- conservan tal cual; esto solo gobierna los lotes nuevos).
   v_id := case p_tipo when 'Boleta de pago' then 'BOL' when 'Gratificación' then 'GRA'
                       when 'Liquidación de CTS' then 'CTS' else 'UTI' end
-          || '-' || upper(left((select corto from empresas where id = p_empresa), 3))
+          || '-' || upper(left(regexp_replace((select corto from empresas where id = p_empresa), '[^A-Za-z0-9]', '', 'g'), 3))
           || '-' || to_char(now(), 'YYYYMM') || '-' || lpad(v_version::text, 3, '0');
 
   select count(*) into v_avisos
@@ -1479,9 +1482,11 @@ begin
 
   select coalesce(max(version), 0) + 1 into v_version
   from lotes where empresa_id = p_empresa and tipo = p_tipo and periodo = p_periodo;
+  -- Mismo saneo del corto que en publicar_lote: solo alfanumérico antes de
+  -- cortar a 3 («L. AMERICANA» → LAM).
   v_id := case p_tipo when 'Boleta de pago' then 'BOL' when 'Gratificación' then 'GRA'
                       when 'Liquidación de CTS' then 'CTS' else 'UTI' end
-          || '-' || upper(left((select corto from empresas where id = p_empresa), 3))
+          || '-' || upper(left(regexp_replace((select corto from empresas where id = p_empresa), '[^A-Za-z0-9]', '', 'g'), 3))
           || '-' || replace(p_periodo, '-', '') || '-' || lpad(v_version::text, 3, '0');
 
   -- avisos es "cuántos de ESTE lote" (los DNIs que vienen en p_boletas), no
@@ -1862,10 +1867,20 @@ begin
       v_altas := v_altas || v_dni;
     else
       -- persona existente: JAMÁS pisar datos personales manuales; el nombre
-      -- solo mejora (nunca un prefijo más corto)
+      -- solo mejora (nunca un prefijo más corto). La marca nombre_por_confirmar
+      -- acompaña esa mejora: si se adopta un nombre más largo hereda la marca
+      -- de la fuente (truncado o no), y si el archivo trae EXACTAMENTE el
+      -- nombre guardado sin señal de truncado, lo confirma y limpia la marca.
+      -- Nunca se re-marca un nombre que un humano ya confirmó sin cambiarlo.
       update personas set
         nombre = case when fn_es_prefijo_truncado(v_nombre, nombre) then nombre
-                      when length(v_nombre) > length(nombre) then v_nombre else nombre end
+                      when length(v_nombre) > length(nombre) then v_nombre else nombre end,
+        nombre_por_confirmar = case
+          when not fn_es_prefijo_truncado(v_nombre, nombre) and length(v_nombre) > length(nombre)
+            then coalesce((f->>'nombreTruncado')::boolean, false)
+          when v_nombre = nombre and not coalesce((f->>'nombreTruncado')::boolean, false)
+            then false
+          else nombre_por_confirmar end
       where dni = v_dni;
       select id into v_vinculo from vinculos
       where persona_dni = v_dni and empresa_id = p_empresa and fecha_fin is null;
