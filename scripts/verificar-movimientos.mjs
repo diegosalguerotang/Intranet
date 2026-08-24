@@ -154,16 +154,93 @@ await prueba("9. alta nueva deja movimiento; la vista previa no escribe nada", a
   igual(v.n, 1, "el cese de la vista previa tampoco se aplicó");
 });
 
+// ---------- 10. E2E por el canal REAL de producción (/api/supa) ----------
+// Admin temporal superadmin (patrón 2026-08-19) + dos personas ZZPRUEBA:
+// P5 se traslada A→B y P6 (ausente) se cesa CONFIRMADO. Todo con sesión real.
+const APP = "https://intranet-general.vercel.app";
+const APIKEY = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
+const CORREO_TEMP = "zzprueba-mov@grupoer.pe";
+const P5 = base + "5", P6 = base + "6";
+const jsonDe = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return { crudo: t, status: r.status }; } };
+
+await prueba("10. E2E producción: sesión real, traslado + cese confirmado, historial en vistas", async () => {
+  const claves = await jsonDe(await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/api-keys?reveal=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }));
+  const service = (Array.isArray(claves) ? claves : []).find((k) => k.type === "secret" || k.name === "service_role")?.api_key;
+  if (!service) throw new Error("la Management API no devolvió la service key");
+  const cabService = { apikey: service, authorization: `Bearer ${service}`, "Content-Type": "application/json" };
+  const borrarCuenta = async (email) => {
+    const lista = await jsonDe(await fetch(`${SUPA}/auth/v1/admin/users?per_page=1000`, { headers: cabService }));
+    const u = (lista.users ?? []).find((x) => (x.email ?? "").toLowerCase() === email.toLowerCase());
+    if (u) await fetch(`${SUPA}/auth/v1/admin/users/${u.id}`, { method: "DELETE", headers: cabService });
+  };
+  await borrarCuenta(CORREO_TEMP);
+  await sql(`delete from usuarios_admin where correo = '${CORREO_TEMP}'`);
+  const clave = "Zz" + String(Math.floor(Math.random() * 1e8)).padStart(8, "0");
+  const altaCta = await fetch(`${SUPA}/auth/v1/admin/users`, {
+    method: "POST", headers: cabService,
+    body: JSON.stringify({ email: CORREO_TEMP, password: clave, email_confirm: true }),
+  });
+  if (!altaCta.ok) throw new Error(`cuenta GoTrue: ${altaCta.status}`);
+  const [libre] = await sql(`select dni from personas p
+    where not exists (select 1 from usuarios_admin u where u.persona_dni = p.dni)
+      and p.nombre not like 'ZZPRUEBA%' limit 1`);
+  const [perfil] = await sql(`select id, version from perfiles
+    where lower(nombre) like 'superadmin%' and estado = 'activo' order by version desc limit 1`);
+  await sql(`insert into usuarios_admin (persona_dni, perfil_id, perfil_version, correo, creado_por)
+    values ('${libre.dni}', '${perfil.id}', ${perfil.version}, '${CORREO_TEMP}', 'verificar-movimientos')`);
+  const ses = await jsonDe(await fetch(`${APP}/api/supa/auth/v1/token?grant_type=password`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: CORREO_TEMP, password: clave }),
+  }));
+  if (!ses.access_token) throw new Error(`login admin: ${JSON.stringify(ses).slice(0, 150)}`);
+
+  // P5 vigente en A (el archivo lo trae en B → traslado); P6 vigente en B
+  // ausente del archivo (los ceses solo se proponen para las RS DEL archivo).
+  for (const [dni, emp] of [[P5, A], [P6, B]]) {
+    await sql(`insert into personas (dni, nombre, portal) values ('${dni}', 'ZZPRUEBA MOV ${dni}', 'sin_celular')`);
+    await sql(`insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio)
+      values ('${dni}', '${emp.id}', '${emp.sede}', 'Operario de limpieza', '2026-01-01')`);
+  }
+  const rpc = async (fn, cuerpo) => jsonDe(await fetch(`${APP}/api/supa/rest/v1/rpc/${fn}?apikey=${APIKEY}`, {
+    method: "POST", headers: { "Content-Type": "application/json", authorization: `Bearer ${ses.access_token}` },
+    body: JSON.stringify(cuerpo),
+  }));
+  const FILAS10 = [fila(B, P5, `ZZPRUEBA MOV ${P5}`)];
+  const previa = await rpc("previsualizar_planilla_unificada", { p_filas: FILAS10, p_periodo: "2026-10" });
+  igual((previa.posiblesCeses ?? []).some((c) => c.documento === P6), true, "P6 propuesto en la vista previa");
+  igual((previa.empresas?.[B.id]?.traslados ?? []).some((t) => t.documento === P5), true, "P5 como traslado en la vista previa");
+  const [previoV] = await sql(`select count(*)::int n from vinculos where persona_dni in ('${P5}','${P6}') and fecha_fin is not null`);
+  igual(previoV.n, 0, "la vista previa no cerró nada");
+  const res = await rpc("importar_planilla_unificada",
+    { p_filas: FILAS10, p_periodo: "2026-10", p_por: "verificar-movimientos-e2e", p_ceses: [P6] });
+  igual((res.empresas?.[B.id]?.traslados ?? []).length, 1, "traslado aplicado");
+  const [v5] = await sql(`select fecha_fin from vinculos where persona_dni='${P5}' and empresa_id='${A.id}'`);
+  igual(v5.fecha_fin, "2026-09-30", "vínculo viejo de P5 cerrado");
+  const [v6] = await sql(`select fecha_fin from vinculos where persona_dni='${P6}'`);
+  igual(v6.fecha_fin, "2026-09-30", "P6 cesado (confirmado)");
+  const hist = await sql(`select tipo from v_movimientos_persona where dni in ('${P5}','${P6}') order by tipo`);
+  igual(JSON.stringify(hist.map((h) => h.tipo)), JSON.stringify(["cese", "traslado"]), "historial en la vista");
+  const vp = await sql(`select count(*)::int n from v_vinculos_persona where dni='${P5}'`);
+  igual(vp[0].n, 2, "v_vinculos_persona con ambos vínculos de P5");
+  await borrarCuenta(CORREO_TEMP);
+});
+
 // ---------- Limpieza ----------
+const TODOS = `'${DNI}','${P1}','${P2}','${P3}','${P4}','${P5}','${P6}'`;
 await sql(`
+  delete from usuarios_admin where correo = '${CORREO_TEMP}';
   alter table movimientos disable trigger tg_movimientos_inmutables;
-  delete from movimientos where persona_dni in ('${DNI}','${P1}','${P2}','${P3}','${P4}');
+  delete from movimientos where persona_dni in (${TODOS});
   alter table movimientos enable trigger tg_movimientos_inmutables;
-  delete from vinculos where persona_dni in ('${DNI}','${P1}','${P2}','${P3}','${P4}');
-  delete from personas where dni in ('${DNI}','${P1}','${P2}','${P3}','${P4}');
+  delete from vinculos where persona_dni in (${TODOS});
+  delete from personas where dni in (${TODOS});
 `);
-const resto = await sql(`select (select count(*) from personas where dni in ('${DNI}','${P1}','${P2}','${P3}','${P4}'))
-  + (select count(*) from movimientos where persona_dni in ('${DNI}','${P1}','${P2}','${P3}','${P4}')) as n`);
+const resto = await sql(`select (select count(*) from personas where dni in (${TODOS}))
+  + (select count(*) from movimientos where persona_dni in (${TODOS}))
+  + (select count(*) from usuarios_admin where correo = '${CORREO_TEMP}') as n`);
 if (resto?.[0]?.n !== 0) { fallos++; console.error(`✗ limpieza: ${JSON.stringify(resto)}`); }
 else console.log("✓ limpieza total");
 
