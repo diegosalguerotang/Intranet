@@ -538,14 +538,28 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       return data;
     },
-    importarPlanillaUnificada: async (filas, periodo) => {
+    importarPlanillaUnificada: async (filas, periodo, ceses = []) => {
       if (!supabaseListo) throw new Error("La importación unificada requiere conexión a Supabase.");
       const { data, error } = await supabase.rpc("importar_planilla_unificada", {
-        p_filas: filas, p_periodo: periodo, p_por: user?.nombre ?? "RRHH",
+        p_filas: filas, p_periodo: periodo, p_por: user?.nombre ?? "RRHH", p_ceses: ceses,
       });
       if (error) throw new Error(error.message);
       await recargar("personal");
       return data;
+    },
+    // Historial del legajo (pestaña Vínculos): todos los vínculos de la
+    // persona + los movimientos de planilla (alta/traslado/cese/retorno).
+    historialVinculos: async (dni) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_vinculos_persona").select("*").eq("dni", dni);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    historialMovimientos: async (dni) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_movimientos_persona").select("*").eq("dni", dni);
+      if (error) throw new Error(error.message);
+      return data ?? [];
     },
     // RRH-21 — Alta manual de sede: el código S-NNNN lo asigna la BD (misma
     // secuencia que usa la importación de personal al crear sedes).
