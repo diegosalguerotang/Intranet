@@ -4,15 +4,16 @@ import { FileUp, CheckCircle2 } from "lucide-react";
 import { useApp } from "../../state";
 import { supabase } from "../../lib/supabase";
 import {
-  PageHeader, Card, Button, Field, Select, Note, Badge, Table, Td, Progress, Textarea, inputCls,
+  PageHeader, Card, Button, Field, Select, Note, Badge, Table, Td, Progress, Textarea, Modal, inputCls,
 } from "../../components/ui";
 
 const PASOS = ["Periodo y tipo", "Carga del archivo", "Excepciones", "Revisión", "Publicado"];
 
 export default function Boletas() {
-  const { db, empresaId, empresaPor, empresasActivas, publicarLotePdf } = useApp();
+  const { db, empresaId, empresaPor, empresasActivas, publicarLotePdf, persona, sede } = useApp();
   const [paso, setPaso] = useState(0);
   const [empresaLote, setEmpresaLote] = useState(empresaId);
+  const [lotePend, setLotePend] = useState(null); // lote cuyo listado de pendientes está abierto
   const [tipo, setTipo] = useState("Boleta de pago");
   const [periodo, setPeriodo] = useState("");
 
@@ -579,7 +580,7 @@ export default function Boletas() {
             {db.lotes.filter((l) => l.empresa === empresaLote).length === 0 ? (
               <div className="p-4 text-[12.5px] text-gris">Esta empresa aún no tiene lotes publicados.</div>
             ) : (
-              <Table head={["Lote", "Tipo", "Periodo", "Recepción"]}>
+              <Table head={["Lote", "Tipo", "Periodo", "Recepción", "Pendientes"]}>
                 {db.lotes.filter((l) => l.empresa === empresaLote).map((l) => (
                   <tr key={l.id}>
                     <Td className="font-mono text-[12px]">{l.id}</Td>
@@ -590,6 +591,19 @@ export default function Boletas() {
                         {Math.round(((l.confirmados + l.asistidos) / l.total) * 100)}%
                       </Badge>
                     </Td>
+                    <Td>
+                      {l.pendientes > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setLotePend(l)}
+                          className="text-[12px] font-semibold text-petroleo hover:underline"
+                        >
+                          {l.pendientes} sin acusar
+                        </button>
+                      ) : (
+                        <span className="text-[12px] text-gris-cl">0</span>
+                      )}
+                    </Td>
                   </tr>
                 ))}
               </Table>
@@ -597,6 +611,53 @@ export default function Boletas() {
           </Card>
         </div>
       )}
+
+      <Modal
+        open={!!lotePend}
+        onClose={() => setLotePend(null)}
+        title={`Pendientes de acuse — ${lotePend?.id ?? ""}`}
+      >
+        {lotePend && (() => {
+          // v_acuses trae una fila por documento del lote; los que faltan son
+          // los sin acuse registrado: 'pendiente' (aún no confirma) y
+          // 'nunca_ingreso' (jamás entró al portal, exige otra acción).
+          const faltan = db.acuses.filter(
+            (a) => a.lote === lotePend.id && (a.estado === "pendiente" || a.estado === "nunca_ingreso")
+          );
+          return (
+            <div className="space-y-3">
+              <Note tone="pend">
+                {faltan.length} de {lotePend.total} trabajadores del lote aún no dejan constancia de recepción.
+                Los «nunca ingresó» necesitan otra acción: reenviar la clave del portal o registrar acuse asistido.
+              </Note>
+              <Card pad={false}>
+                <Table head={["DNI", "Trabajador", "Sede", "Estado"]}>
+                  {faltan.map((a) => {
+                    const p = persona(a.dni);
+                    return (
+                      <tr key={a.dni}>
+                        <Td className="font-mono text-[12px]">{a.dni}</Td>
+                        <Td className="font-semibold">{p?.nombre ?? "—"}</Td>
+                        <Td className="text-gris">{sede(p?.sede)?.cliente ?? p?.sede ?? "—"}</Td>
+                        <Td>
+                          <Badge tone={a.estado === "nunca_ingreso" ? "alerta" : "pend"}>
+                            {a.estado === "nunca_ingreso" ? "Nunca ingresó" : "Sin confirmar"}
+                          </Badge>
+                        </Td>
+                      </tr>
+                    );
+                  })}
+                </Table>
+              </Card>
+              <div className="flex justify-end">
+                <Link to="/rrhh/acuses" onClick={() => setLotePend(null)}>
+                  <Button size="sm" variant="secondary">Ir a seguimiento de acuses</Button>
+                </Link>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
     </>
   );
 }
