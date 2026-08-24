@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { PageHeader, Card, Badge, Button, Table, Td, EmptyState, Note, Modal, Field, Input, Select } from "../../components/ui";
@@ -20,8 +20,18 @@ export default function Legajo() {
   const [tab, setTab] = useState(0);
   const [editar, setEditar] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria } = useApp();
+  const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria,
+    historialVinculos, historialMovimientos } = useApp();
   const [cuentaCompleta, setCuentaCompleta] = useState(null);
+  // Historial de la pestaña Vínculos: todos los vínculos + movimientos de
+  // planilla (alta/traslado/cese/retorno). Se carga al entrar a la pestaña.
+  const [historial, setHistorial] = useState(null); // {vinculos, movimientos}
+  useEffect(() => {
+    if (tab !== 1 || historial) return;
+    Promise.all([historialVinculos(dni), historialMovimientos(dni)])
+      .then(([vinculos, movimientos]) => setHistorial({ vinculos, movimientos }))
+      .catch(() => setHistorial({ vinculos: [], movimientos: [] }));
+  }, [tab, dni, historial]); // eslint-disable-line react-hooks/exhaustive-deps
   const p = persona(dni);
   // Editar exige nivel de ACCIÓN en Personal (el RPC lo vuelve a validar).
   const puedeEditar = nivelDe(user?.acceso ?? (user ? { esSuperadmin: user.esSuperadmin } : null), "personal") >= 2;
@@ -128,23 +138,55 @@ export default function Legajo() {
       )}
 
       {tab === 1 && (
-        <Card pad={false}>
-          <Table head={["Empresa", "Sede", "Cargo", "Inicio", "Fin", "Estado"]}>
-            <tr>
-              <Td className="font-semibold">{e?.nombre}</Td>
-              <Td>{s?.nombre}</Td>
-              <Td>{p.cargo}</Td>
-              <Td className="font-mono text-[12px]">{p.ingreso}</Td>
-              <Td className="font-mono text-[12px]">{p.cese ?? "—"}</Td>
-              <Td><Badge tone={p.estado === "vigente" ? "conf" : "neutral"}>{p.estado === "vigente" ? "Vigente" : "Cerrado"}</Badge></Td>
-            </tr>
-          </Table>
-          <div className="border-t border-borde p-4">
-            <Note tone="neutral">
-              El legajo es por Persona, no por vínculo: si trabajó en otra empresa del grupo, ambas historias aparecen aquí.
-            </Note>
-          </div>
-        </Card>
+        <div className="space-y-4">
+          <Card pad={false}>
+            <Table head={["Empresa", "Sede", "Cargo", "Inicio", "Fin", "Estado"]}>
+              {(historial?.vinculos?.length
+                ? historial.vinculos
+                : [{ id: 0, empresaNombre: e?.nombre, sedeNombre: s?.nombre, cargo: p.cargo,
+                     inicio: p.ingreso, fin: p.cese ?? null, vigente: p.estado === "vigente" }]
+              ).map((v) => (
+                <tr key={v.id}>
+                  <Td className="font-semibold">{v.empresaNombre}</Td>
+                  <Td>{v.sedeNombre}</Td>
+                  <Td>{v.cargo}</Td>
+                  <Td className="font-mono text-[12px]">{v.inicio}</Td>
+                  <Td className="font-mono text-[12px]">{v.fin ?? "—"}</Td>
+                  <Td><Badge tone={v.vigente ? "conf" : "neutral"}>{v.vigente ? "Vigente" : "Cerrado"}</Badge></Td>
+                </tr>
+              ))}
+            </Table>
+            <div className="border-t border-borde p-4">
+              <Note tone="neutral">
+                El legajo es por Persona, no por vínculo: si trabajó en otra empresa del grupo, ambas historias aparecen aquí.
+              </Note>
+            </div>
+          </Card>
+          <Card pad={false}>
+            <div className="border-b border-borde px-5 py-3.5 text-[13px] font-bold text-tinta">Historial de movimientos</div>
+            {(historial?.movimientos ?? []).length === 0 ? (
+              <div className="p-5">
+                <EmptyState title="Sin movimientos registrados" body="Los movimientos (altas, traslados, ceses y retornos) los generan las importaciones de planilla." />
+              </div>
+            ) : (
+              <Table head={["Fecha", "Movimiento", "Detalle", "Período", "Registrado por"]}>
+                {historial.movimientos.map((m) => (
+                  <tr key={m.id}>
+                    <Td className="font-mono text-[12px]">{m.fecha}</Td>
+                    <Td>
+                      <Badge tone={{ alta: "conf", traslado: "pend", cese: "neutral", retorno: "tinta" }[m.tipo] ?? "neutral"}>
+                        {{ alta: "Alta", traslado: "Traslado", cese: "Cese", retorno: "Retorno" }[m.tipo] ?? m.tipo}
+                      </Badge>
+                    </Td>
+                    <Td>{m.tipo === "traslado" ? `${m.deEmpresa} → ${m.aEmpresa}` : (m.aEmpresa ?? m.deEmpresa ?? "—")}</Td>
+                    <Td className="font-mono text-[12px]">{m.periodo ?? "—"}</Td>
+                    <Td className="text-[12px] text-gris">{m.por}</Td>
+                  </tr>
+                ))}
+              </Table>
+            )}
+          </Card>
+        </div>
       )}
 
       {tab === 2 && (
