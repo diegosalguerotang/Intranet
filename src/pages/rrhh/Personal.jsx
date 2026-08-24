@@ -524,6 +524,7 @@ function ImportarPlanilla({ open, onClose }) {
   const [resultado, setResultado] = useState(null);
   const [uni, setUni] = useState(null); // análisis unificado {periodo, empresas, filas, errores, nombreArchivo, previa, resultado}
   const [periodoManual, setPeriodoManual] = useState("");
+  const [cesesMarcados, setCesesMarcados] = useState([]); // documentos cuyo cese confirmó el usuario
   // Vigencia de la "sesión" del modal: cerrar (X/backdrop) no cancela una
   // operación en vuelo (previsualizar/importar), pero incrementar este ref
   // hace que su resultado, cuando llegue, se descarte en vez de reaplicar
@@ -532,7 +533,7 @@ function ImportarPlanilla({ open, onClose }) {
   const cerrar = () => {
     sesionRef.current += 1;
     setPaso(1); setOcupado(false); setError(null); setRechazo(null); setAnalisis(null); setResultado(null);
-    setUni(null); setPeriodoManual("");
+    setUni(null); setPeriodoManual(""); setCesesMarcados([]);
     onClose();
   };
 
@@ -634,7 +635,7 @@ function ImportarPlanilla({ open, onClose }) {
     setError(null);
     setOcupado(true);
     try {
-      const r = await importarPlanillaUnificada(uni.filas, uni.periodo);
+      const r = await importarPlanillaUnificada(uni.filas, uni.periodo, cesesMarcados);
       if (sesionRef.current !== sesion) return;
       setUni((u) => ({ ...u, resultado: r }));
       setPaso(6);
@@ -761,6 +762,46 @@ function ImportarPlanilla({ open, onClose }) {
                 </ul>
               </Note>
             )}
+            {empresasDe(uni.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).length > 0 && (
+              <Note tone="pend">
+                Traslados de razón social (el vínculo anterior SE CIERRA al confirmar y el movimiento queda en el legajo):
+                <ul className="mt-1 list-disc pl-4">
+                  {empresasDe(uni.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).map((t, i) => (
+                    <li key={i}>{t.nombre} ({t.documento}): {t.desde} → {t.a}</li>
+                  ))}
+                </ul>
+              </Note>
+            )}
+            {empresasDe(uni.previa).flatMap((e) => e.retornos ?? []).length > 0 && (
+              <Note tone="neutral">
+                Retornos al grupo (se les abre vínculo nuevo y queda en su historial):{" "}
+                {empresasDe(uni.previa).flatMap((e) => (e.retornos ?? []).map((d) => `${d} (${e.nombre})`)).join(" · ")}
+              </Note>
+            )}
+            {(uni.previa.posiblesCeses ?? []).length > 0 && (
+              <Note tone="pend">
+                {(uni.previa.posiblesCeses ?? []).length === 1
+                  ? "1 trabajador vigente no viene en esta planilla."
+                  : `${uni.previa.posiblesCeses.length} trabajadores vigentes no vienen en esta planilla.`}{" "}
+                Marca SOLO a quienes ya no trabajan: su vínculo se cierra (fecha fin del mes anterior al período)
+                y el cese queda en su historial. Los que dejes sin marcar siguen igual — nadie cesa por ausencia.
+                <ul className="mt-2 space-y-1">
+                  {uni.previa.posiblesCeses.map((c) => (
+                    <li key={c.documento}>
+                      <label className="flex cursor-pointer items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={cesesMarcados.includes(c.documento)}
+                          onChange={(ev) => setCesesMarcados((m) => ev.target.checked
+                            ? [...m, c.documento] : m.filter((d) => d !== c.documento))}
+                        />
+                        <span>{c.nombre} ({c.documento}) — {c.empresaNombre}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </Note>
+            )}
             {conAdvertencia.length > 0 && (
               <Note tone="pend">
                 {conAdvertencia.length} {conAdvertencia.length === 1 ? "fila con advertencia" : "filas con advertencias"} (se importan igual):
@@ -781,7 +822,7 @@ function ImportarPlanilla({ open, onClose }) {
             {error && <Note tone="alerta">{error}</Note>}
             <div className="flex gap-2">
               <Button onClick={confirmarUnificada} disabled={ocupado}>
-                {ocupado ? "Importando…" : `Sí, subir a ${empresasDe(uni.previa).length === 1 ? "esa razón social" : `las ${empresasDe(uni.previa).length} razones sociales`}`}
+                {ocupado ? "Importando…" : `Sí, subir a ${empresasDe(uni.previa).length === 1 ? "esa razón social" : `las ${empresasDe(uni.previa).length} razones sociales`}${cesesMarcados.length ? ` y cesar a ${cesesMarcados.length}` : ""}`}
               </Button>
               <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
             </div>
@@ -792,7 +833,7 @@ function ImportarPlanilla({ open, onClose }) {
             <Note tone="conf">
               Planilla unificada del período {uni.resultado.periodo} aplicada:
               {" "}{empresasDe(uni.resultado).map((e) =>
-                `${e.nombre} (${e.altas.length} altas, ${e.vinculosNuevos.length} vínculos nuevos, ${e.actualizaciones.length} actualizadas)`).join(" · ")}.
+                `${e.nombre} (${e.altas.length} altas, ${e.vinculosNuevos.length} vínculos nuevos, ${e.actualizaciones.length} actualizadas${(e.traslados ?? []).length ? `, ${e.traslados.length} traslados` : ""}${(e.retornos ?? []).length ? `, ${e.retornos.length} retornos` : ""}${(e.cesados ?? []).length ? `, ${e.cesados.length} ceses` : ""})`).join(" · ")}.
             </Note>
             {(uni.resultado.problemas ?? []).length > 0 && (
               <Note tone="pend">
