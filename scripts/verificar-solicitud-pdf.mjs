@@ -129,12 +129,18 @@ const documentoId = gen.documentoId;
 (gen.status === 200 && documentoId && gen.ruta) ? ok(`PDF generado y archivado (doc ${documentoId}, ${gen.ruta})`)
   : mal("generar", JSON.stringify(gen));
 
-console.log("4 · El documento quedó en el legajo con exige_acuse");
+console.log("4 · El documento quedó en el legajo con exige_acuse según la política del tipo");
 const [doc] = await sql(`select d.tipo, d.titulo, d.archivo_url, d.exige_acuse, v.persona_dni
   from documentos d join vinculos v on v.id = d.vinculo_id where d.id = ${documentoId ?? 0}`);
 (doc?.tipo === "solicitud" && doc?.persona_dni === DNI) ? ok(`en el legajo de ${DNI}: «${doc.titulo}»`)
   : mal("legajo", JSON.stringify(doc));
-(doc?.exige_acuse === true) ? ok("vacaciones exige acuse (acuse=siempre)") : mal("exige_acuse", JSON.stringify(doc));
+// La política vive en solicitud_tipos.acuse: nunca / siempre / motivo_particular.
+const [{ acuse: politicaAcuse }] = await sql(`select acuse from solicitud_tipos where id = 'vacaciones'`);
+const acuseEsperado = politicaAcuse === "siempre" ||
+  (politicaAcuse === "motivo_particular" && VAC.motivo === "Particular");
+(doc?.exige_acuse === acuseEsperado)
+  ? ok(`exige_acuse=${doc.exige_acuse} coincide con la política del tipo (acuse=${politicaAcuse})`)
+  : mal("exige_acuse", `política ${politicaAcuse} esperaba ${acuseEsperado}: ${JSON.stringify(doc)}`);
 const [enlace] = await sql(`select documento_id from solicitudes where id=${solId}`);
 (enlace?.documento_id === documentoId) ? ok("solicitudes.documento_id enlazado") : mal("enlace", JSON.stringify(enlace));
 
@@ -164,8 +170,12 @@ await sql(`
 `);
 if (documentoId) await sql(`delete from documentos where id = ${documentoId}`);
 if (gen.ruta) {
-  const borrar = await fetch(`${SUPA}/storage/v1/object/documentos/${gen.ruta}`, { method: "DELETE", headers: cabService });
-  borrar.ok ? ok("PDF de prueba fuera del bucket") : mal("storage", `DELETE ${borrar.status}`);
+  // Sin Content-Type: un DELETE sin body con application/json hace que
+  // storage-api intente parsear un JSON vacío y responda 400.
+  const borrar = await fetch(`${SUPA}/storage/v1/object/documentos/${gen.ruta}`, {
+    method: "DELETE", headers: { apikey: service, authorization: `Bearer ${service}` },
+  });
+  borrar.ok ? ok("PDF de prueba fuera del bucket") : mal("storage", `DELETE ${borrar.status} ${await borrar.text()}`);
 }
 await sql(`delete from vinculos where persona_dni = '${DNI}'`);
 await sql(`delete from personas where dni = '${DNI}'`);
