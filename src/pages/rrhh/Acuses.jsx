@@ -221,6 +221,25 @@ export function Constancia() {
   ];
   if (a.modalidad === "asistido") campos.splice(5, 0, ["Fecha de entrega física declarada", a.fechaEntrega]);
 
+  const descargarPdf = async () => {
+    // pdf-lib entra por import dinámico para no cargarlo en el chunk principal.
+    const { generarConstanciaPdf } = await import("../../lib/constancia.js");
+    const bytes = await generarConstanciaPdf({
+      numero: `${a.lote}-${p.dni}`,
+      campos,
+      notaAsistido: a.modalidad === "asistido"
+        ? `Acuse asistido: la constancia lo declara de forma expresa, identifica al supervisor que lo registró (${a.supervisor}) y adjunta el cargo firmado escaneado. No se presenta como acuse propio.`
+        : null,
+      declaracion: "Declaro haber recibido mi boleta de pago del periodo indicado y haber podido revisar su contenido.",
+    });
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = `constancia-${`${a.lote}-${p.dni}`.replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`;
+    enlace.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <Link to="/rrhh/acuses" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-petroleo hover:underline">
@@ -230,7 +249,7 @@ export function Constancia() {
         code="RRH-12 · Constancia de entrega"
         title={`Constancia — ${p.nombre}`}
         subtitle="Todos los campos provienen del registro inmutable del acuse. Ninguno se recalcula al generar la constancia."
-        actions={<Button size="sm"><Download size={13} /> Descargar en PDF</Button>}
+        actions={<Button size="sm" onClick={descargarPdf}><Download size={13} /> Descargar en PDF</Button>}
       />
       <Card className="max-w-3xl">
         <div className="mb-5 border-b border-borde pb-4">
