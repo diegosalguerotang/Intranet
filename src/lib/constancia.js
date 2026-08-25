@@ -38,8 +38,14 @@ function envolver(texto, fuente, cuerpo, ancho) {
   return lineas.length ? lineas : [""];
 }
 
-// { numero, campos: [[etiqueta, valor], …], notaAsistido?, declaracion? } → Uint8Array
-export async function generarConstanciaPdf({ numero, campos, notaAsistido, declaracion }) {
+// { numero, campos: [[etiqueta, valor], …], notaAsistido?, declaracion?,
+//   titulo?, subtitulo? } → Uint8Array. El título se parametrizó (2026-08-25)
+// para reutilizar el generador en el legajo y el expediente disciplinario.
+export async function generarConstanciaPdf({
+  numero, campos, notaAsistido, declaracion,
+  titulo = "CONSTANCIA DE ENTREGA DE DOCUMENTO LABORAL",
+  subtitulo = "Generada desde el registro inmutable de acuses",
+}) {
   const doc = await PDFDocument.create();
   const pagina = doc.addPage(A4);
   const normal = await doc.embedFont(StandardFonts.Helvetica);
@@ -55,8 +61,8 @@ export async function generarConstanciaPdf({ numero, campos, notaAsistido, decla
     }
   };
 
-  escribir("CONSTANCIA DE ENTREGA DE DOCUMENTO LABORAL", { fuente: negrita, cuerpo: 13, salto: 5 });
-  escribir(`N° ${winAnsi(numero)} · Generada desde el registro inmutable de acuses`, { cuerpo: 9, color: GRIS, salto: 10 });
+  escribir(titulo, { fuente: negrita, cuerpo: 13, salto: 5 });
+  escribir(`N° ${winAnsi(numero)} · ${winAnsi(subtitulo)}`, { cuerpo: 9, color: GRIS, salto: 10 });
   pagina.drawLine({ start: { x: MARGEN, y }, end: { x: A4[0] - MARGEN, y }, thickness: 0.75, color: LINEA });
   y -= 14;
 
@@ -78,4 +84,16 @@ export async function generarConstanciaPdf({ numero, campos, notaAsistido, decla
     x: MARGEN, y: MARGEN - 14, size: 8, font: normal, color: GRIS,
   });
   return doc.save();
+}
+
+// Une varios PDFs (Uint8Array) en uno solo, en orden — una constancia por
+// página para «Exportar constancias del lote» (RRH-11).
+export async function unirPdfs(lista) {
+  const unido = await PDFDocument.create();
+  for (const bytes of lista) {
+    const parte = await PDFDocument.load(bytes);
+    const paginas = await unido.copyPages(parte, parte.getPageIndices());
+    for (const p of paginas) unido.addPage(p);
+  }
+  return unido.save();
 }

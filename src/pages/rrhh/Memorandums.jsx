@@ -36,6 +36,47 @@ export default function Memorandums() {
   const { db, persona, resolverMemo, notificarMemorandum } = useApp();
   const [emitir, setEmitir] = useState(false);
   const [detalle, setDetalle] = useState(null);
+  const [exportando, setExportando] = useState(false);
+
+  // Expediente en PDF desde el registro congelado del memorándum (falta
+  // literal, antecedentes art. 54, descargo y resolución tal como constan).
+  const exportarExpediente = async (m) => {
+    setExportando(true);
+    try {
+      const { generarConstanciaPdf } = await import("../../lib/constancia.js");
+      const campos = [
+        ["Trabajador", `${persona(m.dni)?.nombre ?? "-"} — DNI ${m.dni}`],
+        ["Tipo de sanción", m.tipo + (m.suspensionDias ? ` (${m.suspensionDias} día${m.suspensionDias === 1 ? "" : "s"})` : "")],
+        ["Emitido", m.emitido],
+        ["Notificado", m.notificado ?? (m.estado === "registro_interno" ? "No aplica (registro interno)" : "Pendiente de notificación")],
+        ["Plazo de descargo", m.estado === "registro_interno" ? "No aplica"
+          : m.vence ? `${m.plazoDias} días ${m.naturaleza === "imputacion" ? "naturales" : "hábiles"} — vence ${m.vence}`
+          : `${m.plazoDias || "—"} días — aún no corre`],
+        ["Reincidencia (art. 58)", m.reincidencia ? "Sí — agravante" : "No"],
+        ["Falta invocada (texto del RIT)", m.faltaTexto ?? m.articulo ?? "—"],
+        ["Hechos imputados", m.motivo],
+      ];
+      if ((m.antecedentes ?? []).length) {
+        campos.push(["Antecedentes al momento de emitir (art. 54)",
+          m.antecedentes.map((a) => `${a.emitido} · ${a.tipo} (${a.id}) — ${ESTADOS[a.estado]?.label ?? a.estado}`).join("  ·  ")]);
+      }
+      campos.push(["Descargo del trabajador", m.descargo ? `(${m.descargo.fecha}) ${m.descargo.texto}` : "No presentado"]);
+      campos.push(["Resolución", m.resolucion ? `(${m.resolucion.fecha}) ${m.resolucion.decision}` : "Pendiente"]);
+      const bytes = await generarConstanciaPdf({
+        titulo: "EXPEDIENTE DISCIPLINARIO",
+        subtitulo: "Generado desde el registro congelado del memorándum",
+        numero: m.id, campos,
+      });
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const el = Object.assign(document.createElement("a"), { href: url, download: `expediente-${m.id}.pdf` });
+      document.body.appendChild(el);
+      el.click();
+      el.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setExportando(false);
+    }
+  };
   const [filtro, setFiltro] = useState("");
   const [busca, setBusca] = useState("");
   const [orden, setOrden] = useState({ campo: null, dir: 1 });
@@ -224,7 +265,9 @@ export default function Memorandums() {
               </div>
             ) : null}
 
-            <Button variant="secondary" size="sm"><FileDown size={13} /> Exportar expediente completo</Button>
+            <Button variant="secondary" size="sm" onClick={() => exportarExpediente(detalle)} disabled={exportando}>
+              <FileDown size={13} /> {exportando ? "Generando PDF…" : "Exportar expediente completo"}
+            </Button>
           </div>
         )}
       </Modal>

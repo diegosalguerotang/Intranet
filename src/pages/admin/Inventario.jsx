@@ -74,18 +74,18 @@ export default function Inventario() {
     mantenimiento: filas.filter((a) => a.estado === "mantenimiento").length,
   };
 
-  const ejecutarAsignacion = (codigo, dni, antivirus, comentario) => {
+  const ejecutarAsignacion = (codigo, dni, antivirus, comentario, condicion) => {
     const p = persona(dni);
-    asignarActivo(codigo, dni, p?.sede ?? null, antivirus, comentario || null);
+    asignarActivo(codigo, dni, p?.sede ?? null, antivirus, comentario || null, condicion);
     setAsignar(null);
-    setAviso(`Activo ${codigo} asignado a ${p?.nombre}. El cargo digital entró al motor de acuses y aparecerá en su portal como pendiente de confirmar.`);
+    setAviso(`Activo ${codigo} asignado a ${p?.nombre} (condición: ${condicion}).`);
   };
 
-  const ejecutarDevolucion = (codigo, destino) => {
+  const ejecutarDevolucion = (codigo, destino, condicion) => {
     const actual = activos.find((a) => a.codigo === codigo);
-    devolverActivo(codigo, destino, destino === "mantenimiento" ? actual?.sede ?? null : null);
+    devolverActivo(codigo, destino, destino === "mantenimiento" ? actual?.sede ?? null : null, condicion);
     setDevolver(null);
-    setAviso(`Devolución de ${codigo} registrada. El activo quedó ${destino === "mantenimiento" ? "en mantenimiento" : destino === "baja" ? "de baja" : "disponible"} y el cargo del trabajador se cerró.`);
+    setAviso(`Devolución de ${codigo} registrada (condición: ${condicion}). El activo quedó ${destino === "mantenimiento" ? "en mantenimiento" : destino === "baja" ? "de baja" : "disponible"}.`);
   };
 
   return (
@@ -332,50 +332,74 @@ function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, gu
   );
 }
 
-// ADQ-02 — Alta de activo
+// ADQ-02 — Alta de activo (real desde 2026-08-25: llama crear_activo).
 function AltaActivo({ open, onClose }) {
-  const [cat, setCat] = useState("Cómputo");
+  const { empresaId, crearActivo } = useApp();
+  const VACIO = { codigo: "", categoria: "Cómputo", tipo: "", marca: "", modelo: "", serie: "", imei: "", valor: "", compra: "", observaciones: "" };
+  const [f, setF] = useState(VACIO);
   const [ok, setOk] = useState(false);
-  const cerrar = () => { setOk(false); onClose(); };
+  const [error, setError] = useState(null);
+  const [ocupado, setOcupado] = useState(false);
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const cerrar = () => { setF(VACIO); setOk(false); setError(null); onClose(); };
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    if (ocupado) return;
+    setError(null);
+    setOcupado(true);
+    const r = await crearActivo({ ...f, empresa: empresaId, valor: Number(f.valor) || 0 });
+    setOcupado(false);
+    if (r?.error) return setError(r.error.message ?? String(r.error));
+    setOk(true);
+  };
 
   return (
     <Modal open={open} onClose={cerrar} title="ADQ-02 · Alta de activo" wide>
       {ok ? (
         <div className="space-y-4">
-          <Note tone="conf">Activo registrado (demostración) en estado disponible.</Note>
+          <Note tone="conf">Activo <b>{f.codigo}</b> registrado en el inventario, en estado disponible.</Note>
           <Button onClick={cerrar}>Cerrar</Button>
         </div>
       ) : (
-        <form onSubmit={(e) => { e.preventDefault(); setOk(true); }} className="space-y-4">
+        <form onSubmit={guardar} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Código" required hint="Identidad del activo, única en todo el grupo (ej. PROLT52).">
+              <Input value={f.codigo} onChange={set("codigo")} required />
+            </Field>
             <Field label="Categoría" required>
-              <Select value={cat} onChange={(e) => setCat(e.target.value)}>
+              <Select value={f.categoria} onChange={set("categoria")}>
                 <option>Cómputo</option>
                 <option>Comunicaciones</option>
                 <option>Maquinaria</option>
               </Select>
             </Field>
-            <Field label="Marca" required><Input /></Field>
-            <Field label="Modelo" required><Input /></Field>
+            <Field label="Tipo" hint="LAPTOP, PC, IMPRESORA, CELULAR…">
+              <Input value={f.tipo} onChange={set("tipo")} />
+            </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Número de serie" required hint="Único por categoría."><Input /></Field>
-            {cat === "Comunicaciones" && (
-              <Field label="IMEI" required hint="Único en todo el sistema."><Input inputMode="numeric" maxLength={15} /></Field>
+            <Field label="Marca"><Input value={f.marca} onChange={set("marca")} /></Field>
+            <Field label="Modelo"><Input value={f.modelo} onChange={set("modelo")} /></Field>
+            <Field label="Número de serie"><Input value={f.serie} onChange={set("serie")} /></Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {f.categoria === "Comunicaciones" && (
+              <Field label="IMEI" hint="Único en todo el sistema.">
+                <Input value={f.imei} onChange={set("imei")} inputMode="numeric" maxLength={15} />
+              </Field>
             )}
-            <Field label="Valor de adquisición (S/)" required><Input inputMode="decimal" /></Field>
+            <Field label="Valor de adquisición (S/)"><Input value={f.valor} onChange={set("valor")} inputMode="decimal" /></Field>
+            <Field label="Fecha de compra"><Input type="date" value={f.compra} onChange={set("compra")} /></Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Fecha de compra"><Input type="date" /></Field>
-            <Field label="Proveedor"><Input /></Field>
-            <Field label="Fotografía del equipo"><Input type="file" /></Field>
-          </div>
+          <Field label="Observaciones"><Input value={f.observaciones} onChange={set("observaciones")} /></Field>
           <Note tone="neutral">
-            El activo pertenece a una empresa concreta del grupo aunque se asigne a personal de otra: eso importa para
-            el costeo y la contabilidad.
+            El activo pertenece a la razón social seleccionada arriba ({empresaId}) aunque se asigne a personal de
+            otra: eso importa para el costeo y la contabilidad.
           </Note>
+          {error && <Note tone="alerta">{error}</Note>}
           <div className="flex gap-2">
-            <Button type="submit">Guardar</Button>
+            <Button type="submit" disabled={ocupado || !f.codigo.trim()}>{ocupado ? "Guardando…" : "Guardar"}</Button>
             <Button type="button" variant="secondary" onClick={cerrar}>Cancelar</Button>
           </div>
         </form>
@@ -388,7 +412,7 @@ function AltaActivo({ open, onClose }) {
 function AsignarActivo({ activo, onClose, onAsignar }) {
   const { db } = useApp();
   const [dni, setDni] = useState("");
-  const [cargo, setCargo] = useState(true);
+  const [condicion, setCondicion] = useState("Buen estado");
   const [antivirus, setAntivirus] = useState(false);
   const [comentario, setComentario] = useState("");
   const vigentes = db.personal.filter((p) => p.estado === "vigente");
@@ -408,14 +432,10 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
               ))}
             </Select>
           </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Fecha de entrega"><Input type="date" defaultValue="2026-08-10" /></Field>
-            <Field label="Condición en la entrega">
-              <Select><option>Nuevo</option><option>Buen estado</option><option>Con observaciones</option></Select>
-            </Field>
-          </div>
-          <Field label="Fotografías del estado" hint="Referencia contra la cual se evaluará la devolución. Sin ella, cualquier discusión sobre deterioro es palabra contra palabra.">
-            <Input type="file" multiple />
+          <Field label="Condición en la entrega" hint="Queda registrada en la asignación: contra ella se evalúa la devolución.">
+            <Select value={condicion} onChange={(e) => setCondicion(e.target.value)}>
+              <option>Nuevo</option><option>Buen estado</option><option>Con observaciones</option>
+            </Select>
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
@@ -426,12 +446,12 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
               <Input value={comentario} onChange={(e) => setComentario(e.target.value)} />
             </Field>
           </div>
-          <label className="flex items-center gap-2 text-[13px] font-medium text-tinta-2">
-            <input type="checkbox" checked={cargo} onChange={(e) => setCargo(e.target.checked)} className="accent-petroleo" />
-            Generar cargo digital para acuse del trabajador
-          </label>
+          <Note tone="neutral">
+            La fecha de entrega es la del registro (reloj del servidor). El cargo con acuse del trabajador llegará
+            con el motor de adjuntos.
+          </Note>
           <div className="flex gap-2">
-            <Button disabled={!dni} onClick={() => onAsignar(activo.codigo, dni, antivirus, comentario)}>Asignar</Button>
+            <Button disabled={!dni} onClick={() => onAsignar(activo.codigo, dni, antivirus, comentario, condicion)}>Asignar</Button>
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           </div>
         </div>
@@ -444,6 +464,7 @@ function AsignarActivo({ activo, onClose, onAsignar }) {
 function DevolucionActivo({ activo, onClose, onDevolver }) {
   const { persona } = useApp();
   const [destino, setDestino] = useState("disponible");
+  const [condicion, setCondicion] = useState("Buen estado");
 
   return (
     <Modal open={!!activo} onClose={onClose} title="ADQ-04 · Devolución de activo">
@@ -452,18 +473,11 @@ function DevolucionActivo({ activo, onClose, onDevolver }) {
           <Note tone="neutral">
             <b>{activo.codigo}</b> — {activo.marca} {activo.modelo}, asignado a <b>{persona(activo.asignado)?.nombre}</b>
           </Note>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-borde bg-papel/60 p-3.5">
-              <div className="font-mono text-[10px] font-semibold uppercase tracking-wide text-gris">Condición en la entrega</div>
-              <div className="mt-1 text-[13px] font-semibold text-tinta">Buen estado</div>
-              <div className="mt-0.5 text-[11.5px] text-gris">2 fotografías · {activo.compra}</div>
-            </div>
-            <div className="rounded-md border border-petroleo/40 bg-white p-3.5">
-              <div className="font-mono text-[10px] font-semibold uppercase tracking-wide text-gris">Condición en la devolución</div>
-              <Select className="mt-1"><option>Buen estado</option><option>Deteriorado</option><option>Inoperativo</option></Select>
-            </div>
-          </div>
-          <Field label="Fotografías del estado actual"><Input type="file" multiple /></Field>
+          <Field label="Condición en la devolución" hint="Se contrasta con la condición registrada en la entrega.">
+            <Select value={condicion} onChange={(e) => setCondicion(e.target.value)}>
+              <option>Buen estado</option><option>Deteriorado</option><option>Inoperativo</option>
+            </Select>
+          </Field>
           <Field label="Destino del activo">
             <Select value={destino} onChange={(e) => setDestino(e.target.value)}>
               <option value="disponible">Disponible</option>
@@ -472,7 +486,7 @@ function DevolucionActivo({ activo, onClose, onDevolver }) {
             </Select>
           </Field>
           <div className="flex gap-2">
-            <Button onClick={() => onDevolver(activo.codigo, destino)}>Registrar devolución</Button>
+            <Button onClick={() => onDevolver(activo.codigo, destino, condicion)}>Registrar devolución</Button>
             <Button variant="secondary" onClick={onClose}>Cancelar</Button>
           </div>
         </div>

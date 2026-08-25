@@ -17,7 +17,9 @@ const PORTAL_BADGE = {
 };
 
 export default function Personal() {
-  const { empresaId, db, sede, addPersonal, deletePersonal, cuentaPortal, cuentasPortalLote, refrescarPersonal } = useApp();
+  const { empresaId, db, sede, user, addPersonal, deletePersonal, cuentaPortal, cuentasPortalLote, refrescarPersonal } = useApp();
+  const acceso = user?.acceso ?? { esSuperadmin: user?.esSuperadmin };
+  const puedeExportar = acceso.esSuperadmin || acceso.exportarDatosPersonales;
   const [q, setQ] = useState("");
   const [fSede, setFSede] = useState("");
   const [fPortal, setFPortal] = useState("");
@@ -56,6 +58,19 @@ export default function Personal() {
     [db.personal, empresaId, q, fSede, fPortal, fEstado]
   );
 
+  // Exportación real del maestro filtrado (gated por la casilla «Exportar
+  // datos personales»; sin columnas bancarias — la cuenta ni enmascarada sale).
+  const exportar = () => {
+    const enc = ["DNI", "Nombre", "Cargo", "Sede", "Estado", "Ingreso", "Celular", "Correo", "Portal"];
+    const csv = [enc, ...filas.map((p) => [p.dni, p.nombre, p.cargo ?? "", sede(p.sede)?.nombre ?? "",
+      p.estado, p.ingreso ?? "", p.celular ?? "", p.correo ?? "", p.portal ?? ""])]
+      .map((f) => f.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    const el = Object.assign(document.createElement("a"), { href: url, download: `planilla-${empresaId}.csv` });
+    el.click();
+    URL.revokeObjectURL(url);
+  };
+
   const guardarAlta = (row) => {
     addPersonal({ ...row, empresa: empresaId });
     setAlta(false);
@@ -82,9 +97,11 @@ export default function Personal() {
             <Button variant="secondary" size="sm" onClick={() => setMasa(true)}>
               <Smartphone size={13} /> Cuentas del portal
             </Button>
-            <Button variant="secondary" size="sm">
-              <Download size={13} /> Exportar
-            </Button>
+            {puedeExportar && (
+              <Button variant="secondary" size="sm" onClick={exportar}>
+                <Download size={13} /> Exportar
+              </Button>
+            )}
             <Button size="sm" onClick={() => setAlta(true)}>
               <UserPlus size={13} /> Nuevo trabajador
             </Button>

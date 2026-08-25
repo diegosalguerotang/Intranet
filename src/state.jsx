@@ -297,13 +297,15 @@ export function AppProvider({ children }) {
         p_empresa: lote.empresa, p_tipo: lote.tipo, p_periodo: lote.periodo, p_por: lote.por,
       }, "lotes", "acuses");
     },
-    registrarAcuseAsistido: (dni, lote, cambios) => {
-      local("acuses", (xs) => xs.map((a) => (a.dni === dni && a.lote === lote ? { ...a, ...cambios } : a)));
+    // v2 (2026-08-25): el adjunto YA subido a Storage viaja como ruta y el
+    // servidor lo verifica; supervisor/hash los pone la BD (nada inventado).
+    // El refresco de v_acuses trae la verdad — sin update local optimista.
+    registrarAcuseAsistido: async (dni, lote, datos) =>
       rpc("registrar_acuse_asistido", {
-        p_dni: dni, p_lote: lote, p_motivo: cambios.motivo,
-        p_entrega: cambios.fechaEntrega, p_registrado_por: cambios.supervisor,
-      }, "acuses", "lotes");
-    },
+        p_dni: dni, p_lote: lote, p_motivo: datos.motivo,
+        p_entrega: datos.fechaEntrega, p_adjunto: datos.adjunto,
+        p_dispositivo: navigator.userAgent.slice(0, 150),
+      }, "acuses", "lotes"),
     addComunicado: (c) => {
       local("comunicados", (xs) => [c, ...xs]);
       rpc("publicar_comunicado", {
@@ -346,13 +348,32 @@ export function AppProvider({ children }) {
       local("memorandums", (xs) => xs.map((m) => (m.id === id ? { ...m, estado: "resuelto", resolucion } : m)));
       rpc("resolver_memorandum", { p_id: id, p_decision: resolucion.decision }, "memorandums");
     },
-    asignarActivo: (codigo, dni, sedeId, antivirus = null, comentario = null) => {
+    asignarActivo: (codigo, dni, sedeId, antivirus = null, comentario = null, condicion = "Buen estado") => {
       local("activos", (xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: "asignado", asignado: dni, sede: sedeId, antivirus, comentario_asignacion: comentario } : a)));
-      rpc("asignar_activo", { p_codigo: codigo, p_dni: dni, p_antivirus: antivirus, p_comentario: comentario }, "activos");
+      rpc("asignar_activo", { p_codigo: codigo, p_dni: dni, p_condicion: condicion, p_antivirus: antivirus, p_comentario: comentario }, "activos");
     },
-    devolverActivo: (codigo, destino, sedeId) => {
+    devolverActivo: (codigo, destino, sedeId, condicion = "Buen estado") => {
       local("activos", (xs) => xs.map((a) => (a.codigo === codigo ? { ...a, estado: destino, asignado: null, sede: sedeId } : a)));
-      rpc("devolver_activo", { p_codigo: codigo, p_destino: destino }, "activos");
+      rpc("devolver_activo", { p_codigo: codigo, p_destino: destino, p_condicion: condicion }, "activos");
+    },
+    // ADQ-02 real (2026-08-25): alta manual contra la BD; devuelve {error} si
+    // el código ya existe o falta nivel.
+    crearActivo: (a) => rpc("crear_activo", {
+      p_codigo: a.codigo, p_categoria: a.categoria, p_empresa: a.empresa,
+      p_tipo: a.tipo || null, p_marca: a.marca || null, p_modelo: a.modelo || null,
+      p_serie: a.serie || null, p_imei: a.imei || null,
+      p_valor: a.valor || 0, p_compra: a.compra || null,
+      p_observaciones: a.observaciones || null,
+    }, "activos"),
+    // Actividad real del legajo (auditoría filtrada por persona; se consulta
+    // al abrir, no se precarga: crece sin tope).
+    actividadPersona: async (dni) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase
+        .from("v_actividad_persona").select("*").eq("dni", dni)
+        .order("id", { ascending: false }).limit(100);
+      if (error) { console.error("Supabase [actividad]:", error.message); return []; }
+      return data ?? [];
     },
     addLinea: (l) => {
       local("lineas", (xs) => [l, ...xs]);

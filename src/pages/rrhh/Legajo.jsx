@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { PageHeader, Card, Badge, Button, Table, Td, EmptyState, Note, Modal, Field, Input, Select } from "../../components/ui";
 import { useApp } from "../../state";
-import { AUDITORIA } from "../../data/mock";
 import { nivelDe } from "../../data/modulos";
 
 const TABS = ["Datos personales", "Vínculos", "Documentos", "Disciplina", "Activos", "Actividad"];
@@ -21,7 +20,14 @@ export default function Legajo() {
   const [editar, setEditar] = useState(false);
   const [aviso, setAviso] = useState(null);
   const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria,
-    historialVinculos, historialMovimientos } = useApp();
+    historialVinculos, historialMovimientos, actividadPersona } = useApp();
+  // Actividad real (auditoría filtrada por persona), cargada al entrar a la pestaña.
+  const [actividad, setActividad] = useState(null);
+  useEffect(() => {
+    if (tab !== 5 || actividad) return;
+    actividadPersona(dni).then(setActividad).catch(() => setActividad([]));
+  }, [tab, dni, actividad]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [bajandoLegajo, setBajandoLegajo] = useState(false);
   const [cuentaCompleta, setCuentaCompleta] = useState(null);
   // Historial de la pestaña Vínculos: todos los vínculos + movimientos de
   // planilla (alta/traslado/cese/retorno). Se carga al entrar a la pestaña.
@@ -51,6 +57,47 @@ export default function Legajo() {
   const epp = db.epp_entregas.filter((x) => x.dni === dni);
   const antiguedad = new Date().getFullYear() - new Date(p.ingreso).getFullYear();
 
+  // PDF resumen de UNA página con lo que el legajo sabe — JAMÁS datos
+  // bancarios (esos exigen la casilla y quedan auditados por consulta).
+  const descargarLegajo = async () => {
+    setBajandoLegajo(true);
+    try {
+      const { generarConstanciaPdf } = await import("../../lib/constancia.js");
+      const [vincs, movs] = historial
+        ? [historial.vinculos, historial.movimientos]
+        : await Promise.all([historialVinculos(dni), historialMovimientos(dni)]).catch(() => [[], []]);
+      const conAcuse = acuses.filter((a) => a.estado === "confirmado" || a.estado === "asistido").length;
+      const campos = [
+        ["Trabajador", `${p.nombre} — ${p.tipo_documento === "CE" ? "C.E." : p.tipo_documento === "Pasaporte" ? "Pasaporte" : "DNI"} ${p.dni}`],
+        ["Empresa · Sede · Cargo", `${e?.nombre ?? "—"} · ${s?.nombre ?? "—"} · ${p.cargo ?? "—"}`],
+        ["Ingreso / Estado", `${p.ingreso ?? "—"} · ${p.estado === "vigente" ? "Vigente" : "Cesado"}`],
+        ["Contacto", `${p.celular ?? "sin celular"} · ${p.correo ?? "sin correo"}`],
+        ["Vínculos en el grupo", (vincs?.length ? vincs : [null]).map((v) =>
+          v ? `${v.empresaNombre} (${v.inicio} → ${v.fin ?? "vigente"})` : `${e?.nombre ?? "—"} (${p.ingreso ?? "—"} → vigente)`
+        ).join("  ·  ")],
+        ["Movimientos de planilla", (movs ?? []).length
+          ? movs.slice(0, 8).map((m) => `${m.fecha} ${m.tipo}${m.tipo === "traslado" ? ` ${m.deEmpresa} → ${m.aEmpresa}` : ""}`).join("  ·  ")
+          : "Sin movimientos registrados"],
+        ["Documentos publicados", `${acuses.length} — con acuse de recepción: ${conAcuse}`],
+        ["Procesos disciplinarios", String(memos.length)],
+        ["Activos a cargo", String(activos.length)],
+      ];
+      const bytes = await generarConstanciaPdf({
+        titulo: "LEGAJO DEL TRABAJADOR — RESUMEN",
+        subtitulo: "Generado desde el maestro y los registros de la Intranet GrupoER",
+        numero: p.dni, campos,
+      });
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const el = Object.assign(document.createElement("a"), { href: url, download: `legajo-${p.dni}.pdf` });
+      document.body.appendChild(el);
+      el.click();
+      el.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setBajandoLegajo(false);
+    }
+  };
+
   return (
     <>
       <Link to="/rrhh/personal" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-petroleo hover:underline">
@@ -65,8 +112,12 @@ export default function Legajo() {
             {puedeEditar && (
               <Button size="sm" onClick={() => setEditar(true)}><Pencil size={13} /> Editar datos</Button>
             )}
-            <Button variant="secondary" size="sm"><Download size={13} /> Descargar legajo</Button>
-            <Button variant="secondary" size="sm"><Download size={13} /> Constancias</Button>
+            <Button variant="secondary" size="sm" onClick={descargarLegajo} disabled={bajandoLegajo}>
+              <Download size={13} /> {bajandoLegajo ? "Generando…" : "Descargar legajo"}
+            </Button>
+            <Link to={`/rrhh/acuses/${dni}`}>
+              <Button variant="secondary" size="sm"><Download size={13} /> Constancias</Button>
+            </Link>
           </>
         }
       />
@@ -279,17 +330,31 @@ export default function Legajo() {
 
       {tab === 5 && (
         <Card pad={false}>
-          <Table head={["Fecha", "Usuario", "Acción", "Entidad", "IP"]}>
-            {AUDITORIA.map((a, i) => (
-              <tr key={i}>
-                <Td className="font-mono text-[12px]">{a.fecha}</Td>
-                <Td>{a.usuario} <span className="text-gris">({a.rol})</span></Td>
-                <Td className="font-semibold">{a.accion}</Td>
-                <Td className="text-gris">{a.entidad}</Td>
-                <Td className="font-mono text-[12px] text-gris">{a.ip}</Td>
-              </tr>
-            ))}
-          </Table>
+          {actividad === null ? (
+            <div className="p-5 text-[13px] text-gris-cl">Cargando actividad…</div>
+          ) : actividad.length === 0 ? (
+            <div className="p-5">
+              <EmptyState title="Sin actividad registrada" body="Aquí aparece lo que la auditoría sabe de esta persona: importaciones, ediciones, acuses, consultas de cuenta." />
+            </div>
+          ) : (
+            <>
+              <Table head={["Fecha", "Acción", "Entidad"]}>
+                {actividad.map((a) => (
+                  <tr key={a.id}>
+                    <Td className="font-mono text-[12px]">{a.fecha}</Td>
+                    <Td className="font-semibold">{a.accion}</Td>
+                    <Td className="text-gris">{a.tabla}</Td>
+                  </tr>
+                ))}
+              </Table>
+              <div className="border-t border-borde p-4">
+                <Note tone="neutral">
+                  Registro inmutable de auditoría filtrado por esta persona (últimos 100). El detalle completo no se
+                  muestra: puede contener datos sensibles.
+                </Note>
+              </div>
+            </>
+          )}
         </Card>
       )}
     </>

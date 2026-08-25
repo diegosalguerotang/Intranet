@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Send, Camera } from "lucide-react";
 import { useApp } from "../../state";
+import { supabase } from "../../lib/supabase";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Select, Note, Modal, Field, Input,
 } from "../../components/ui";
@@ -15,13 +16,15 @@ const ESTADOS = {
 
 // RRH-11 — Seguimiento de acuses
 export default function Acuses() {
-  const { empresaId, db, persona, sede, registrarAcuseAsistido } = useApp();
+  const { empresaId, db, persona, sede, empresaPor, registrarAcuseAsistido } = useApp();
   const [fEstado, setFEstado] = useState("");
   const [fSede, setFSede] = useState("");
   const [asistido, setAsistido] = useState(null); // acuse al que se registra asistencia
   const [aviso, setAviso] = useState(null);
+  const [exportando, setExportando] = useState(false);
 
   const lote = db.lotes.find((l) => l.empresa === empresaId);
+  const sedesEmpresa = db.sedes.filter((s) => s.empresa === empresaId);
 
   const filas = useMemo(
     () =>
@@ -43,16 +46,52 @@ export default function Acuses() {
     nunca: filas.filter((a) => a.estado === "nunca_ingreso").length,
   };
 
-  const registrarAsistido = (acuse, datos) => {
-    registrarAcuseAsistido(acuse.dni, acuse.lote, {
-      estado: "asistido", modalidad: "asistido",
-      fecha: new Date().toISOString().slice(0, 16).replace("T", " "),
-      supervisor: "Registro RRHH", motivo: datos.motivo, fechaEntrega: datos.fechaEntrega,
-      dispositivo: "Registrado desde BackOffice", ip: "—",
-      hash: "e4a9b1d7f3f1a9c7e2b8d4a6f0c5e1b7a9d3f8c2e6a4b0d9f1c7e3a5b8d2f6c0",
-    });
+  // El servidor pone hash, supervisor y verifica el adjunto — aquí nada se
+  // inventa. Devuelve el error para que el modal lo muestre.
+  const registrarAsistido = async (acuse, datos) => {
+    const r = await registrarAcuseAsistido(acuse.dni, acuse.lote, datos);
+    if (r?.error) return r;
     setAsistido(null);
-    setAviso("Acuse asistido registrado. Queda marcado como modalidad asistida y nunca se mezcla con los acuses propios en los conteos.");
+    setAviso("Acuse asistido registrado con el cargo firmado adjunto. Queda marcado como modalidad asistida y nunca se mezcla con los acuses propios en los conteos.");
+    return {};
+  };
+
+  // Un solo PDF con una constancia por página, desde el registro inmutable.
+  const exportarConstancias = async () => {
+    const conAcuse = filas.filter((a) => a.estado === "confirmado" || a.estado === "asistido");
+    if (!conAcuse.length) { setAviso("No hay acuses registrados que exportar con los filtros actuales."); return; }
+    setExportando(true);
+    try {
+      const { generarConstanciaPdf, unirPdfs } = await import("../../lib/constancia.js");
+      const partes = [];
+      for (const a of conAcuse) {
+        const p = persona(a.dni);
+        const e = p ? empresaPor(p.empresa) : null;
+        const campos = [
+          ["Trabajador", `${p?.nombre ?? "-"} — DNI ${a.dni}`],
+          ["Empresa emisora", `${e?.nombre ?? "-"} — RUC ${e?.ruc ?? "-"}`],
+          ["Documento entregado", a.doc],
+          ["Lote", a.lote],
+          ["Fecha y hora (reloj del servidor, GMT-5)", a.fecha],
+          ["Modalidad del acuse", a.modalidad === "asistido" ? `Asistido por supervisor — ${a.supervisor} (motivo: ${a.motivo})` : "Personal, sesión autenticada"],
+          ["Versión del documento", `v${a.version}`],
+          ["Hash SHA-256 del archivo entregado", a.hash],
+        ];
+        partes.push(await generarConstanciaPdf({ numero: `${a.lote}-${a.dni}`, campos }));
+      }
+      const bytes = await unirPdfs(partes);
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const el = Object.assign(document.createElement("a"), {
+        href: url, download: `constancias-${String(lote?.id ?? empresaId).replace(/[^A-Za-z0-9._-]+/g, "-")}.pdf`,
+      });
+      document.body.appendChild(el);
+      el.click();
+      el.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setAviso(`${conAcuse.length} constancia${conAcuse.length === 1 ? "" : "s"} exportada${conAcuse.length === 1 ? "" : "s"} en un solo PDF.`);
+    } finally {
+      setExportando(false);
+    }
   };
 
   return (
@@ -63,11 +102,11 @@ export default function Acuses() {
         subtitle={lote ? `Lote ${lote.id} — ${lote.tipo}, ${lote.periodo}` : "Sin lote publicado para esta empresa"}
         actions={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setAviso("Recordatorio masivo encolado por WhatsApp, respetando la ventana horaria configurada.")}>
-              <Send size={13} /> Recordar por WhatsApp
+            <Button variant="secondary" size="sm" disabled title="Llega con el motor de mensajería (Motor 9)">
+              <Send size={13} /> Recordar por WhatsApp (próximamente)
             </Button>
-            <Button variant="secondary" size="sm">
-              <Download size={13} /> Exportar constancias del lote
+            <Button variant="secondary" size="sm" onClick={exportarConstancias} disabled={exportando}>
+              <Download size={13} /> {exportando ? "Generando PDF…" : "Exportar constancias del lote"}
             </Button>
           </>
         }
@@ -93,10 +132,9 @@ export default function Acuses() {
           </Select>
           <Select value={fSede} onChange={(e) => setFSede(e.target.value)} style={{ maxWidth: 220 }}>
             <option value="">Todas las sedes</option>
-            <option value="sunat">SUNAT Lima</option>
-            <option value="migraciones">MIGRACIONES</option>
-            <option value="minedu">MINEDU</option>
-            <option value="ins">INS</option>
+            {sedesEmpresa.map((s) => (
+              <option key={s.id} value={s.id}>{s.cliente ?? s.nombre}</option>
+            ))}
           </Select>
         </div>
         <Table head={["DNI", "Trabajador", "Sede", "Estado", "Fecha del acuse", ""]}>
@@ -132,25 +170,52 @@ export default function Acuses() {
   );
 }
 
-// RRH-13 — Registrar acuse asistido
+// RRH-13 — Registrar acuse asistido. La foto del cargo firmado se sube DE
+// VERDAD al bucket privado antes de llamar al RPC, que verifica su existencia;
+// hash y supervisor los pone la BD desde el documento y la sesión.
 function AcuseAsistido({ acuse, onClose, onRegistrar }) {
   const { persona } = useApp();
+  const hoy = new Date().toISOString().slice(0, 10);
   const [motivo, setMotivo] = useState("Sin celular");
-  const [fechaEntrega, setFechaEntrega] = useState("2026-08-10");
-  const [foto, setFoto] = useState(false);
+  const [fechaEntrega, setFechaEntrega] = useState(hoy);
+  const [archivo, setArchivo] = useState(null);
   const [declaro, setDeclaro] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
   const p = acuse ? persona(acuse.dni) : null;
 
+  const cerrar = () => { setArchivo(null); setDeclaro(false); setError(null); onClose(); };
+
+  const registrar = async () => {
+    setOcupado(true);
+    setError(null);
+    try {
+      const extension = (archivo.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const ruta = `cargos/${String(acuse.lote).replace(/[^A-Za-z0-9._-]+/g, "-")}/${acuse.dni}-${Date.now()}.${extension}`;
+      const { error: errSubida } = await supabase.storage.from("documentos")
+        .upload(ruta, archivo, { contentType: archivo.type || "image/jpeg", upsert: true });
+      if (errSubida) throw new Error(`No se pudo subir el cargo firmado: ${errSubida.message}`);
+      const r = await onRegistrar(acuse, { motivo, fechaEntrega, adjunto: ruta });
+      if (r?.error) throw new Error(r.error.message ?? String(r.error));
+      setArchivo(null);
+      setDeclaro(false);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
   return (
-    <Modal open={!!acuse} onClose={onClose} title="RRH-13 · Registrar acuse asistido">
+    <Modal open={!!acuse} onClose={cerrar} title="RRH-13 · Registrar acuse asistido">
       {p && (
         <div className="space-y-4">
           <Note tone="neutral">
-            <b>{p.nombre}</b> — Boleta de pago, Julio 2026. El acuse quedará registrado como modalidad{" "}
+            <b>{p.nombre}</b> — {acuse.doc}. El acuse quedará registrado como modalidad{" "}
             <b>asistida</b>, identificando a quien lo registra.
           </Note>
           <Field label="Fecha de la entrega física" required hint="Puede ser anterior al registro, nunca futura. La diferencia queda visible en la constancia.">
-            <Input type="date" value={fechaEntrega} max="2026-08-10" onChange={(e) => setFechaEntrega(e.target.value)} />
+            <Input type="date" value={fechaEntrega} max={hoy} onChange={(e) => setFechaEntrega(e.target.value)} />
           </Field>
           <Field label="Motivo" required>
             <Select value={motivo} onChange={(e) => setMotivo(e.target.value)}>
@@ -161,26 +226,29 @@ function AcuseAsistido({ acuse, onClose, onRegistrar }) {
             </Select>
           </Field>
           <Field label="Cargo firmado (obligatorio)" hint="Sin el adjunto no se registra el acuse: un acuse asistido sin respaldo físico no vale más que una afirmación.">
-            <button
-              type="button"
-              onClick={() => setFoto(true)}
-              className={`flex w-full items-center justify-center gap-2 rounded-caja border-2 border-dashed px-4 py-6 text-[13px] font-semibold transition-colors ${
-                foto ? "border-conf bg-conf-bg text-conf" : "border-borde-f text-gris hover:border-petroleo-cl"
+            <label
+              className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-caja border-2 border-dashed px-4 py-6 text-[13px] font-semibold transition-colors ${
+                archivo ? "border-conf bg-conf-bg text-conf" : "border-borde-f text-gris hover:border-petroleo-cl"
               }`}
             >
-              <Camera size={16} /> {foto ? "cargo_firmado_20260810.jpg adjuntado" : "Adjuntar foto del cargo firmado"}
-            </button>
+              <Camera size={16} /> {archivo ? `${archivo.name} listo para subir` : "Adjuntar foto del cargo firmado"}
+              <input
+                type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden"
+                onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+              />
+            </label>
           </Field>
           <label className="flex items-start gap-2 text-[12.5px] leading-snug text-tinta-2">
             <input type="checkbox" checked={declaro} onChange={(e) => setDeclaro(e.target.checked)} className="mt-0.5 accent-petroleo" />
             Declaro que entregué el documento físicamente al trabajador en la fecha indicada y que el cargo adjunto
             corresponde a su firma.
           </label>
+          {error && <Note tone="alerta">{error}</Note>}
           <div className="flex gap-2">
-            <Button disabled={!foto || !declaro} onClick={() => onRegistrar(acuse, { motivo, fechaEntrega })}>
-              Registrar acuse
+            <Button disabled={!archivo || !declaro || ocupado} onClick={registrar}>
+              {ocupado ? "Subiendo y registrando…" : "Registrar acuse"}
             </Button>
-            <Button variant="secondary" onClick={onClose}>Cancelar</Button>
+            <Button variant="secondary" onClick={cerrar}>Cancelar</Button>
           </div>
         </div>
       )}
@@ -192,6 +260,7 @@ function AcuseAsistido({ acuse, onClose, onRegistrar }) {
 export function Constancia() {
   const { dni } = useParams();
   const { db, persona, empresaPor } = useApp();
+  const [errorCargo, setErrorCargo] = useState(null);
   const a = db.acuses.find((x) => x.dni === dni && (x.estado === "confirmado" || x.estado === "asistido"));
   const p = persona(dni);
   const e = p ? empresaPor(p.empresa) : null;
@@ -267,10 +336,29 @@ export function Constancia() {
         <div className="mt-5 space-y-2.5">
           {a.modalidad === "asistido" && (
             <Note tone="pend">
-              Acuse <b>asistido</b>: la constancia lo declara de forma expresa, identifica al supervisor que lo registró y
-              adjunta el cargo firmado escaneado. No se presenta como acuse propio.
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  Acuse <b>asistido</b>: la constancia lo declara de forma expresa, identifica al supervisor que lo
+                  registró y adjunta el cargo firmado escaneado. No se presenta como acuse propio.
+                </span>
+                {a.adjunto && (
+                  <button
+                    type="button"
+                    className="shrink-0 font-semibold text-petroleo hover:underline"
+                    onClick={async () => {
+                      setErrorCargo(null);
+                      const { data, error } = await supabase.storage.from("documentos").createSignedUrl(a.adjunto, 600);
+                      if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+                      else setErrorCargo(error?.message ?? "No se pudo abrir el cargo firmado.");
+                    }}
+                  >
+                    Ver cargo firmado
+                  </button>
+                )}
+              </div>
             </Note>
           )}
+          {errorCargo && <Note tone="alerta">{errorCargo}</Note>}
           <Note tone="neutral">
             Declaración aceptada por el trabajador: «Declaro haber recibido mi boleta de pago del periodo indicado y
             haber podido revisar su contenido.» El texto se guarda junto con el acuse, no como referencia a la plantilla.
