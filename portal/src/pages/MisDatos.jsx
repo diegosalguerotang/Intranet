@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LogOut, BookOpen } from "lucide-react";
+import { LogOut, BookOpen, ShieldCheck } from "lucide-react";
 import { vista, rpc, tokenSesion } from "../lib/api";
 import { usePortal } from "../state";
 import { Tarjeta, Boton, Nota, Cargando } from "../components/ui";
@@ -43,6 +43,38 @@ function ReglamentoInterno() {
       <div className="mt-3">
         <Boton variante="secundario" type="button" onClick={leer} disabled={abriendo || !rit.disponible}>
           {abriendo ? "Abriendo…" : "Leer el reglamento (PDF)"}
+        </Boton>
+      </div>
+    </Tarjeta>
+  );
+}
+
+// La política de datos SIEMPRE consultable (Diego, 2026-08-25): el trabajador
+// la aceptó en su primer ingreso y debe poder releerla cuando quiera.
+function PoliticaDatos() {
+  const [pol, setPol] = useState(null);
+  const [abierta, setAbierta] = useState(false);
+  useEffect(() => {
+    vista("v_declaraciones_vigentes", "select=version,texto&id=eq.politica-datos&limit=1")
+      .then(({ data }) => setPol(data?.[0] ?? null));
+  }, []);
+  if (!pol) return null;
+  return (
+    <Tarjeta>
+      <div className="flex items-center gap-2 text-[13px] font-semibold text-tinta">
+        <ShieldCheck size={16} className="text-petroleo" /> Política de datos personales
+      </div>
+      <div className="mt-1 text-[12.5px] text-gris-cl">
+        Versión {pol.version}. Es el texto que aceptaste al activar tu cuenta; puedes releerlo cuando quieras.
+      </div>
+      {abierta && (
+        <div className="mt-3 max-h-[46dvh] overflow-y-auto whitespace-pre-wrap rounded-caja bg-papel p-3 text-[12.5px] leading-relaxed text-gris">
+          {pol.texto}
+        </div>
+      )}
+      <div className="mt-3">
+        <Boton variante="secundario" type="button" onClick={() => setAbierta((v) => !v)}>
+          {abierta ? "Ocultar" : "Leer la política"}
         </Boton>
       </div>
     </Tarjeta>
@@ -127,6 +159,7 @@ export default function MisDatos() {
       </form>
 
       <ReglamentoInterno />
+      <PoliticaDatos />
 
       <Boton variante="secundario" type="button" onClick={salir}>
         <span className="inline-flex items-center gap-2"><LogOut size={16} /> Cerrar sesión</span>
