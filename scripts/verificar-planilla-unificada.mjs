@@ -33,9 +33,19 @@ const fila = (extra) => JSON.stringify({
 }).replace(/'/g, "''");
 const importar = (filas) => sql(`select importar_planilla_unificada('[${filas}]'::jsonb, '2026-07', 'verificacion') as r`);
 
+// Desde el ciclo Movimientos (2026-08-24) la importación deja filas en la
+// tabla insert-only `movimientos`: para limpiar hay que apagar su trigger un
+// instante (mismo patrón que verificar-movimientos.mjs).
+const limpiar = () => sql(`
+  alter table movimientos disable trigger tg_movimientos_inmutables;
+  delete from movimientos where persona_dni in ('${A}','${B}');
+  alter table movimientos enable trigger tg_movimientos_inmutables;
+  delete from vinculos where persona_dni in ('${A}','${B}');
+  delete from personas where dni in ('${A}','${B}');
+`);
+
 console.log("0 · Preparación (persona con cero inicial + limpieza previa)");
-await sql(`delete from vinculos where persona_dni in ('${A}','${B}')`);
-await sql(`delete from personas where dni in ('${A}','${B}')`);
+await limpiar();
 const prep = await sql(`insert into personas (dni, nombre, portal) values ('${B}', 'ZZ CONCERO', 'sin_celular') returning dni`);
 prep?.[0]?.dni === B ? ok(`persona ${B} lista en el maestro`) : mal("preparación", JSON.stringify(prep));
 
@@ -108,8 +118,7 @@ const [otros] = await sql(`select count(*)::int as n from vinculos
 (otros?.n > 0) ? ok(`los ${otros.n} vínculos ajenos al archivo siguen vigentes`) : mal("cese por ausencia", JSON.stringify(otros));
 
 console.log("10 · Limpieza");
-await sql(`delete from vinculos where persona_dni in ('${A}','${B}')`);
-await sql(`delete from personas where dni in ('${A}','${B}')`);
+await limpiar();
 const [resto] = await sql(`select count(*)::int as n from personas where dni in ('${A}','${B}')`);
 (resto?.n === 0) ? ok("datos ZZ fuera") : mal("limpieza", JSON.stringify(resto));
 
