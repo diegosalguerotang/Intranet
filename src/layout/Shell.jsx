@@ -20,7 +20,8 @@ const NAV_RRHH = [
   { to: "/rrhh/acuses", icon: CheckSquare, label: "Acuses", code: "RRH-11", modulo: "acuses" },
   { to: "/rrhh/comunicados", icon: Megaphone, label: "Comunicados", code: "RRH-16", modulo: "comunicados" },
   { to: "/rrhh/memorandums", icon: AlertTriangle, label: "Memorándums", code: "RRH-18", modulo: "memorandums" },
-  { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14", modulo: "contratos" },
+  // Contratos aún es demo sin función real (Diego, 2026-08-25): gris y sin ruta.
+  { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14", modulo: "contratos", proximamente: true },
   { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas" },
   { to: "/rrhh/asistencia", icon: CalendarClock, label: "Asistencia", code: "RRH-22", modulo: "asistencia" },
 ];

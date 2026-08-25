@@ -13,7 +13,6 @@ import Boletas from "./pages/rrhh/Boletas";
 import Acuses, { Constancia } from "./pages/rrhh/Acuses";
 import Comunicados from "./pages/rrhh/Comunicados";
 import Memorandums from "./pages/rrhh/Memorandums";
-import Contratos from "./pages/rrhh/Contratos";
 import Tardanzas from "./pages/rrhh/Tardanzas";
 import Asistencia from "./pages/rrhh/Asistencia";
 import Inventario from "./pages/admin/Inventario";
@@ -82,7 +81,6 @@ export default function App() {
             <Route path="/rrhh/acuses/:dni" element={<RequiereModulo modulo="acuses"><Constancia /></RequiereModulo>} />
             <Route path="/rrhh/comunicados" element={<RequiereModulo modulo="comunicados"><Comunicados /></RequiereModulo>} />
             <Route path="/rrhh/memorandums" element={<RequiereModulo modulo="memorandums"><Memorandums /></RequiereModulo>} />
-            <Route path="/rrhh/contratos" element={<RequiereModulo modulo="contratos"><Contratos /></RequiereModulo>} />
             <Route path="/rrhh/tardanzas" element={<RequiereModulo modulo="tardanzas"><Tardanzas /></RequiereModulo>} />
             <Route path="/rrhh/asistencia" element={<RequiereModulo modulo="asistencia"><Asistencia /></RequiereModulo>} />
             <Route path="/admin/activos" element={<RequiereModulo modulo="activos"><Inventario /></RequiereModulo>} />

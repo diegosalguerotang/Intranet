@@ -10,7 +10,6 @@ export default function Tablero() {
   const pctRecepcion = lote ? Math.round(((lote.confirmados + lote.asistidos) / lote.total) * 100) : null;
   const nuncaIngresaron = dotacion.filter((p) => p.portal === "nunca_ingreso");
   const sinCelular = dotacion.filter((p) => p.portal === "sin_celular");
-  const porVencer = db.contratos.filter((c) => c.estado === "por_vencer");
   const descargosPendientes = db.memorandums.filter((m) => m.estado === "descargo_presentado");
 
   const porSede = db.sedes.filter((s) => s.empresa === empresaId).map((s) => {
@@ -32,10 +31,6 @@ export default function Tablero() {
     sinCelular.length > 0 && {
       texto: `${sinCelular.length} trabajadores sin celular registrado — derivar a acuse asistido`,
       to: "/rrhh/personal", tone: "pend",
-    },
-    porVencer.length > 0 && {
-      texto: `${porVencer.length} contratos vencen en los próximos 30 días`,
-      to: "/rrhh/contratos", tone: "pend",
     },
     descargosPendientes.length > 0 && {
       texto: `${descargosPendientes.length} descargo presentado espera resolución`,

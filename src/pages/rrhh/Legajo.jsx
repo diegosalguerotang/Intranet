@@ -49,7 +49,6 @@ export default function Legajo() {
   const memos = db.memorandums.filter((m) => m.dni === dni);
   const activos = db.activos.filter((a) => a.asignado === dni);
   const epp = db.epp_entregas.filter((x) => x.dni === dni);
-  const contrato = db.contratos.find((c) => c.dni === dni);
   const antiguedad = new Date().getFullYear() - new Date(p.ingreso).getFullYear();
 
   return (
@@ -191,19 +190,10 @@ export default function Legajo() {
 
       {tab === 2 && (
         <Card pad={false}>
-          {acuses.length === 0 && !contrato ? (
+          {acuses.length === 0 ? (
             <div className="p-5"><EmptyState title="Sin documentos" body="Este trabajador aún no tiene documentos publicados." /></div>
           ) : (
             <Table head={["Documento", "Lote", "Estado", "Fecha de acuse", ""]}>
-              {contrato && (
-                <tr>
-                  <Td className="font-semibold">Contrato {contrato.tipo} ({contrato.inicio} → {contrato.fin})</Td>
-                  <Td className="font-mono text-[12px] text-gris">—</Td>
-                  <Td><Badge tone={contrato.firma === "firmado" ? "conf" : "pend"}>{contrato.firma === "firmado" ? "Firmado" : "Pendiente de firma"}</Badge></Td>
-                  <Td className="text-gris">—</Td>
-                  <Td />
-                </tr>
-              )}
               {acuses.map((a, i) => {
                 const est = ESTADO_ACUSE[a.estado];
                 return (
