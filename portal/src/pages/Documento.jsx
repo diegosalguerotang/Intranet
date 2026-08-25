@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Download, ShieldCheck, RefreshCw } from "lucide-react";
-import { vista, rpc, urlDocumento } from "../lib/api";
+import { vista, rpc, urlDocumento, tokenSesion } from "../lib/api";
 import { usePortal } from "../state";
 import { Enlace } from "../router";
 import { Tarjeta, Boton, Nota, Etiqueta, Cargando, Vacio } from "../components/ui";
@@ -8,8 +8,16 @@ import HojaDeclaracion from "../components/HojaDeclaracion";
 
 // TRB-06 · Detalle del documento y confirmación de recepción. Regla dura del
 // spec: NUNCA se ofrece confirmar algo que no se pudo mostrar.
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+// "2026-06" → "Junio 2026"; si el período no viene, se usa tal cual.
+const periodoLegible = (p) => {
+  const m = /^(\d{4})-(\d{2})/.exec(p ?? "");
+  return m ? `${MESES[Number(m[2]) - 1]} ${m[1]}` : (p ?? "");
+};
+
 export default function Documento({ id }) {
-  const { soloLectura } = usePortal();
+  const { soloLectura, perfil } = usePortal();
   const [doc, setDoc] = useState(undefined);
   // "cargando" | "sin-archivo" | "error:<mensaje>" | URL firmada (https://…)
   const [archivo, setArchivo] = useState("cargando");
@@ -40,14 +48,28 @@ export default function Documento({ id }) {
 
   const seMuestra = archivo.startsWith("http");
 
+  // Nombre de archivo veraz (Diego, 2026-08-25): tipo + mes + nombre + n.º de
+  // documento, en vez del hash del bucket que ponía el navegador.
+  const nombreArchivo = (prefijo) =>
+    `${prefijo ?? doc.tipo} ${periodoLegible(doc.periodo)} - ${perfil?.nombre ?? ""} - ${perfil?.dni ?? ""}`
+      .replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, " ").trim() + ".pdf";
+
   // La URL firmada expira: la descarga pide una fresca en el momento del clic.
+  // Se baja como blob para poder ponerle nombre propio (con la URL firmada
+  // directa el navegador ignora `download` por ser de otro origen).
   const descargarPdf = async () => {
     const r = await urlDocumento(id);
     if (r.error) { setArchivo(`error:${r.error}`); return; }
-    const a = document.createElement("a");
-    a.href = r.url;
-    a.download = "";
-    a.click();
+    try {
+      const pdf = await (await fetch(r.url)).blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(pdf);
+      a.download = nombreArchivo();
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(r.url, "_blank"); // sin blob al menos se abre el documento
+    }
   };
 
   useEffect(() => {
@@ -73,22 +95,30 @@ export default function Documento({ id }) {
     await cargar(); // la constancia aparece de inmediato
   };
 
-  const descargarConstancia = () => {
-    const texto = [
-      "CONSTANCIA DE RECEPCIÓN — Grupo ER",
-      `N.º de constancia: ${doc.constanciaId}`,
-      `Documento: ${doc.titulo} (${doc.tipo}, ${doc.empresa})`,
-      `Confirmado el: ${doc.confirmadoEn}`,
-      `Huella del archivo (SHA-256): ${doc.huella}`,
-      "",
-      "La confirmación de recepción reemplaza la firma del cargo físico y no",
-      "implica conformidad con el contenido del documento.",
-    ].join("\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([texto], { type: "text/plain;charset=utf-8" }));
-    a.download = `constancia-${doc.constanciaId}.txt`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  // La constancia formal en PDF la genera el servidor desde el registro
+  // inmutable (antes era un .txt armado en el navegador).
+  const [bajandoConstancia, setBajandoConstancia] = useState(false);
+  const descargarConstancia = async () => {
+    setBajandoConstancia(true);
+    setError(null);
+    try {
+      const r = await fetch(`${window.location.origin}/api/constancia-portal?id=${encodeURIComponent(id)}`, {
+        headers: { "x-sesion": tokenSesion() ?? "" },
+      });
+      if (!r.ok) {
+        const j = await r.json().catch(() => null);
+        throw new Error(j?.error ?? "No se pudo generar la constancia. Inténtalo de nuevo.");
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(await r.blob());
+      a.download = nombreArchivo("Constancia de recepción");
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBajandoConstancia(false);
+    }
   };
 
   return (
@@ -148,7 +178,9 @@ export default function Documento({ id }) {
             <div className="flex justify-between gap-4"><dt className="shrink-0 text-gris-cl">Huella del archivo</dt><dd className="truncate font-mono text-[11px]">{doc.huella}</dd></div>
           </dl>
           <div className="mt-3">
-            <Boton variante="secundario" type="button" onClick={descargarConstancia}>Descargar constancia</Boton>
+            <Boton variante="secundario" type="button" onClick={descargarConstancia} disabled={bajandoConstancia}>
+              {bajandoConstancia ? "Generando PDF…" : "Descargar constancia (PDF)"}
+            </Boton>
           </div>
         </Tarjeta>
       ) : pendiente && !soloLectura ? (
