@@ -10,7 +10,7 @@ import { Boton, Nota } from "../components/ui";
 // mensaje de error es único: no revela si el documento existe en el sistema.
 const MENSAJE_UNICO = "Documento o clave incorrectos. Si aún no tienes cuenta, acércate a Recursos Humanos.";
 
-const TIPOS_DOC = {
+export const TIPOS_DOC = {
   DNI: { etiqueta: "DNI", regex: /^[0-9]{8}$/, numerico: true, max: 8, placeholder: "8 dígitos", error: "El DNI tiene 8 dígitos." },
   CE: { etiqueta: "Carné de extranjería", regex: /^[0-9A-Z]{9,12}$/, numerico: false, max: 12, placeholder: "9 a 12 caracteres", error: "El carné tiene de 9 a 12 caracteres." },
   Pasaporte: { etiqueta: "Pasaporte", regex: /^[0-9A-Z]{6,15}$/, numerico: false, max: 15, placeholder: "6 a 15 caracteres", error: "El pasaporte tiene de 6 a 15 caracteres." },

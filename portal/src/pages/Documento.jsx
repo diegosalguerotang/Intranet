@@ -8,6 +8,19 @@ import HojaDeclaracion from "../components/HojaDeclaracion";
 
 // TRB-06 · Detalle del documento y confirmación de recepción. Regla dura del
 // spec: NUNCA se ofrece confirmar algo que no se pudo mostrar.
+// Descarga robusta de un blob: el enlace debe estar EN el DOM y el blob no se
+// libera de inmediato — en Safari/iOS el revoke síncrono puede abortar la
+// descarga en curso.
+const bajarBlob = (blob, nombre) => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+};
+
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 // "2026-06" → "Junio 2026"; si el período no viene, se usa tal cual.
@@ -61,12 +74,7 @@ export default function Documento({ id }) {
     const r = await urlDocumento(id);
     if (r.error) { setArchivo(`error:${r.error}`); return; }
     try {
-      const pdf = await (await fetch(r.url)).blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(pdf);
-      a.download = nombreArchivo();
-      a.click();
-      URL.revokeObjectURL(a.href);
+      bajarBlob(await (await fetch(r.url)).blob(), nombreArchivo());
     } catch {
       window.open(r.url, "_blank"); // sin blob al menos se abre el documento
     }
@@ -109,11 +117,7 @@ export default function Documento({ id }) {
         const j = await r.json().catch(() => null);
         throw new Error(j?.error ?? "No se pudo generar la constancia. Inténtalo de nuevo.");
       }
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(await r.blob());
-      a.download = nombreArchivo("Constancia de recepción");
-      a.click();
-      URL.revokeObjectURL(a.href);
+      bajarBlob(await r.blob(), nombreArchivo("Constancia de recepción"));
     } catch (e) {
       setError(e.message);
     } finally {

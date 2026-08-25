@@ -22,7 +22,9 @@ const NAV_RRHH = [
   { to: "/rrhh/memorandums", icon: AlertTriangle, label: "Memorándums", code: "RRH-18", modulo: "memorandums" },
   // Contratos aún es demo sin función real (Diego, 2026-08-25): gris y sin ruta.
   { to: "/rrhh/contratos", icon: FileSignature, label: "Contratos", code: "RRH-14", modulo: "contratos", proximamente: true },
-  { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas" },
+  // Tardanzas aún es demo; la importación real vive en Asistencia RRH-22
+  // (Diego, 2026-08-25): gris y sin ruta hasta que se modele el horario.
+  { to: "/rrhh/tardanzas", icon: Clock, label: "Tardanzas", code: "RRH-20", modulo: "tardanzas", proximamente: true },
   { to: "/rrhh/asistencia", icon: CalendarClock, label: "Asistencia", code: "RRH-22", modulo: "asistencia" },
 ];
 

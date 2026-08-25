@@ -192,7 +192,7 @@ function NuevoComunicado({ open, onClose, onPublicar, empresaId }) {
           >
             Publicar
           </Button>
-          <Button variant="secondary" onClick={onClose}>Guardar borrador</Button>
+          <Button variant="secondary" onClick={onClose}>Cancelar</Button>
         </div>
       </div>
     </Modal>

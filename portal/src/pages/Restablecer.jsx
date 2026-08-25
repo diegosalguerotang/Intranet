@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Enlace } from "../router";
+import { useRouter } from "../router";
 import { Boton, Nota, Tarjeta } from "../components/ui";
 
 // Aterrizaje del enlace de recuperación por correo: el trabajador crea aquí su
@@ -25,6 +25,7 @@ function CampoClave({ ver, setVer, ...props }) {
 }
 
 export default function Restablecer() {
+  const { ir } = useRouter();
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
   const [clave, setClave] = useState("");
   const [clave2, setClave2] = useState("");
@@ -66,7 +67,7 @@ export default function Restablecer() {
               Ya puedes entrar al portal con tu DNI y tu clave nueva.
             </p>
             <div className="mt-4">
-              <Enlace to="/ingreso"><Boton type="button">Ir a ingresar</Boton></Enlace>
+              <Boton type="button" onClick={() => ir("/ingreso")}>Ir a ingresar</Boton>
             </div>
           </>
         ) : !token ? (
@@ -76,7 +77,7 @@ export default function Restablecer() {
               Abre el enlace completo desde tu correo, o pide uno nuevo.
             </p>
             <div className="mt-4">
-              <Enlace to="/olvide-clave"><Boton variante="secundario" type="button">Pedir enlace nuevo</Boton></Enlace>
+              <Boton variante="secundario" type="button" onClick={() => ir("/olvide-clave")}>Pedir enlace nuevo</Boton>
             </div>
           </>
         ) : (
