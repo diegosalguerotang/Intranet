@@ -34,11 +34,11 @@ export default async function handler(req, res) {
     return res.status(410).json({ error: "El enlace venció (dura 1 hora). Pide uno nuevo desde «Olvidé mi clave»." });
   }
 
-  // Portal: la cuenta técnica del DNI, clave mínima 6. BackOffice: la cuenta
-  // es el correo real y rige el mínimo de 12.
+  // Portal: la cuenta técnica del DNI, clave mínima 6. BackOffice: mínimo 6
+  // con al menos un número y una letra (regla #12 del 2026-08-21; antes 12).
   const esAdmin = t.proposito === "recuperacion-admin";
-  if (esAdmin && clave.length < 12) {
-    return res.status(400).json({ error: "La clave del BackOffice debe tener al menos 12 caracteres." });
+  if (esAdmin && !(/[0-9]/.test(clave) && /[a-zA-Z]/.test(clave))) {
+    return res.status(400).json({ error: "La clave del BackOffice necesita al menos un número y una letra." });
   }
   const emailCuenta = esAdmin ? t.correo.toLowerCase() : `${t.dni.toLowerCase()}@${DOMINIO_PORTAL}`;
   const cuenta = (await rest(`/auth/v1/admin/users?per_page=1000`)).json?.users

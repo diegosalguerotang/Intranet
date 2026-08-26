@@ -200,10 +200,15 @@ export function AppProvider({ children }) {
     if (MODO_DEMO || !supabaseListo || !user) return;
     let vivo = true;
     let idle;
+    // La pantalla de restablecer clave usa la sesión temporal del enlace del
+    // correo: si la política la expulsa (otro login, inactividad) el guardado
+    // muere con un error sin salida. Ahí la política NO aplica — se evalúa al
+    // momento de disparar, no al montar.
+    const enRestablecer = () => window.location.pathname.startsWith("/admin/restablecer");
     const reiniciarIdle = () => {
       clearTimeout(idle);
       idle = setTimeout(() => {
-        if (vivo) salir("Tu sesión se cerró por inactividad. Vuelve a ingresar.");
+        if (vivo && !enRestablecer()) salir("Tu sesión se cerró por inactividad. Vuelve a ingresar.");
       }, INACTIVIDAD_MS);
     };
     const eventosActividad = ["mousemove", "keydown", "click", "scroll", "touchstart"];
@@ -211,10 +216,10 @@ export function AppProvider({ children }) {
     reiniciarIdle();
 
     const revisarSesion = async () => {
-      if (!vivo || document.hidden) return;
+      if (!vivo || document.hidden || enRestablecer()) return;
       const marca = (() => { try { return localStorage.getItem(CLAVE_MARCADOR); } catch { return null; } })();
       const { data, error } = await supabase.rpc("mi_sesion_backoffice");
-      if (!vivo || error) return;
+      if (!vivo || error || enRestablecer()) return;
       // Solo expulsa si el servidor tiene un marcador y NO es el nuestro.
       if (data && marca && data !== marca) {
         salir("Tu sesión se cerró porque tu cuenta ingresó desde otro equipo.");

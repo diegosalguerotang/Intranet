@@ -37,14 +37,18 @@ export default function RestablecerAdmin() {
   const [cargando, setCargando] = useState(false);
 
   // Los enlaces nativos de Supabase llegan con la sesión en el hash; el
-  // cliente la procesa solo, aquí basta escucharla.
+  // cliente la procesa solo, aquí basta escucharla. Si la sesión MUERE con el
+  // formulario abierto (otro login la expulsó, venció), hay que enterarse:
+  // dejar el formulario visible producía un «No se pudo guardar» sin salida.
+  const [sesionPerdida, setSesionPerdida] = useState(false);
   useEffect(() => {
     if (token || !supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       if (data?.session) setSesionSupabase(data.session);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_evento, sesion) => {
-      if (sesion) setSesionSupabase(sesion);
+    const { data: sub } = supabase.auth.onAuthStateChange((evento, sesion) => {
+      if (sesion) { setSesionSupabase(sesion); setSesionPerdida(false); }
+      else if (evento === "SIGNED_OUT") { setSesionSupabase(null); setSesionPerdida(true); }
     });
     return () => sub?.subscription?.unsubscribe();
   }, [token]);
@@ -63,7 +67,9 @@ export default function RestablecerAdmin() {
         if (err) {
           setError(/different from the old/i.test(err.message)
             ? "La clave nueva debe ser distinta a la anterior."
-            : "No se pudo guardar la clave. Intenta de nuevo.");
+            : /session|jwt|token|expired|missing/i.test(err.message ?? "")
+              ? "Tu enlace ya no está activo (venció, ya se usó, o tu cuenta ingresó desde otro lado y cerró esta sesión). Pide un enlace nuevo desde «Olvidé mi clave» en el login."
+              : `No se pudo guardar la clave: ${err.message}`);
           return;
         }
         const correoSesion = sesionSupabase.user?.email;
@@ -104,6 +110,14 @@ export default function RestablecerAdmin() {
             <Link to={sesionSupabase ? "/" : "/admin/login"}>
               <Button className="w-full">{sesionSupabase ? "Entrar al BackOffice" : "Ir a ingresar"}</Button>
             </Link>
+          </div>
+        ) : sesionPerdida && !token ? (
+          <div className="space-y-4">
+            <Note tone="alerta">
+              Este enlace ya no está activo: venció, ya se había usado, o tu cuenta ingresó desde otro
+              lado y esta sesión se cerró. Pide un enlace nuevo desde «Olvidé mi clave» en el login.
+            </Note>
+            <Link to="/admin/login"><Button variant="secondary" className="w-full">Ir al login</Button></Link>
           </div>
         ) : !token && !sesionSupabase ? (
           <Note tone="neutral">
