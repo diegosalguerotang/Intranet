@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Mail, KeyRound, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
 import { supabase, supabaseListo, supabaseUrl, supabaseAnonKey, fetchNativo, fetchXhr, cabecerasFallidas, estadoHeaders, blindarHeaders } from "../lib/supabase";
@@ -55,7 +55,7 @@ export default function AdminLogin() {
   const [exito, setExito] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [verClave, setVerClave] = useState(false);
-  const [recuperado, setRecuperado] = useState(null);
+  const navegar = useNavigate();
   // Motivo por el que se cerró la sesión anterior (inactividad / otro equipo),
   // dejado por state.jsx en sessionStorage al forzar el cierre.
   const [avisoSesion, setAvisoSesion] = useState(null);
@@ -231,28 +231,16 @@ export default function AdminLogin() {
             </div>
 
             <p className="mb-7 text-right text-[12px] text-gris-cl">
-              {recuperado ? (
-                <span className="text-gris">{recuperado}</span>
-              ) : (
-                <button
-                  type="button"
-                  className="text-petroleo hover:underline"
-                  disabled={cargando}
-                  onClick={async () => {
-                    // Recuperación por el correo NATIVO de Supabase: respuesta
-                    // siempre genérica, no revela si la cuenta existe.
-                    if (!correo.trim()) { setRecuperado("Escribe tu correo arriba y vuelve a tocar aquí."); return; }
-                    try {
-                      await supabase.auth.resetPasswordForEmail(correo.trim(), {
-                        redirectTo: `${window.location.origin}/admin/restablecer`,
-                      });
-                    } catch { /* la respuesta es genérica igual */ }
-                    setRecuperado("Si el correo pertenece a un usuario activo, te llegará un enlace para crear una clave nueva.");
-                  }}
-                >
-                  ¿Olvidaste tu clave? Te enviamos un enlace a tu correo
-                </button>
-              )}
+              {/* La recuperación vive en su propia landing (/admin/olvide-clave)
+                  y se lleva el correo ya digitado para no pedirlo dos veces. */}
+              <button
+                type="button"
+                className="text-petroleo hover:underline"
+                disabled={cargando}
+                onClick={() => navegar("/admin/olvide-clave", { state: { correo: correo.trim() } })}
+              >
+                ¿Olvidaste tu clave?
+              </button>
             </p>
 
             {error && <div className="mb-4"><Note tone="alerta">{error}</Note></div>}

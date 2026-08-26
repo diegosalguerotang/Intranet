@@ -5,6 +5,7 @@ import { EmptyState } from "./components/ui";
 import Shell from "./layout/Shell";
 import AdminLogin from "./pages/AdminLogin";
 import RestablecerAdmin from "./pages/RestablecerAdmin";
+import OlvideClaveAdmin from "./pages/OlvideClaveAdmin";
 import Tablero from "./pages/rrhh/Tablero";
 import Personal from "./pages/rrhh/Personal";
 import Sedes from "./pages/rrhh/Sedes";
@@ -68,6 +69,7 @@ export default function App() {
               Trabajador (aún no construido) y por ahora redirige. */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/restablecer" element={<RestablecerAdmin />} />
+          <Route path="/admin/olvide-clave" element={<OlvideClaveAdmin />} />
           <Route path="/login" element={<Navigate to="/admin/login" replace />} />
           <Route element={<Shell />}>
             <Route path="/" element={<Inicio />} />
