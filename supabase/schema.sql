@@ -18,7 +18,8 @@ drop view if exists v_personal, v_sedes, v_acuses, v_lotes, v_activos,
   v_rit_faltas, v_tipos_sancion, v_rits cascade;
 drop table if exists auditoria, epp_entregas, lineas, asignaciones, activos,
   contratos, plantillas, tardanzas, descargos, memorandums, comunicados,
-  acuses, documentos, lotes, vinculos, personas, sedes, empresas, cargos,
+  acuses, notificaciones_documento, documentos, lotes, vinculos, personas,
+  sedes, empresas, cargos,
   rit_faltas, tipos_sancion, feriados, rits, correo_tokens, bancos cascade;
 drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   eliminar_trabajador, publicar_lote, registrar_acuse_asistido,
@@ -297,7 +298,8 @@ create table acuses (
   documento_id       bigint not null unique references documentos(id),
   modalidad          text not null check (modalidad in ('personal','asistido')),
   registrado_en      timestamptz not null default now(),  -- reloj del SERVIDOR
-  ip                 text,
+  ip                 text,                  -- IP real (la inyecta el proxy /api/supa)
+  agente             text,                  -- user-agent verificado en servidor
   dispositivo        text,
   hash_sha256        text not null,         -- debe coincidir con el del documento
   declaracion        text not null,         -- texto EXACTO aceptado, no referencia
@@ -323,6 +325,35 @@ end $$;
 create trigger trg_acuses_inmutables
   before update or delete on acuses
   for each row execute function fn_bloquear_cambios();
+
+-- Cabeceras que PostgREST expone como GUC. El proxy /api/supa inyecta
+-- x-ip-real / x-agente server-side y descarta las que vengan del cliente:
+-- son evidencia, no entrada del usuario (cumplimiento 2026-08-26).
+create or replace function fn_cabecera(p_nombre text) returns text
+language sql stable
+set search_path = public, extensions as $$
+  select nullif(trim(
+    (coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb ->> p_nombre)
+  ), '')
+$$;
+revoke all on function fn_cabecera(text) from anon, authenticated;
+
+-- Evidencia de NOTIFICACIÓN (D.Leg. 1310): la puesta a disposición se prueba
+-- con documentos.publicado_en; este log prueba además que se AVISÓ al
+-- trabajador (recordatorios por correo). INSERT-only.
+create table notificaciones_documento (
+  id            bigint generated always as identity primary key,
+  documento_id  bigint not null references documentos(id),
+  canal         text not null default 'correo' check (canal in ('correo','portal')),
+  destinatario  text not null,
+  enviado_en    timestamptz not null default now(),   -- reloj del SERVIDOR
+  enviado_por   text
+);
+create index ix_notif_doc on notificaciones_documento (documento_id);
+create trigger trg_notificaciones_inmutables
+  before update or delete on notificaciones_documento
+  for each row execute function fn_bloquear_cambios();
+revoke all on notificaciones_documento from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- CATÁLOGO DE CARGOS Y CONTROL DE EMPRESA ACTIVA
@@ -1110,7 +1141,17 @@ select d.id as documento_id,
        a.motivo_asistido as motivo,
        to_char(a.entrega_fisica_en, 'YYYY-MM-DD HH24:MI') as "fechaEntrega",
        d.version,
-       a.adjunto_url as adjunto
+       a.adjunto_url as adjunto,
+       a.agente,
+       d.periodo, d.tipo,
+       vi.empresa_id as empresa,
+       p.nombre,
+       to_char(d.publicado_en, 'YYYY-MM-DD HH24:MI') as publicado,
+       (select count(*)::int from notificaciones_documento n
+         where n.documento_id = d.id) as notificaciones,
+       (select to_char(max(n.enviado_en), 'YYYY-MM-DD HH24:MI')
+          from notificaciones_documento n
+         where n.documento_id = d.id) as "ultimaNotificacion"
 from documentos d
 join vinculos vi on vi.id = d.vinculo_id
 join personas p on p.dni = vi.persona_dni
@@ -1597,13 +1638,14 @@ begin
 
   insert into acuses (documento_id, modalidad, dispositivo, hash_sha256, declaracion,
                       registrado_por, supervisor_dni, motivo_asistido, entrega_fisica_en,
-                      adjunto_url, dni_check)
+                      adjunto_url, dni_check, ip, agente)
   values (v_doc.id, 'asistido',
           coalesce(nullif(trim(coalesce(p_dispositivo, '')), ''), 'Registrado desde BackOffice'),
           v_doc.hash_sha256,
           coalesce(v_texto, 'Se registra entrega física con cargo firmado adjunto.'),
           coalesce(v_nombre, 'Recursos Humanos'), v_sup, p_motivo, p_entrega,
-          p_adjunto, p_dni);
+          p_adjunto, p_dni,
+          fn_cabecera('x-ip-real'), fn_cabecera('x-agente'));
 end $$;
 
 -- Memorándum: correlativo por empresa y año, sin huecos ni reutilización.

@@ -54,8 +54,9 @@ export default async function handler(req, res) {
 
   // Acuse + documento + trabajador + empresa en una sola consulta embebida.
   const a = (await rest(
-    `/rest/v1/acuses?documento_id=eq.${id}&select=id,modalidad,registrado_en,dispositivo,ip,hash_sha256,declaracion,` +
-    `registrado_por,entrega_fisica_en,documentos(id,tipo,titulo,periodo,version,publicado_en,` +
+    `/rest/v1/acuses?documento_id=eq.${id}&select=id,modalidad,registrado_en,dispositivo,ip,agente,hash_sha256,declaracion,` +
+    `registrado_por,entrega_fisica_en,documentos(id,tipo,titulo,periodo,version,publicado_en,archivo_url,` +
+    `notificaciones_documento(enviado_en),` +
     `vinculos(persona_dni,personas(nombre,tipo_documento),empresas(nombre,ruc,corto,logo)))&limit=1`
   )).json?.[0];
   if (!a) return res.status(404).json({ error: "Este documento no tiene recepción confirmada." });
@@ -144,6 +145,17 @@ export default async function handler(req, res) {
   y -= 38;
   campo("Tipo", doc?.tipo ?? "-", 50, y);
   campo("Versión publicada", `v${doc?.version ?? 1} · ${fechaLima(doc?.publicado_en).split(" ")[0]}`, 400, y);
+  y -= 38;
+  // Puesta a disposición ≠ confirmación (D.Leg. 1310): fechas separadas y
+  // evidencia de notificación aunque el trabajador nunca confirme.
+  const notifs = (doc?.notificaciones_documento ?? [])
+    .map((n) => n.enviado_en).filter(Boolean).sort();
+  campo("Puesta a disposición en el portal", fechaLima(doc?.publicado_en), 50, y);
+  campo("Última notificación por correo",
+    notifs.length ? `${fechaLima(notifs[notifs.length - 1])} (${notifs.length} en total)` : "—", 300, y);
+  y -= 38;
+  const archivo = String(doc?.archivo_url ?? "").split("/").pop() || "-";
+  campo("Archivo entregado", archivo, 50, y, { mono: true, size: 8.5 });
   y -= 44;
 
   texto("REGISTRO DE LA CONFIRMACIÓN", 50, y, { b: true, size: 10, color: azul });
@@ -153,12 +165,19 @@ export default async function handler(req, res) {
   y -= 38;
   campo("Dispositivo", (a.dispositivo ?? "-").slice(0, 95), 50, y, { size: 8 });
   y -= 36;
+  // IP y user-agent capturados en el SERVIDOR (los inyecta el proxy; el
+  // cliente no puede fijarlos). Los acuses previos a la mejora no los tienen.
+  const sinDato = "No registrada (acuse anterior al 26/08/2026)";
+  campo("Dirección IP", a.ip ?? sinDato, 50, y, { mono: Boolean(a.ip) });
+  y -= 36;
+  campo("Navegador (user-agent verificado en servidor)", (a.agente ?? sinDato).slice(0, 95), 50, y, { size: 8 });
+  y -= 36;
   if (a.modalidad === "asistido") {
     campo("Registrado por", a.registrado_por ?? "-", 50, y);
     campo("Entrega física", fechaLima(a.entrega_fisica_en), 300, y);
     y -= 38;
   }
-  texto("Huella digital SHA-256 del archivo exacto que se mostró y recibió:", 50, y, { size: 8.5, color: gris });
+  texto("Huella digital del archivo exacto que se mostró y recibió — Algoritmo: SHA-256:", 50, y, { size: 8.5, color: gris });
   y -= 13;
   texto(a.hash_sha256 ?? "-", 50, y, { mono: true, size: 8.5, b: true });
   y -= 30;
@@ -174,7 +193,8 @@ export default async function handler(req, res) {
     "puesta a disposición y recepción del documento por medios electrónicos conforme al artículo 3.2 del " +
     "Decreto Legislativo N.º 1310. La confirmación de recepción reemplaza la firma del cargo físico y no " +
     "implica conformidad con el contenido del documento. La huella SHA-256 permite verificar que el archivo " +
-    "conservado es exactamente el que se entregó.",
+    "conservado es exactamente el que se entregó. Todas las marcas de tiempo corresponden al reloj del " +
+    "servidor, sincronizado por NTP, expresadas en la zona horaria UTC-5 (América/Lima).",
     50, y, 495, { size: 7.5, color: gris, salto: 10 }
   );
 

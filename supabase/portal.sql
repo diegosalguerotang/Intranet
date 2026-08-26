@@ -47,8 +47,34 @@ create table if not exists comunicado_lecturas (
   confirmado_en timestamptz,
   dispositivo   text,
   declaracion   text,   -- texto exacto aceptado cuando confirmó
+  ip            text,   -- IP real (la inyecta el proxy /api/supa, 2026-08-26)
+  agente        text,   -- user-agent verificado en servidor
   primary key (dni, comunicado_id)
 );
+
+-- CONSENTIMIENTOS con estándar probatorio (2026-08-26, D.Leg. 1310): texto
+-- ÍNTEGRO copiado, huella SHA-256 del texto, hora de servidor, IP y agente.
+-- dni SIN FK a propósito (patrón dni_check): el registro sobrevive al maestro.
+create table if not exists consentimientos (
+  id              bigint generated always as identity primary key,
+  dni             text not null,
+  declaracion_id  text not null,
+  version         integer not null,
+  superficie      text not null default 'portal',
+  texto           text not null,
+  hash_sha256     text not null,
+  aceptado_en     timestamptz not null default now(),
+  ip              text,
+  agente          text,
+  origen          text not null default 'primer_ingreso'
+    check (origen in ('primer_ingreso','migrado','papel'))
+);
+create index if not exists ix_consentimientos_dni on consentimientos (dni);
+drop trigger if exists trg_consentimientos_inmutables on consentimientos;
+create trigger trg_consentimientos_inmutables
+  before update or delete on consentimientos
+  for each row execute function fn_bloquear_cambios();
+revoke all on consentimientos from anon, authenticated;
 
 -- La cuenta de haberes JAMÁS se edita desde el portal: solicitud para RRHH.
 create table if not exists solicitudes_cambio_cuenta (
@@ -199,8 +225,9 @@ drop function if exists portal_primer_ingreso(text, boolean, integer);
 create or replace function portal_primer_ingreso(
   p_celular text, p_sin_celular boolean, p_politica_version integer,
   p_correo text default null
-) returns void language plpgsql security definer as $$
-declare v_dni text; v_correo text;
+) returns void language plpgsql security definer
+set search_path = public, extensions as $$
+declare v_dni text; v_correo text; v_texto text;
 begin
   v_dni := portal_dni();
   if v_dni is null then raise exception 'Sesión del portal requerida.'; end if;
@@ -211,7 +238,9 @@ begin
   if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
     raise exception 'El correo no tiene un formato válido.';
   end if;
-  if not exists (select 1 from declaraciones where id = 'politica-datos' and version = p_politica_version) then
+  select texto into v_texto from declaraciones
+  where id = 'politica-datos' and version = p_politica_version;
+  if v_texto is null then
     raise exception 'Versión de la política de datos desconocida.';
   end if;
   update cuentas_portal
@@ -222,6 +251,13 @@ begin
       politica_aceptada_en = now()
   where dni = v_dni;
   if not found then raise exception 'La cuenta del portal no existe.'; end if;
+  -- Registro probatorio del consentimiento (D.Leg. 1310): texto íntegro,
+  -- huella, hora de servidor, IP y user-agent reales.
+  insert into consentimientos (dni, declaracion_id, version, superficie, texto,
+                               hash_sha256, ip, agente, origen)
+  values (v_dni, 'politica-datos', p_politica_version, 'portal', v_texto,
+          encode(extensions.digest(v_texto, 'sha256'), 'hex'),
+          fn_cabecera('x-ip-real'), fn_cabecera('x-agente'), 'primer_ingreso');
   update personas
   set celular = coalesce(case when p_sin_celular then null else p_celular end, celular),
       portal  = case when p_sin_celular then 'sin_celular' else 'activo' end,
@@ -233,7 +269,8 @@ end $$;
 
 -- El corazón probatorio (TRB-06/07): un acuse inmutable con el texto íntegro.
 create or replace function portal_confirmar_recepcion(p_documento_id bigint, p_dispositivo text)
-returns bigint language plpgsql security definer as $$
+returns bigint language plpgsql security definer
+set search_path = public, extensions as $$
 declare v_dni text; v_doc record; v_texto text; v_id bigint;
 begin
   v_dni := portal_dni();
@@ -257,8 +294,10 @@ begin
   select texto into v_texto from declaraciones
   where id = 'recepcion-documento' and superficie = 'portal'
   order by version desc limit 1;
-  insert into acuses (dni_check, documento_id, modalidad, dispositivo, hash_sha256, declaracion)
-  values (v_dni, p_documento_id, 'personal', left(p_dispositivo, 150), v_doc.hash_sha256, v_texto)
+  insert into acuses (dni_check, documento_id, modalidad, dispositivo, hash_sha256,
+                      declaracion, ip, agente)
+  values (v_dni, p_documento_id, 'personal', left(p_dispositivo, 150), v_doc.hash_sha256,
+          v_texto, fn_cabecera('x-ip-real'), fn_cabecera('x-agente'))
   returning id into v_id;
   return v_id;
 end $$;
@@ -275,7 +314,8 @@ begin
 end $$;
 
 create or replace function portal_confirmar_lectura(p_comunicado_id bigint, p_dispositivo text)
-returns void language plpgsql security definer as $$
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
 declare v_dni text; v_texto text; v_previo boolean;
 begin
   v_dni := portal_dni();
@@ -292,11 +332,14 @@ begin
   select coalesce((select confirmado from comunicado_lecturas
                    where dni = v_dni and comunicado_id = p_comunicado_id), false)
   into v_previo;
-  insert into comunicado_lecturas (dni, comunicado_id, confirmado, confirmado_en, dispositivo, declaracion)
-  values (v_dni, p_comunicado_id, true, now(), left(p_dispositivo, 150), v_texto)
+  insert into comunicado_lecturas (dni, comunicado_id, confirmado, confirmado_en,
+                                   dispositivo, declaracion, ip, agente)
+  values (v_dni, p_comunicado_id, true, now(), left(p_dispositivo, 150), v_texto,
+          fn_cabecera('x-ip-real'), fn_cabecera('x-agente'))
   on conflict (dni, comunicado_id) do update
     set confirmado = true, confirmado_en = now(),
-        dispositivo = excluded.dispositivo, declaracion = excluded.declaracion
+        dispositivo = excluded.dispositivo, declaracion = excluded.declaracion,
+        ip = excluded.ip, agente = excluded.agente
     where not comunicado_lecturas.confirmado;
   if not v_previo then
     update comunicados set leidos = leidos + 1 where id = p_comunicado_id;

@@ -33,6 +33,21 @@ export default function Personal() {
   const [cuentaResultado, setCuentaResultado] = useState(null); // { clave, enviado?, errorCorreo? } | { error }
   const [conCorreo, setConCorreo] = useState(true); // checkbox del modal individual
   const [masa, setMasa] = useState(false);          // modal masivo
+  const [bajandoConsent, setBajandoConsent] = useState(false);
+
+  // Consentimientos para firma física de TODO el personal vigente de la RS
+  // activa (D.Leg. 1310 / Ley 29733): un PDF, un formato por trabajador.
+  const descargarConsentimientos = async () => {
+    setBajandoConsent(true);
+    try {
+      const { descargarPdfSesion } = await import("../../lib/descargas.js");
+      const r = await descargarPdfSesion(`/api/consentimiento-pdf?empresa=${encodeURIComponent(empresaId)}`,
+        `consentimientos-${empresaId}.pdf`);
+      if (r.error) setAviso(`No se pudo generar el PDF de consentimientos: ${r.error}`);
+    } finally {
+      setBajandoConsent(false);
+    }
+  };
 
   const accionCuenta = async (accion) => {
     if (cuentaOcupado) return;
@@ -96,6 +111,9 @@ export default function Personal() {
             </Button>
             <Button variant="secondary" size="sm" onClick={() => setMasa(true)}>
               <Smartphone size={13} /> Cuentas del portal
+            </Button>
+            <Button variant="secondary" size="sm" onClick={descargarConsentimientos} disabled={bajandoConsent}>
+              <Download size={13} /> {bajandoConsent ? "Generando…" : "Consentimientos"}
             </Button>
             {puedeExportar && (
               <Button variant="secondary" size="sm" onClick={exportar}>

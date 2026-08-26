@@ -28,6 +28,7 @@ export default function Legajo() {
     actividadPersona(dni).then(setActividad).catch(() => setActividad([]));
   }, [tab, dni, actividad]); // eslint-disable-line react-hooks/exhaustive-deps
   const [bajandoLegajo, setBajandoLegajo] = useState(false);
+  const [bajandoConsent, setBajandoConsent] = useState(false);
   const [cuentaCompleta, setCuentaCompleta] = useState(null);
   // Historial de la pestaña Vínculos: todos los vínculos + movimientos de
   // planilla (alta/traslado/cese/retorno). Se carga al entrar a la pestaña.
@@ -98,6 +99,20 @@ export default function Legajo() {
     }
   };
 
+  // Formato de consentimiento para firma física (D.Leg. 1310 / Ley 29733):
+  // respalda en papel al personal contratado antes del consentimiento digital.
+  const descargarConsentimiento = async () => {
+    setBajandoConsent(true);
+    try {
+      const { descargarPdfSesion } = await import("../../lib/descargas.js");
+      const r = await descargarPdfSesion(`/api/consentimiento-pdf?dni=${encodeURIComponent(dni)}`,
+        `consentimiento-${dni}.pdf`);
+      if (r.error) setAviso(`No se pudo generar el consentimiento: ${r.error}`);
+    } finally {
+      setBajandoConsent(false);
+    }
+  };
+
   return (
     <>
       <Link to="/rrhh/personal" className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-petroleo hover:underline">
@@ -114,6 +129,9 @@ export default function Legajo() {
             )}
             <Button variant="secondary" size="sm" onClick={descargarLegajo} disabled={bajandoLegajo}>
               <Download size={13} /> {bajandoLegajo ? "Generando…" : "Descargar legajo"}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={descargarConsentimiento} disabled={bajandoConsent}>
+              <Download size={13} /> {bajandoConsent ? "Generando…" : "Consentimiento"}
             </Button>
             <Link to={`/rrhh/acuses/${dni}`}>
               <Button variant="secondary" size="sm"><Download size={13} /> Constancias</Button>

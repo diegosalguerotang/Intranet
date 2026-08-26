@@ -228,7 +228,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Aún no tiene cuenta del portal: créala desde Planilla (botón Portal) para que pueda entrar a confirmar." });
     }
     const pendientes = (await rest(
-      `/rest/v1/v_acuses?dni=eq.${encodeURIComponent(p.dni)}&estado=in.(pendiente,nunca_ingreso)&select=doc`
+      `/rest/v1/v_acuses?dni=eq.${encodeURIComponent(p.dni)}&estado=in.(pendiente,nunca_ingreso)&select=doc,documento_id`
     )).json ?? [];
     if (!pendientes.length) return res.status(400).json({ error: "No tiene documentos pendientes de confirmar." });
 
@@ -243,7 +243,15 @@ export default async function handler(req, res) {
        <p style="font-size:12px;color:#999">Entra con tu documento y tu clave del portal. Confirmar la recepción
           no significa estar de acuerdo con el contenido; solo deja constancia de que lo recibiste.</p>`));
     if (r.error) return res.status(503).json({ error: r.error });
-    return res.status(200).json({ enviado: p.correo, pendientes: pendientes.length });
+    // Evidencia de notificación (D.Leg. 1310, 2026-08-26): una fila INSERT-only
+    // por documento avisado. Si el log falla no se degrada el envío ya hecho.
+    const filas = pendientes
+      .filter((x) => x.documento_id)
+      .map((x) => ({ documento_id: x.documento_id, canal: "correo", destinatario: p.correo, enviado_por: correoLlamador }));
+    if (filas.length) {
+      await rest(`/rest/v1/notificaciones_documento`, { method: "POST", body: JSON.stringify(filas) });
+    }
+    return res.status(200).json({ enviado: p.correo, pendientes: pendientes.length, notificados: filas.length });
   }
 
   return res.status(400).json({ error: "Acción desconocida." });

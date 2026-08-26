@@ -86,6 +86,79 @@ export async function generarConstanciaPdf({
   return doc.save();
 }
 
+// Reporte de fiscalización (2026-08-26): el inspector pide un CONSOLIDADO por
+// período y empresa, no clic por clic. A4 apaisado, tabla con salto de página,
+// hash completo por fila. filas = [{dni, nombre, doc, publicado, notificado,
+// confirmado, modalidad, hash}, …] ya formateadas — aquí nada se recalcula.
+export async function generarReporteAcusesPdf({ empresa, ruc, periodo, generadoEl, filas }) {
+  const APAISADO = [841.89, 595.28];
+  const M = 40;
+  const doc = await PDFDocument.create();
+  const normal = await doc.embedFont(StandardFonts.Helvetica);
+  const negrita = await doc.embedFont(StandardFonts.HelveticaBold);
+  const mono = await doc.embedFont(StandardFonts.Courier);
+
+  // [etiqueta, ancho, clave, fuente?]
+  const COLS = [
+    ["DNI / DOC.", 62, "dni", mono],
+    ["TRABAJADOR", 130, "nombre"],
+    ["DOCUMENTO", 120, "doc"],
+    ["PUBLICADO", 64, "publicado"],
+    ["NOTIFICADO", 64, "notificado"],
+    ["CONFIRMADO", 64, "confirmado"],
+    ["MODALIDAD", 44, "modalidad"],
+    ["HASH SHA-256 DEL ARCHIVO", 214, "hash", mono],
+  ];
+
+  let pagina, y, n = 0;
+  const cabecera = () => {
+    pagina = doc.addPage(APAISADO);
+    y = APAISADO[1] - M;
+    pagina.drawText("REPORTE DE ENTREGA ELECTRÓNICA DE DOCUMENTOS LABORALES", {
+      x: M, y, size: 12, font: negrita, color: TINTA,
+    });
+    y -= 14;
+    pagina.drawText(winAnsi(`${empresa}${ruc ? ` — RUC ${ruc}` : ""} · Período: ${periodo || "todos"} · Generado: ${generadoEl} (UTC-5, América/Lima) · ${filas.length} documentos`), {
+      x: M, y, size: 8, font: normal, color: GRIS,
+    });
+    y -= 16;
+    let x = M;
+    for (const [etiqueta, ancho] of COLS) {
+      pagina.drawText(etiqueta, { x, y, size: 6.5, font: negrita, color: GRIS });
+      x += ancho;
+    }
+    y -= 4;
+    pagina.drawLine({ start: { x: M, y }, end: { x: APAISADO[0] - M, y }, thickness: 0.75, color: LINEA });
+    y -= 11;
+  };
+
+  cabecera();
+  for (const f of filas) {
+    if (y < M + 24) cabecera();
+    let x = M;
+    for (const [, ancho, clave, fuente] of COLS) {
+      const fnt = fuente ?? normal;
+      const cuerpo = fnt === mono ? 5.6 : 6.8;
+      let valor = winAnsi(f[clave] ?? "—");
+      while (valor.length > 1 && fnt.widthOfTextAtSize(valor, cuerpo) > ancho - 5) valor = valor.slice(0, -1);
+      pagina.drawText(valor, { x, y, size: cuerpo, font: fnt, color: TINTA });
+      x += ancho;
+    }
+    y -= 11;
+    if (++n % 5 === 0) {
+      pagina.drawLine({ start: { x: M, y: y + 8 }, end: { x: APAISADO[0] - M, y: y + 8 }, thickness: 0.3, color: LINEA });
+    }
+  }
+
+  const pie = "Generado desde el registro inmutable de acuses de la Intranet GrupoER (D.Leg. 1310, art. 3.2). " +
+    "«Publicado» = puesta a disposición en el portal; «Notificado» = último aviso por correo registrado; " +
+    "«Confirmado» = acuse de recepción del trabajador. Marcas de tiempo del reloj del servidor (NTP), zona UTC-5.";
+  for (const p of doc.getPages()) {
+    p.drawText(winAnsi(pie), { x: M, y: M - 18, size: 6.5, font: normal, color: GRIS });
+  }
+  return doc.save();
+}
+
 // Une varios PDFs (Uint8Array) en uno solo, en orden — una constancia por
 // página para «Exportar constancias del lote» (RRH-11).
 export async function unirPdfs(lista) {

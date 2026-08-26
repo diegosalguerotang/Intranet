@@ -42,6 +42,16 @@ export default async function handler(req, res) {
   const sesion = req.headers["x-sesion"];
   if (sesion) cabeceras.authorization = `Bearer ${sesion}`;
 
+  // Evidencia probatoria (2026-08-26): IP y user-agent REALES del cliente,
+  // generados aquí (nunca aceptados del cliente — ENTRAN no los incluye, así
+  // que cualquier x-ip-real/x-agente entrante ya fue descartado). Los RPCs de
+  // acuse los leen de request.headers y los guardan en el registro inmutable.
+  const reenviada = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
+  const ip = reenviada || req.socket?.remoteAddress || "";
+  if (ip) cabeceras["x-ip-real"] = ip.slice(0, 64);
+  const agente = String(req.headers["user-agent"] ?? "").trim();
+  if (agente) cabeceras["x-agente"] = agente.slice(0, 200);
+
   const cuerpo = (req.method !== "GET" && req.method !== "HEAD") ? await leerCuerpo(req) : undefined;
 
   const respuesta = await fetch(destino, { method: req.method, headers: cabeceras, body: cuerpo });

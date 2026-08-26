@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Send, Camera } from "lucide-react";
+import { ArrowLeft, Download, Send, Camera, FileSpreadsheet, FileText } from "lucide-react";
 import { useApp } from "../../state";
 import { supabase } from "../../lib/supabase";
 import {
@@ -19,24 +19,35 @@ export default function Acuses() {
   const { empresaId, db, persona, sede, empresaPor, registrarAcuseAsistido } = useApp();
   const [fEstado, setFEstado] = useState("");
   const [fSede, setFSede] = useState("");
+  const [fPeriodo, setFPeriodo] = useState("");
   const [asistido, setAsistido] = useState(null); // acuse al que se registra asistencia
   const [aviso, setAviso] = useState(null);
   const [exportando, setExportando] = useState(false);
+  const [reportando, setReportando] = useState(false);
 
   const lote = db.lotes.find((l) => l.empresa === empresaId);
   const sedesEmpresa = db.sedes.filter((s) => s.empresa === empresaId);
 
+  const filasEmpresa = useMemo(
+    () => db.acuses.filter((a) => persona(a.dni)?.empresa === empresaId),
+    [db.acuses, db.personal, empresaId] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const periodos = useMemo(
+    () => [...new Set(filasEmpresa.map((a) => a.periodo).filter(Boolean))].sort().reverse(),
+    [filasEmpresa]
+  );
+
   const filas = useMemo(
     () =>
-      db.acuses.filter((a) => {
+      filasEmpresa.filter((a) => {
         const p = persona(a.dni);
         return (
-          p?.empresa === empresaId &&
           (!fEstado || a.estado === fEstado) &&
-          (!fSede || p.sede === fSede)
+          (!fSede || p?.sede === fSede) &&
+          (!fPeriodo || a.periodo === fPeriodo)
         );
       }),
-    [db.acuses, db.personal, empresaId, fEstado, fSede]
+    [filasEmpresa, fEstado, fSede, fPeriodo] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const counts = {
@@ -94,6 +105,68 @@ export default function Acuses() {
     }
   };
 
+  // Reporte de fiscalización (2026-08-26): consolidado por período y empresa
+  // con publicación / notificación / confirmación separadas (D.Leg. 1310).
+  const filasReporte = () =>
+    filas.map((a) => ({
+      dni: a.dni,
+      nombre: persona(a.dni)?.nombre ?? a.nombre ?? "—",
+      doc: a.doc,
+      periodo: a.periodo ?? "—",
+      publicado: a.publicado ?? "—",
+      notificado: a.ultimaNotificacion
+        ? `${a.ultimaNotificacion}${(a.notificaciones ?? 0) > 1 ? ` (${a.notificaciones})` : ""}`
+        : "—",
+      confirmado: a.fecha ?? "—",
+      modalidad: a.estado === "confirmado" ? "Personal"
+        : a.estado === "asistido" ? "Asistido"
+        : a.estado === "nunca_ingreso" ? "Nunca ingresó" : "Pendiente",
+      hash: a.hash ?? "—",
+    }));
+
+  const reporteCsv = () => {
+    const r = filasReporte();
+    if (!r.length) { setAviso("No hay filas que reportar con los filtros actuales."); return; }
+    const enc = ["DNI", "Trabajador", "Documento", "Período", "Publicado (puesta a disposición)",
+      "Última notificación por correo", "Confirmado (acuse)", "Modalidad", "Hash SHA-256"];
+    const csv = [enc, ...r.map((f) => [f.dni, f.nombre, f.doc, f.periodo, f.publicado, f.notificado, f.confirmado, f.modalidad, f.hash])]
+      .map((f) => f.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    const el = Object.assign(document.createElement("a"), {
+      href: url, download: `reporte-acuses-${empresaId}${fPeriodo ? `-${fPeriodo}` : ""}.csv`,
+    });
+    document.body.appendChild(el);
+    el.click();
+    el.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
+
+  const reportePdf = async () => {
+    const r = filasReporte();
+    if (!r.length) { setAviso("No hay filas que reportar con los filtros actuales."); return; }
+    setReportando(true);
+    try {
+      const { generarReporteAcusesPdf } = await import("../../lib/constancia.js");
+      const e = empresaPor(empresaId);
+      const bytes = await generarReporteAcusesPdf({
+        empresa: e?.nombre ?? empresaId, ruc: e?.ruc,
+        periodo: fPeriodo || "todos",
+        generadoEl: new Date().toLocaleString("es-PE", { timeZone: "America/Lima", hour12: false }),
+        filas: r,
+      });
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+      const el = Object.assign(document.createElement("a"), {
+        href: url, download: `reporte-acuses-${empresaId}${fPeriodo ? `-${fPeriodo}` : ""}.pdf`,
+      });
+      document.body.appendChild(el);
+      el.click();
+      el.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } finally {
+      setReportando(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -107,6 +180,12 @@ export default function Acuses() {
             </Button>
             <Button variant="secondary" size="sm" onClick={exportarConstancias} disabled={exportando}>
               <Download size={13} /> {exportando ? "Generando PDF…" : "Exportar constancias del lote"}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={reporteCsv}>
+              <FileSpreadsheet size={13} /> Reporte fiscalización (Excel)
+            </Button>
+            <Button variant="secondary" size="sm" onClick={reportePdf} disabled={reportando}>
+              <FileText size={13} /> {reportando ? "Generando…" : "Reporte fiscalización (PDF)"}
             </Button>
           </>
         }
@@ -134,6 +213,12 @@ export default function Acuses() {
             <option value="">Todas las sedes</option>
             {sedesEmpresa.map((s) => (
               <option key={s.id} value={s.id}>{s.cliente ?? s.nombre}</option>
+            ))}
+          </Select>
+          <Select value={fPeriodo} onChange={(e) => setFPeriodo(e.target.value)} style={{ maxWidth: 170 }}>
+            <option value="">Todos los períodos</option>
+            {periodos.map((p) => (
+              <option key={p} value={p}>{p}</option>
             ))}
           </Select>
         </div>
