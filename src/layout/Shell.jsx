@@ -59,7 +59,11 @@ const NAV_ACCESOS = [
 
 function NavGroup({ title, items, acceso }) {
   const { pathname } = useLocation();
-  const visibles = items.filter((i) => nivelDe(acceso, i.modulo) >= 1);
+  // Los «Próximamente» van al final de su sección (Diego, 2026-08-27);
+  // el sort es estable, así que el orden relativo declarado se conserva.
+  const visibles = items
+    .filter((i) => nivelDe(acceso, i.modulo) >= 1)
+    .sort((a, b) => (a.proximamente ? 1 : 0) - (b.proximamente ? 1 : 0));
   // Plegable (Diego, 2026-08-19): TODO arranca contraído siempre; la flechita
   // despliega o contrae. Al navegar HACIA una pantalla de un grupo contraído
   // (enlace directo), ese grupo se abre para orientar; contraerlo estando
