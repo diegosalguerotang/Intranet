@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { MapPin, Plus, BookOpen } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { MapPin, Plus, BookOpen, Trash2 } from "lucide-react";
 import { useApp } from "../../state";
 import { supabase } from "../../lib/supabase";
 import { nivelDe } from "../../data/modulos";
@@ -12,14 +13,17 @@ import {
 // cambia según sede o contrato): el personal de esa planilla lo «jala» solo al
 // leerlo desde su portal. Sin RIT propio rige el de la empresa (el general).
 export default function Sedes() {
-  const { empresaId, empresa, db, user, crearSede, crearRit, asignarRitSede } = useApp();
+  const { empresaId, empresa, db, user, crearSede, crearRit, asignarRitSede, eliminarSede } = useApp();
   const acceso = user?.acceso ?? { esSuperadmin: user?.esSuperadmin, matriz: {} };
   const puedeAprobar = nivelDe(acceso, "personal") >= 3;
   const [q, setQ] = useState("");
   const [alta, setAlta] = useState(false);
   const [subirRit, setSubirRit] = useState(false);
-  const [aviso, setAviso] = useState(null);
+  // El detalle deja su aviso al volver (p. ej. «Sede eliminada»).
+  const [aviso, setAviso] = useState(useLocation().state?.aviso ?? null);
   const [error, setError] = useState(null);
+  const [porEliminar, setPorEliminar] = useState(null); // sede del modal
+  const [eliminando, setEliminando] = useState(false);
 
   const filas = useMemo(
     () =>
@@ -33,6 +37,22 @@ export default function Sedes() {
       ),
     [db.sedes, empresaId, q]
   );
+
+  const eliminar = async () => {
+    if (!porEliminar) return;
+    setError(null);
+    setEliminando(true);
+    try {
+      await eliminarSede(porEliminar.id);
+      setAviso(`Sede «${porEliminar.nombre}» eliminada.`);
+      setPorEliminar(null);
+    } catch (err) {
+      setError(err.message);
+      setPorEliminar(null);
+    } finally {
+      setEliminando(false);
+    }
+  };
 
   const cambiarRit = async (sede, ritId) => {
     setError(null);
@@ -71,12 +91,14 @@ export default function Sedes() {
         <div className="flex flex-wrap gap-2.5 border-b border-borde bg-papel/50 p-3.5">
           <Input placeholder="Buscar por código, nombre o cliente…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
         </div>
-        <Table head={["Código", "Sede", "Cliente", "Supervisor", "Reglamento (RIT)", "Estado"]}>
+        <Table head={["Código", "Sede", "Cliente", "Supervisor", "Reglamento (RIT)", "Estado", ""]}>
           {filas.map((s) => (
             <tr key={s.id} className="hover:bg-papel/60">
               <Td className="font-mono text-[12px] font-semibold">{s.codigo ?? "—"}</Td>
               <Td>
-                <div className="font-semibold">{s.nombre}</div>
+                <Link to={`/rrhh/sedes/${s.id}`} className="font-semibold text-petroleo hover:underline">
+                  {s.nombre}
+                </Link>
                 {s.direccion && <div className="text-[11px] text-gris">{s.direccion}</div>}
               </Td>
               <Td className="text-gris">{s.cliente}</Td>
@@ -96,10 +118,28 @@ export default function Sedes() {
                   ? <Badge tone="conf">Activa</Badge>
                   : <Badge tone="neutral">Cerrada</Badge>}
               </Td>
+              <Td>
+                <div className="flex items-center justify-end gap-1">
+                  <Link to={`/rrhh/sedes/${s.id}`} className="text-[12px] font-semibold text-petroleo hover:underline">
+                    Detalle
+                  </Link>
+                  {puedeAprobar && (
+                    <button
+                      type="button"
+                      onClick={() => setPorEliminar(s)}
+                      title="Eliminar sede"
+                      aria-label={`Eliminar la sede ${s.nombre}`}
+                      className="ml-1.5 rounded-full p-1.5 text-gris-cl hover:bg-alerta/10 hover:text-alerta"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </Td>
             </tr>
           ))}
           {filas.length === 0 && (
-            <tr><Td colSpan={6}><span className="text-gris-cl">No hay sedes que coincidan.</span></Td></tr>
+            <tr><Td colSpan={7}><span className="text-gris-cl">No hay sedes que coincidan.</span></Td></tr>
           )}
         </Table>
       </Card>
@@ -133,6 +173,28 @@ export default function Sedes() {
         crearSede={crearSede}
         onCreada={(r, nombre) => setAviso(`Sede «${nombre}» creada con el código ${r.codigo}.`)}
       />
+      <Modal
+        open={!!porEliminar}
+        onClose={() => !eliminando && setPorEliminar(null)}
+        title={porEliminar ? `Eliminar la sede «${porEliminar.nombre}»` : ""}
+      >
+        <div className="space-y-4">
+          <Note tone="alerta">
+            Se elimina de forma definitiva. Solo es posible si nada la referencia: sin trabajadores
+            (ni históricos), sin activos y sin comunicados dirigidos a ella. Si tiene rastro, el
+            sistema lo dirá y no borrará nada.
+          </Note>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" type="button" onClick={() => setPorEliminar(null)} disabled={eliminando}>
+              Cancelar
+            </Button>
+            <Button variant="danger" type="button" onClick={eliminar} disabled={eliminando}>
+              {eliminando ? "Eliminando…" : "Sí, eliminar"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       <SubirReglamento
         open={subirRit}
         onClose={() => setSubirRit(false)}

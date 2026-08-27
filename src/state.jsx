@@ -618,6 +618,14 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("sedes", "rits");
     },
+    // RRH-21 — Eliminar sede: la BD solo lo permite si nada la referencia
+    // (ni vínculos históricos, ni activos, ni comunicados).
+    eliminarSede: async (sedeId) => {
+      if (!supabaseListo) throw new Error("Eliminar sedes requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("eliminar_sede", { p_sede: sedeId });
+      if (error) throw new Error(error.message);
+      await recargar("sedes", "rits");
+    },
     // ADQ — Edición manual de un activo: corregir el código (caso «falta
     // corregir» de la importación) y los datos del equipo. Lo escrito MANDA.
     editarActivo: async (codigo, cambios) => {

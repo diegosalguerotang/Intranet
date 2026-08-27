@@ -29,7 +29,7 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   previsualizar_importacion, publicar_lote_pdf, fn_valor_importado,
   importar_activos, previsualizar_importacion_activos, crear_sede,
   editar_activo, fn_sumar_dias, notificar_memorandum, editar_trabajador,
-  crear_activo cascade;
+  crear_activo, eliminar_sede cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -1909,6 +1909,32 @@ begin
     'id', v_id, 'codigo', v_codigo, 'empresa', p_empresa,
     'nombre', trim(p_nombre), 'rit', p_rit, 'por', p_por));
   return jsonb_build_object('id', v_id, 'codigo', v_codigo);
+end $$;
+
+-- Eliminar sede (2026-08-27): borrar de verdad SOLO sedes sin rastro — ni
+-- vínculos (históricos incluidos), ni activos, ni comunicados dirigidos.
+create function eliminar_sede(p_sede text)
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
+declare v_sede sedes%rowtype; v_vinculos int; v_activos int; v_comunicados int;
+begin
+  if fn_nivel_modulo('personal') < 3 then
+    raise exception 'Eliminar sedes exige nivel de aprobación en Personal.';
+  end if;
+  select * into v_sede from sedes where id = p_sede;
+  if not found then
+    raise exception 'La sede % no existe.', p_sede;
+  end if;
+  select count(*) into v_vinculos from vinculos where sede_id = p_sede;
+  select count(*) into v_activos from activos where sede_id = p_sede;
+  select count(*) into v_comunicados from comunicados where sede_id = p_sede;
+  if v_vinculos + v_activos + v_comunicados > 0 then
+    raise exception 'No se puede eliminar «%»: la referencian % vínculo(s) de trabajadores, % activo(s) y % comunicado(s). El historial no se borra.',
+      v_sede.nombre, v_vinculos, v_activos, v_comunicados;
+  end if;
+  delete from sedes where id = p_sede;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('ELIMINAR_SEDE', 'sedes', to_jsonb(v_sede), null);
 end $$;
 
 -- Alta/actualización de un reglamento (el PDF lo sube la pantalla al bucket)

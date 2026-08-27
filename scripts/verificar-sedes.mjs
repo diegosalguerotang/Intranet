@@ -20,7 +20,11 @@ async function prueba(nombre, fn) {
   catch (e) { fallos++; console.error(`✗ ${nombre}: ${e.message}`); }
 }
 const igual = (a, b, msj) => { if (a !== b) throw new Error(`${msj}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`); };
-const limpiar = () => sql("delete from sedes where nombre like 'ZZ-PRUEBA%'");
+const limpiar = async () => {
+  await sql("delete from vinculos where persona_dni like 'ZZPRUEBA%'");
+  await sql("delete from personas where dni like 'ZZPRUEBA%'");
+  await sql("delete from sedes where nombre like 'ZZ-PRUEBA%'");
+};
 
 await limpiar();
 
@@ -74,6 +78,31 @@ await prueba("la importación de personal asigna código a la sede que crea", as
     "select fn_sede_para_importacion('promant', 'ZZ-PRUEBA IMPORTADA', 'CLIENTE Y') as id");
   const [s] = await sql(`select codigo from sedes where id = '${id[0].id}'`);
   igual(/^S-\d{4,}$/.test(s.codigo ?? ""), true, `código (${s.codigo})`);
+});
+
+await prueba("eliminar_sede borra una sede sin rastro y deja auditoría", async () => {
+  const [{ r }] = await sql(
+    "select crear_sede('promant', 'ZZ-PRUEBA Efimera', null) as r");
+  await sql(`select eliminar_sede('${r.id}')`);
+  const [n] = await sql(`select count(*)::int n from sedes where id = '${r.id}'`);
+  igual(n.n, 0, "la sede sigue existiendo");
+  const [au] = await sql(
+    `select count(*)::int n from auditoria where accion='ELIMINAR_SEDE' and datos_antes->>'id' = '${r.id}'`);
+  igual(au.n >= 1, true, "auditoría");
+});
+
+await prueba("negativa: sede con vínculos (aunque históricos) no se elimina", async () => {
+  const [{ r }] = await sql(
+    "select crear_sede('promant', 'ZZ-PRUEBA Con Gente', null) as r");
+  await sql(`insert into personas (dni, nombre) values ('ZZPRUEBA9', 'ZZ Prueba Sede');
+    insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio, fecha_fin)
+    values ('ZZPRUEBA9', 'promant', '${r.id}', 'Prueba', '2026-01-01', '2026-02-01')`);
+  let error = null;
+  try { await sql(`select eliminar_sede('${r.id}')`); } catch (e) { error = e.message; }
+  igual(error !== null && error.includes("No se puede eliminar"), true, `error (${error})`);
+  igual(error.includes("1 vínculo"), true, `conteo en el error (${error})`);
+  const [n] = await sql(`select count(*)::int n from sedes where id = '${r.id}'`);
+  igual(n.n, 1, "la sede debía sobrevivir");
 });
 
 await limpiar();
