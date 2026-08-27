@@ -26,7 +26,7 @@ function CampoClave({ ver, setVer, ...props }) {
 // hasta reemplazar la clave provisional no se puede operar ninguna pantalla.
 // Así, ni siquiera quien configuró el despliegue conserva la clave operativa.
 export default function CambioClave() {
-  const { user, db, claveCambiada } = useApp();
+  const { user, db, salir } = useApp();
   const minimo = Math.max(6, db.politica[0]?.claveLongitudMinBackoffice ?? 6);
   const [clave, setClave] = useState("");
   const [confirmar, setConfirmar] = useState("");
@@ -49,7 +49,13 @@ export default function CambioClave() {
         ? "La clave nueva debe ser distinta de la provisional."
         : "No se pudo actualizar la clave. Inténtalo de nuevo.");
     }
-    await claveCambiada();
+    // La clave nueva se comprueba entrando de verdad (Diego, 2026-08-27): se
+    // marca el cambio en BD con la sesión aún viva y se regresa al login en
+    // vez de pasar directo al home.
+    if (user?.correo) {
+      await supabase.rpc("marcar_clave_cambiada", { p_correo: user.correo }).catch?.(() => {});
+    }
+    await salir("Tu clave se guardó. Ingresa de nuevo con tu clave nueva para comprobarla.");
   };
 
   return (

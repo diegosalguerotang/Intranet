@@ -77,6 +77,9 @@ export default function RestablecerAdmin() {
           await supabase.rpc("marcar_clave_cambiada", { p_correo: correoSesion }).catch?.(() => {});
         }
         setListo(true);
+        // La sesión temporal del enlace se cierra (Diego, 2026-08-27): la
+        // clave nueva se comprueba entrando por el login, no de frente.
+        await supabase.auth.signOut().catch?.(() => {});
         return;
       }
       // Modo token del motor propio.
@@ -107,8 +110,8 @@ export default function RestablecerAdmin() {
         {listo ? (
           <div className="space-y-4 text-center">
             <Note tone="conf">Ya puedes ingresar al BackOffice con tu correo y tu clave nueva.</Note>
-            <Link to={sesionSupabase ? "/" : "/admin/login"}>
-              <Button className="w-full">{sesionSupabase ? "Entrar al BackOffice" : "Ir a ingresar"}</Button>
+            <Link to="/admin/login">
+              <Button className="w-full">Ir a ingresar</Button>
             </Link>
           </div>
         ) : sesionPerdida && !token ? (

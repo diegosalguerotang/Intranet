@@ -31,7 +31,7 @@ function CampoClave({ ver, setVer, ...props }) {
 // deja esta pantalla). Reemplaza la clave provisional, registra el celular y
 // la aceptación de la política de datos (Ley 29733: fecha, hora y versión).
 export default function PrimerIngreso() {
-  const { perfil, refrescarPerfil } = usePortal();
+  const { perfil, salir } = usePortal();
   const [clave, setClave] = useState("");
   const [clave2, setClave2] = useState("");
   const [verClave, setVerClave] = useState(false);
@@ -81,7 +81,9 @@ export default function PrimerIngreso() {
           body: JSON.stringify({ accion: "verificacion" }),
         }).catch(() => {});
       }
-      await refrescarPerfil(); // el guard central pasa al inicio
+      // La clave nueva se comprueba entrando de verdad (Diego, 2026-08-27):
+      // se cierra la sesión provisional y se vuelve al ingreso con aviso.
+      await salir("Tu clave se guardó. Ingresa de nuevo con tu clave nueva.");
     } finally {
       setCargando(false);
     }
