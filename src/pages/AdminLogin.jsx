@@ -59,11 +59,30 @@ export default function AdminLogin() {
   // Motivo por el que se cerró la sesión anterior (inactividad / otro equipo),
   // dejado por state.jsx en sessionStorage al forzar el cierre.
   const [avisoSesion, setAvisoSesion] = useState(null);
+  // «Recordar mis datos»: el correo vive en localStorage (prefill); la clave
+  // JAMÁS se guarda en texto plano — va al almacén cifrado del navegador
+  // (Credential Management API) y se recupera al abrir el login.
+  const [recordar, setRecordar] = useState(() => {
+    try { return localStorage.getItem("login-recordar") !== "no"; } catch { return true; }
+  });
   useEffect(() => {
     try {
       const a = sessionStorage.getItem("aviso-sesion");
       if (a) { setAvisoSesion(a); sessionStorage.removeItem("aviso-sesion"); }
     } catch { /* sin sessionStorage */ }
+    try {
+      const u = localStorage.getItem("login-usuario");
+      if (u) setCorreo(u);
+      if (localStorage.getItem("login-recordar") !== "no"
+          && navigator.credentials?.get && window.PasswordCredential) {
+        navigator.credentials.get({ password: true, mediation: "optional" }).then((c) => {
+          if (c?.type === "password") {
+            setCorreo(c.id);
+            if (c.password) setClave(c.password);
+          }
+        }).catch(() => { /* el navegador decide */ });
+      }
+    } catch { /* modo privado */ }
   }, []);
 
   // ?probar=1 deja ver el formulario aunque el MODO DEMO ya haya puesto un
@@ -151,13 +170,21 @@ export default function AdminLogin() {
         return;
       }
       await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "exitoso", p_dispositivo: dispositivo });
-      // Guardado EXPLÍCITO de la credencial (Credential Management API):
-      // en una SPA la heurística de «¿Guardar contraseña?» es caprichosa;
-      // esto la dispara de forma determinística en Chrome/Edge. El navegador
-      // decide (y respeta «nunca para este sitio»); jamás bloquea el ingreso.
+      // «Recordar mis datos»: con la casilla marcada, el correo queda en
+      // localStorage y la clave en el almacén CIFRADO del navegador
+      // (Credential Management API — jamás en texto plano). Desmarcada,
+      // se borra lo recordado y se apaga el autocompletado silencioso.
       try {
-        if (window.PasswordCredential) {
-          await navigator.credentials.store(new window.PasswordCredential({ id: email, password: clave }));
+        if (recordar) {
+          localStorage.setItem("login-usuario", email);
+          localStorage.setItem("login-recordar", "si");
+          if (window.PasswordCredential) {
+            await navigator.credentials.store(new window.PasswordCredential({ id: email, password: clave }));
+          }
+        } else {
+          localStorage.removeItem("login-usuario");
+          localStorage.setItem("login-recordar", "no");
+          await navigator.credentials?.preventSilentAccess?.();
         }
       } catch { /* sin soporte o denegado: se sigue igual */ }
       // Sesión única (gana el login nuevo): se registra el marcador de ESTE
@@ -246,7 +273,16 @@ export default function AdminLogin() {
               <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-petroleo transition-transform duration-300 group-focus-within:scale-x-100" />
             </div>
 
-            <p className="mb-7 text-right text-[12px] text-gris-cl">
+            <div className="mb-7 flex items-center justify-between text-[12px]">
+              <label className="flex cursor-pointer items-center gap-2 text-gris">
+                <input
+                  type="checkbox"
+                  checked={recordar}
+                  onChange={(e) => setRecordar(e.target.checked)}
+                  className="h-4 w-4 accent-petroleo"
+                />
+                Recordar mis datos
+              </label>
               {/* La recuperación vive en su propia landing (/admin/olvide-clave)
                   y se lleva el correo ya digitado para no pedirlo dos veces. */}
               <button
@@ -257,7 +293,7 @@ export default function AdminLogin() {
               >
                 ¿Olvidaste tu clave?
               </button>
-            </p>
+            </div>
 
             {error && <div className="mb-4"><Note tone="alerta">{error}</Note></div>}
             {exito && (

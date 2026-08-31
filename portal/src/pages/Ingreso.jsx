@@ -26,11 +26,32 @@ export default function Ingreso() {
   const [cargando, setCargando] = useState(false);
   // Motivo del cierre forzado (inactividad / otro equipo), dejado por state.jsx.
   const [avisoSesion, setAvisoSesion] = useState(null);
+  // «Recordar mis datos»: documento en localStorage (prefill); la clave JAMÁS
+  // en texto plano — va al almacén cifrado del navegador (Credential
+  // Management API) y se recupera al abrir el ingreso.
+  const [recordar, setRecordar] = useState(() => {
+    try { return localStorage.getItem("portal-recordar") !== "no"; } catch { return true; }
+  });
   useEffect(() => {
     try {
       const a = sessionStorage.getItem("aviso-sesion-portal");
       if (a) { setAvisoSesion(a); sessionStorage.removeItem("aviso-sesion-portal"); }
     } catch { /* sin sessionStorage */ }
+    try {
+      const t = localStorage.getItem("portal-tipo-doc");
+      if (t && TIPOS_DOC[t]) setTipoDoc(t);
+      const u = localStorage.getItem("portal-usuario");
+      if (u) setDni(u);
+      if (localStorage.getItem("portal-recordar") !== "no"
+          && navigator.credentials?.get && window.PasswordCredential) {
+        navigator.credentials.get({ password: true, mediation: "optional" }).then((c) => {
+          if (c?.type === "password") {
+            setDni(c.id);
+            if (c.password) setClave(c.password);
+          }
+        }).catch(() => { /* el navegador decide */ });
+      }
+    } catch { /* modo privado */ }
   }, []);
 
   const ingresar = async (e) => {
@@ -56,11 +77,22 @@ export default function Ingreso() {
         return;
       }
       await rpc("portal_registrar_ingreso", { p_dni: dni, p_resultado: "exitoso", p_dispositivo: dispositivo });
-      // Guardado EXPLÍCITO de la credencial: dispara el «¿Guardar
-      // contraseña?» de Chrome/Edge sin depender de la heurística del SPA.
+      // «Recordar mis datos»: con la casilla marcada, documento y tipo en
+      // localStorage y la clave al almacén CIFRADO del navegador (jamás en
+      // texto plano). Desmarcada, se borra todo lo recordado.
       try {
-        if (window.PasswordCredential) {
-          await navigator.credentials.store(new window.PasswordCredential({ id: dni, password: clave }));
+        if (recordar) {
+          localStorage.setItem("portal-usuario", dni);
+          localStorage.setItem("portal-tipo-doc", tipoDoc);
+          localStorage.setItem("portal-recordar", "si");
+          if (window.PasswordCredential) {
+            await navigator.credentials.store(new window.PasswordCredential({ id: dni, password: clave }));
+          }
+        } else {
+          localStorage.removeItem("portal-usuario");
+          localStorage.removeItem("portal-tipo-doc");
+          localStorage.setItem("portal-recordar", "no");
+          await navigator.credentials?.preventSilentAccess?.();
         }
       } catch { /* sin soporte o denegado: se sigue igual */ }
       // El guard central redirige al inicio (o al primer ingreso).
@@ -139,9 +171,18 @@ export default function Ingreso() {
           </div>
         </label>
 
-        <p className="mb-6 text-right">
+        <div className="mb-6 flex items-center justify-between">
+          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-gris">
+            <input
+              type="checkbox"
+              checked={recordar}
+              onChange={(e) => setRecordar(e.target.checked)}
+              className="h-4 w-4 accent-petroleo"
+            />
+            Recordar mis datos
+          </label>
           <Enlace to="/olvide-clave" className="text-[13px] font-semibold text-petroleo">Olvidé mi clave</Enlace>
-        </p>
+        </div>
 
         {error && <div className="mb-4"><Nota tono="alerta">{error}</Nota></div>}
 
