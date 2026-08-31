@@ -512,6 +512,18 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("personal");
     },
+    // Hora de entrada versionada (2026-08-31): fija o corrige la hora con su
+    // fecha de vigencia (hora null borra esa vigencia). El servidor exige
+    // nivel de acción en Personal; jamás se supone una hora por defecto.
+    fijarHoraEntrada: async (dni, hora, desde) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("fijar_hora_entrada", {
+        p_dni: dni, p_hora: hora || null, p_desde: desde,
+        p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("personal");
+    },
     suspenderUsuarioAdmin: (id) => {
       local("usuariosAdmin", (xs) => xs.map((x) => (x.id === id ? { ...x, estado: "suspendido" } : x)));
       rpc("suspender_usuario_admin", { p_id: id }, "usuariosAdmin");

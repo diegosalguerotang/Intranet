@@ -20,7 +20,8 @@ export default function Legajo() {
   const [editar, setEditar] = useState(false);
   const [aviso, setAviso] = useState(null);
   const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria,
-    historialVinculos, historialMovimientos, actividadPersona } = useApp();
+    fijarHoraEntrada, historialVinculos, historialMovimientos, actividadPersona } = useApp();
+  const [editarHora, setEditarHora] = useState(false);
   // Actividad real (auditoría filtrada por persona), cargada al entrar a la pestaña.
   const [actividad, setActividad] = useState(null);
   useEffect(() => {
@@ -183,6 +184,9 @@ export default function Legajo() {
               ["N° de cuenta", cuentaCompleta?.cuenta ?? p.cuenta ?? "Sin registrar"],
               ["CCI", p.cci ?? "Sin registrar"],
               ["Estado del portal", { activo: "Activo", nunca_ingreso: "Nunca ingresó", sin_celular: "Sin celular" }[p.portal]],
+              ["Sexo", p.sexo === "M" ? "Masculino" : p.sexo === "F" ? "Femenino" : "Sin registrar"],
+              ["Centro de costo", p.centroCosto ?? "Sin asignar"],
+              ["Hora de entrada", p.horaEntrada ?? "Pendiente de configurar"],
             ].map(([k, v]) => (
               <div key={k}>
                 <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-gris">{k}</div>
@@ -190,11 +194,18 @@ export default function Legajo() {
               </div>
             ))}
           </div>
-          {p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta && (
-            <div className="mt-4">
-              <Button variant="secondary" size="sm" onClick={async () => setCuentaCompleta(await verCuentaBancaria(p.dni))}>
-                Ver cuenta completa
-              </Button>
+          {(puedeEditar || (p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta)) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta && (
+                <Button variant="secondary" size="sm" onClick={async () => setCuentaCompleta(await verCuentaBancaria(p.dni))}>
+                  Ver cuenta completa
+                </Button>
+              )}
+              {puedeEditar && (
+                <Button variant="secondary" size="sm" onClick={() => setEditarHora(true)}>
+                  <Pencil size={13} /> {p.horaEntrada ? "Cambiar hora de entrada" : "Fijar hora de entrada"}
+                </Button>
+              )}
             </div>
           )}
           {cuentaCompleta?.error && <div className="mt-3"><Note tone="alerta">{cuentaCompleta.error}</Note></div>}
@@ -346,6 +357,15 @@ export default function Legajo() {
         />
       )}
 
+      {editarHora && (
+        <EditarHoraEntrada
+          persona={p}
+          onClose={() => setEditarHora(false)}
+          fijarHoraEntrada={fijarHoraEntrada}
+          onListo={() => { setEditarHora(false); setAviso("Hora de entrada registrada. El cambio quedó en auditoría."); }}
+        />
+      )}
+
       {tab === 5 && (
         <Card pad={false}>
           {actividad === null ? (
@@ -376,6 +396,58 @@ export default function Legajo() {
         </Card>
       )}
     </>
+  );
+}
+
+// Hora de entrada VERSIONADA (spec Tareas 31-08): una sola hora por persona,
+// con fecha de vigencia para que el recálculo de un mes pasado use la que
+// regía entonces. Sin hora no hay tardanza; jamás se supone una por defecto.
+function EditarHoraEntrada({ persona: p, onClose, fijarHoraEntrada, onListo }) {
+  const [hora, setHora] = useState(p.horaEntrada ?? "");
+  const [desde, setDesde] = useState(new Date().toISOString().slice(0, 10));
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+
+  const guardar = async (e) => {
+    e.preventDefault();
+    if (ocupado) return;
+    setError(null);
+    setOcupado(true);
+    try {
+      await fijarHoraEntrada(p.dni, hora, desde);
+      onListo();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setOcupado(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Hora de entrada — ${p.nombre}`}>
+      <form onSubmit={guardar} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Hora de entrada" required hint="La tardanza se calcula contra esta hora.">
+            <Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} required />
+          </Field>
+          <Field label="Vigente desde" required hint="Un recálculo de un mes pasado usa la hora que regía entonces.">
+            <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} required />
+          </Field>
+        </div>
+        <Note tone="neutral">
+          {p.horaEntrada
+            ? `Hora vigente hoy: ${p.horaEntrada}. Registrar una nueva vigencia no borra el historial.`
+            : "Sin hora de entrada el trabajador no genera tardanzas y figura como pendiente de configurar."}
+        </Note>
+        {error && <Note tone="alerta">{error}</Note>}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={ocupado || !hora || !desde}>
+            {ocupado ? "Guardando…" : "Guardar"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={ocupado}>Cancelar</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

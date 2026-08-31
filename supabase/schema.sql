@@ -601,6 +601,55 @@ create table tardanzas (
   primary key (dni, periodo)                 -- la reimportación es idempotente
 );
 
+-- Hora de entrada del trabajador (2026-08-31): una sola hora por persona,
+-- versionada con fecha de vigencia (el recálculo de un mes pasado usa la que
+-- regía entonces). Sin hora no hay tardanza: jamás se supone una por defecto.
+create table if not exists horarios_entrada (
+  persona_dni   text not null references personas(dni),
+  vigente_desde date not null,
+  hora          time not null,
+  creado_por    text not null,
+  creado_en     timestamptz not null default now(),
+  primary key (persona_dni, vigente_desde)
+);
+revoke all on horarios_entrada from anon, authenticated;
+
+-- Hora vigente para una fecha (null = pendiente de configurar).
+create or replace function fn_hora_entrada(p_dni text, p_fecha date default current_date)
+returns time language sql stable
+set search_path = public, extensions as $$
+  select hora from horarios_entrada
+  where persona_dni = p_dni and vigente_desde <= p_fecha
+  order by vigente_desde desc limit 1
+$$;
+
+-- Fijar (o corregir) la hora con su vigencia. p_hora null borra ESA vigencia;
+-- el historial de vigencias anteriores queda intacto.
+create or replace function fijar_hora_entrada(p_dni text, p_hora time, p_desde date, p_por text)
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if fn_nivel_modulo('personal') < 2 then
+    raise exception 'Tu categoría no permite fijar horas de entrada (requiere nivel de acción en Personal).';
+  end if;
+  if not exists (select 1 from personas where dni = p_dni) then
+    raise exception 'La persona % no está en el maestro.', p_dni;
+  end if;
+  if p_desde is null then
+    raise exception 'La hora de entrada necesita su fecha de vigencia.';
+  end if;
+  if p_hora is null then
+    delete from horarios_entrada where persona_dni = p_dni and vigente_desde = p_desde;
+  else
+    insert into horarios_entrada (persona_dni, vigente_desde, hora, creado_por)
+    values (p_dni, p_desde, p_hora, p_por)
+    on conflict (persona_dni, vigente_desde) do update set hora = excluded.hora;
+  end if;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('FIJAR_HORA_ENTRADA', 'horarios_entrada', null,
+    jsonb_build_object('dni', p_dni, 'hora', p_hora::text, 'desde', p_desde, 'por', p_por));
+end $$;
+
 -- Módulo de Asistencia (2026-08-21): importación del reporte de marcaciones
 -- del reloj. Guarda marcaciones (no clasifica ausencias); el cálculo es
 -- referencial y la planilla es la fuente de verdad.

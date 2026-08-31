@@ -564,6 +564,9 @@ select p.dni, p.tipo_documento, p.nombre, v.cargo, v.sede_id as sede, v.empresa_
        v.id as vinculo_id,
        p.correo, p.correo_verificado as "correoVerificado",
        p.cci,
-       exists (select 1 from cuentas_portal cp where cp.dni = p.dni) as "tieneCuenta"
+       exists (select 1 from cuentas_portal cp where cp.dni = p.dni) as "tieneCuenta",
+       p.sexo,
+       v.centro_costo as "centroCosto",
+       to_char(fn_hora_entrada(p.dni), 'HH24:MI') as "horaEntrada"
 from vinculos v join personas p on p.dni = v.persona_dni;
 grant select on v_personal to authenticated;
