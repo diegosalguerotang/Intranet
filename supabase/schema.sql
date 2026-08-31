@@ -148,6 +148,7 @@ create table personas (
   portal                text not null default 'nunca_ingreso'
     check (portal in ('activo','nunca_ingreso','sin_celular','suspendido')),
   nombre_por_confirmar  boolean not null default false,
+  sexo                  text check (sexo in ('M','F')),  -- del padrón (2026-08-31)
   creado_en             timestamptz not null default now()
 );
 
@@ -190,6 +191,9 @@ create table vinculos (
   fecha_inicio date not null,
   fecha_fin    date check (fecha_fin is null or fecha_fin >= fecha_inicio),
   centro_costo text,
+  -- Área del archivo de padrón (2026-08-31): se guarda por herencia y JAMÁS
+  -- agrupa ni filtra; la agrupación oficial es centro_costo (catálogo).
+  area_heredada text,
   creado_en    timestamptz not null default now()
 );
 -- Regla: a lo sumo un vínculo vigente por persona y empresa.
@@ -363,6 +367,19 @@ insert into cargos (nombre) values
   ('Operario de limpieza'), ('Supervisor de sede'), ('Técnico de mantenimiento'),
   ('Auxiliar de servicios'), ('Analista RRHH'), ('Jefe de RRHH'),
   ('OPERARIO(A) DE LIMPIEZA'), ('SUPERVISOR(A) DE LIMPIEZA');
+
+-- Centros de costo (2026-08-31): la agrupación OFICIAL de reportes y tableros
+-- de Personal y Asistencia. Catálogo cerrado: la importación del padrón
+-- rechaza el archivo completo ante un valor desconocido.
+create table if not exists centros_costo (
+  codigo text primary key,
+  activo boolean not null default true
+);
+insert into centros_costo (codigo) values
+  ('ADM'), ('RRHH'), ('OPE'), ('LOGISTICA'),
+  ('COMERCIAL'), ('SIST/GG'), ('SST/GG'), ('LEGAL/GG')
+on conflict (codigo) do nothing;
+grant select on centros_costo to anon, authenticated;
 
 -- Nada nuevo sobre una empresa retirada (vínculos y lotes; contratos y
 -- comunicados nuevos quedan bloqueados por la UI, que filtra activas).
