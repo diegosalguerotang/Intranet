@@ -18,22 +18,22 @@ Decisiones (aprobadas por Diego 2026-08-31, con las propuestas del reconocimient
 
 ## Bloque A — Planilla con centro de costo y perfiles
 
-- [ ] A1 Parser `src/lib/importar/padron.js` (TDD contra fixture): detección por los
-      12 encabezados, trim global, empresa por RUC, CÓDIGO debe coincidir con N DOC,
-      documentos sin rellenar (CE 004193432/002771952/003308122 íntegros), regla de
-      siglo 00-50, nombre truncado a 30, situación VIGENTE.
-- [ ] A2 BD: `personas.sexo`, catálogo `centros_costo` (8 valores), área heredada
-      inerte, RPCs `previsualizar/importar_padron` patrón PV999 multi-RS todo-o-nada,
-      sin tocar banco/cuenta/sede/contrato, prefijo no acorta nombres, reimporte
-      idempotente, nadie cesa por ausencia.
-- [ ] A3 Hora de entrada versionada (vigencia) + edición en Legajo + «pendiente de
-      configurar».
-- [ ] A4 RRH-05: solo el formato nuevo; vista previa con cargos que cambiaron y
-      resumen de perfiles propuestos; «Sí, subir a las 3 razones sociales».
-- [ ] A5 Perfiles: 13 categorías de la matriz (seed), correspondencia cargo→perfil
-      administrable, bandeja de propuestas aprobada por superadmin en ACC-02, aviso
-      por cambio de cargo; jamás otorga acceso por importación.
-- [ ] A6 Suite `verificar-padron.mjs` + criterios de aceptación del spec.
+- [x] A1 Parser `src/lib/importar/padron.js` (TDD 13/13 contra fixture): detección
+      por los 12 encabezados, trim global, empresa por RUC, CÓDIGO debe coincidir con
+      N DOC, documentos sin rellenar (CE íntegros), regla de siglo, VIGENTE.
+- [x] A2 BD (migración `2026-08-31-padron-cc.sql`, aplicada): `personas.sexo`,
+      catálogo `centros_costo`, área heredada inerte, RPCs PV999 multi-RS; no toca
+      banco/cuenta/sede/contrato. Preflight `scripts/previa-padron.mjs`.
+- [x] A3 Hora de entrada versionada (migración `2026-08-31-hora-entrada.sql`,
+      aplicada): `horarios_entrada` + `fn_hora_entrada` + `fijar_hora_entrada`;
+      v_personal +sexo/centroCosto/horaEntrada; edición en el Legajo.
+- [x] A4 RRH-05 importa SOLO el formato nuevo (parsers viejos inertes, quedan para
+      las suites E2E); vista previa con cargos que cambiaron y ceses confirmables.
+- [x] A5 Perfiles (migración `2026-08-31-perfiles-cargos.sql`, aplicada; canónico de
+      importar_padron v2): 13 categorías, `cargo_perfiles` administrable (ACC-03),
+      bandeja `perfil_propuestas` en ACC-01 (crear la cuenta ES aprobar), resumen en
+      la vista previa. E2E real: 40 propuestas / 34 solo Portal / 5 sin sugerencia.
+- [x] A6 Suite `scripts/verificar-padron.mjs`: 21/21 en producción.
 
 ## Bloque B — Lectura del Control Semanal (módulo Asistencia)
 
