@@ -30,11 +30,11 @@ const horasRef = (marcas) => {
 };
 const fmtHoras = (min) => min == null ? "—" : `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`;
 
-// RRH-22 — Asistencia: lotes importados + consulta de marcaciones por día.
-// Solo lectura + importación; NO clasifica tardanzas ni faltas (sin horario
-// modelado, un día sin marcación no es una falta).
+// RRH-22 — Asistencia: control semanal (tablero mensual por centro de
+// costo, con tardanzas y tolerancia YA calculadas) + reporte del reloj
+// (marcaciones crudas por día) + lotes importados.
 export default function Asistencia() {
-  const { db, user, empresaId, empresa, cargarMarcaciones } = useApp();
+  const { db, user, empresaId, empresa, cargarMarcaciones, tableroAsistencia } = useApp();
   const puedeImportar = nivelDe(user?.acceso, "asistencia") >= 2;
   const [abierto, setAbierto] = useState(false);
   const [fecha, setFecha] = useState("");
@@ -42,7 +42,33 @@ export default function Asistencia() {
   const [error, setError] = useState(null);
   const [ocupado, setOcupado] = useState(false);
   const umbral = db.asistenciaConfig?.[0]?.doble_marcacion_min ?? 15;
-  const lotes = useMemo(() => (db.asistenciaLotes ?? []).filter((l) => l.empresa === empresaId), [db.asistenciaLotes, empresaId]);
+  // El lote del control es del GRUPO (empresa null): se muestra siempre.
+  const lotes = useMemo(() => (db.asistenciaLotes ?? []).filter((l) => l.empresa === empresaId || l.empresa == null), [db.asistenciaLotes, empresaId]);
+  const lotesControl = useMemo(() => (db.asistenciaLotes ?? []).filter((l) => l.origen === "control"), [db.asistenciaLotes]);
+
+  // Tablero mensual del control (v_asistencia_mensual), agrupado por centro
+  // de costo — la misma agrupación oficial que Personal. El alcance por RS ya
+  // rige: la consulta va por la empresa activa del Shell.
+  const [periodo, setPeriodo] = useState("");
+  const [tablero, setTablero] = useState(null);
+  useEffect(() => { setPeriodo((p) => p || (lotesControl[0]?.hasta ?? "").slice(0, 7)); }, [lotesControl]);
+  useEffect(() => {
+    if (!periodo) { setTablero(null); return; }
+    let vigente = true;
+    tableroAsistencia(empresaId, periodo)
+      .then((d) => { if (vigente) setTablero(d); })
+      .catch(() => { if (vigente) setTablero([]); });
+    return () => { vigente = false; };
+  }, [empresaId, periodo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const grupos = useMemo(() => {
+    const m = new Map();
+    for (const t of tablero ?? []) {
+      const k = t.centroCosto ?? "Sin centro de costo";
+      if (!m.has(k)) m.set(k, []);
+      m.get(k).push(t);
+    }
+    return [...m.entries()];
+  }, [tablero]);
 
   // Fecha por defecto: el último día con datos de la empresa activa.
   useEffect(() => { setFecha(lotes[0]?.hasta ?? ""); }, [empresaId, lotes[0]?.hasta]);
@@ -63,20 +89,69 @@ export default function Asistencia() {
       <PageHeader
         code="RRH-22 · Asistencia"
         title="Asistencia"
-        subtitle="Marcaciones del reloj, importadas por razón social. Sin horario modelado no se clasifican tardanzas ni faltas: el cálculo es referencial y la planilla es la fuente de verdad."
+        subtitle="El control semanal se sube tal cual se produce: la empresa de cada fila sale del padrón por documento, y el tablero se agrupa por centro de costo — la misma llave que Personal."
         actions={puedeImportar && (
           <Button size="sm" onClick={() => setAbierto(true)}>
-            <Upload size={13} /> Importar marcaciones
+            <Upload size={13} /> Importar control
           </Button>
         )}
       />
 
       <div className="mb-4">
         <Note tone="neutral">
-          Un día sin marcación <b>no</b> es una falta (relevos, descansos y permisos no están modelados).
-          Reimportar un periodo lo reemplaza completo: corregir en el reloj y volver a subir.
+          «Revisar» <b>no</b> es una falta: es un día laborable sin marcación que se convierte en falta solo
+          cuando alguien lo revisa. Reimportar un periodo lo reemplaza completo, jamás duplica.
         </Note>
       </div>
+
+      <Card pad={false} className="mb-5">
+        <div className="flex flex-wrap items-center gap-2.5 border-b border-borde bg-papel/50 p-3.5">
+          <span className="font-mono text-[10px] uppercase tracking-wide text-gris">Control semanal de {empresa?.corto} · mes</span>
+          <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} style={{ maxWidth: 170 }} />
+          {tablero?.some((t) => t.sinHora) && (
+            <Badge tone="pend">{tablero.filter((t) => t.sinHora).length} sin hora de entrada</Badge>
+          )}
+        </div>
+        {(tablero ?? []).length === 0 ? (
+          <div className="p-4 text-center text-[13px] text-gris">
+            {periodo ? `Sin control importado para ${empresa?.corto} en ${periodo}.` : "Todavía no se importa ningún control semanal."}
+          </div>
+        ) : (
+          <Table head={["Trabajador", "Hora entrada", "Días lab.", "Horas", "Tardanza efec.", "Días tard.", "Revisar", "F. semana", "Estado"]}>
+            {grupos.map(([cc, xs]) => [
+              <tr key={`cc-${cc}`} className="bg-papel/70">
+                <Td colSpan={9} className="font-mono text-[10.5px] font-semibold uppercase tracking-wide text-gris">
+                  {cc} — {xs.length} trabajador{xs.length === 1 ? "" : "es"}
+                </Td>
+              </tr>,
+              ...xs.map((t) => (
+                <tr key={t.documento} className="hover:bg-papel/60">
+                  <Td>
+                    <div className="font-semibold text-tinta">{t.nombre}</div>
+                    <div className="font-mono text-[11px] text-gris-cl">{t.documento}</div>
+                  </Td>
+                  <Td className="font-mono text-[12px]">
+                    {t.horaEntrada ?? <Badge tone="pend">Pendiente de configurar</Badge>}
+                  </Td>
+                  <Td>{t.laborables}</Td>
+                  <Td className="font-mono text-[12px]">{fmtHoras(t.minTrab)}</Td>
+                  <Td className="font-mono text-[12px]">{t.tardEfec > 0 ? `${t.tardEfec} min` : "—"}</Td>
+                  <Td>{t.diasTardanza > 0 ? t.diasTardanza : "—"}</Td>
+                  <Td>{t.revisar > 0 ? <Badge tone="pend">{t.revisar}</Badge> : "—"}</Td>
+                  <Td>{t.finSemana > 0 ? t.finSemana : "—"}</Td>
+                  <Td>
+                    <div className="flex flex-wrap gap-1">
+                      {t.recalculados > 0 && <Badge tone="tinta">{t.recalculados} recalculados</Badge>}
+                      {t.editados > 0 && <Badge tone="neutral">{t.editados} editados</Badge>}
+                      {t.recalculados === 0 && t.editados === 0 && <Badge tone="conf">Original</Badge>}
+                    </div>
+                  </Td>
+                </tr>
+              )),
+            ])}
+          </Table>
+        )}
+      </Card>
 
       <Card pad={false}>
         <div className="flex flex-wrap items-center gap-2.5 border-b border-borde bg-papel/50 p-3.5">
@@ -119,12 +194,17 @@ export default function Asistencia() {
       <div className="mt-5">
         <Card pad={false}>
           <div className="border-b border-borde bg-papel/50 p-3.5 font-mono text-[10px] uppercase tracking-wide text-gris">
-            Lotes importados de {empresa?.corto}
+            Lotes importados ({empresa?.corto} y del grupo)
           </div>
           <Table head={["Archivo", "Periodo", "Trabajadores", "Días-persona", "Importado por", "Fecha"]}>
             {lotes.map((l) => (
               <tr key={l.id} className="hover:bg-papel/60">
-                <Td className="font-semibold">{l.archivo}</Td>
+                <Td className="font-semibold">
+                  {l.archivo}{" "}
+                  {l.origen === "control"
+                    ? <Badge tone="tinta">Control · todo el grupo</Badge>
+                    : <Badge tone="neutral">Reloj</Badge>}
+                </Td>
                 <Td className="font-mono text-[12px]">{l.desde} → {l.hasta}</Td>
                 <Td>{l.trabajadores}</Td>
                 <Td>{l.filas}</Td>

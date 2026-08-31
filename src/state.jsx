@@ -841,6 +841,37 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       return data ?? [];
     },
+    // RRH-22 — CONTROL SEMANAL (spec Tareas 31-08): multi-empresa resuelto
+    // por documento contra el padrón (la RS de cada fila sale del vínculo).
+    // Vista previa PV999; reimportar el rango reemplaza, jamás duplica.
+    previsualizarControl: async (registros, trabajadores, archivo) => {
+      if (!supabaseListo) throw new Error("La importación del control requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("previsualizar_control", {
+        p_registros: registros, p_trabajadores: trabajadores, p_archivo: archivo,
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
+    importarControl: async (registros, trabajadores, archivo) => {
+      if (!supabaseListo) throw new Error("La importación del control requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_control", {
+        p_registros: registros, p_trabajadores: trabajadores, p_archivo: archivo,
+        p_por: user?.nombre ?? user?.correo ?? "RRHH",
+      });
+      if (error) throw new Error(error.message);
+      await recargar("asistenciaLotes", "personal");
+      return data;
+    },
+    // Tablero mensual del control, agrupado por centro de costo (bajo demanda:
+    // un mes por consulta; el alcance por RS lo aplica la pantalla).
+    tableroAsistencia: async (empresaIdArg, periodo) => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_asistencia_mensual").select("*")
+        .eq("empresa", empresaIdArg).eq("periodo", periodo)
+        .order("centroCosto").order("nombre");
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
     // RRH-06→10 — Carga real de boletas desde PDF consolidado (Task 14). El
     // análisis/división/hash/subida a Storage ocurren en la pantalla (Boletas.jsx,
     // necesita progreso y reintento por archivo); esta acción es solo la
