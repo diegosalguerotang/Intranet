@@ -16,9 +16,11 @@ create table if not exists horarios_entrada (
 );
 revoke all on horarios_entrada from anon, authenticated;
 
--- Hora vigente para una fecha (null = pendiente de configurar).
+-- Hora vigente para una fecha (null = pendiente de configurar). DEFINER
+-- (corregido el mismo día): la tabla está revocada y una función invoker
+-- dentro de v_personal daba 403 al navegador.
 create or replace function fn_hora_entrada(p_dni text, p_fecha date default current_date)
-returns time language sql stable
+returns time language sql stable security definer
 set search_path = public, extensions as $$
   select hora from horarios_entrada
   where persona_dni = p_dni and vigente_desde <= p_fecha
