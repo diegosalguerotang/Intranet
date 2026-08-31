@@ -547,42 +547,22 @@ export function AppProvider({ children }) {
         p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
       }, "politica");
     },
-    // RRH-05 — Importación de planilla desde Excel. La vista previa es de
-    // solo lectura (no toca `db` local); la confirmación es un único RPC
-    // transaccional y refresca "personal" con el mecanismo real (recargar).
-    previsualizarImportacion: async (empresaIdArg, filas) => {
-      if (!supabaseListo) return { altas: [], actualizaciones: [], sin_cambio: [], nombres_por_confirmar: 0 };
-      const { data, error } = await supabase.rpc("previsualizar_importacion", {
-        p_empresa: empresaIdArg, p_filas: filas,
+    // RRH-05 — Importación del padrón DEFINITIVO (12 columnas con centro de
+    // costo; spec Tareas 31-08, único formato soportado). Patrón PV999: la
+    // vista previa no escribe nada; el rechazo de una RS (no existe /
+    // retirada / fuera de alcance) llega como error y detiene TODO el archivo.
+    previsualizarPadron: async (filas, ceses = []) => {
+      if (!supabaseListo) throw new Error("La importación del padrón requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("previsualizar_padron", {
+        p_filas: filas, p_ceses: ceses,
       });
       if (error) throw new Error(error.message);
       return data;
     },
-    importarPlanilla: async (empresaIdArg, filas) => {
-      if (!supabaseListo) throw new Error("Importación real requiere conexión a Supabase.");
-      const { data, error } = await supabase.rpc("importar_planilla", {
-        p_empresa: empresaIdArg, p_filas: filas, p_por: user?.nombre ?? "RRHH",
-      });
-      if (error) throw new Error(error.message);
-      await recargar("personal");
-      return data;
-    },
-    // #10 — Planilla UNIFICADA (varias razones sociales por RUC en un solo
-    // archivo). Mismo patrón PV999: la vista previa no escribe nada; el
-    // rechazo de una RS (no existe / retirada / fuera de alcance) llega como
-    // error del RPC y detiene TODO el archivo.
-    previsualizarPlanillaUnificada: async (filas, periodo) => {
-      if (!supabaseListo) throw new Error("La importación unificada requiere conexión a Supabase.");
-      const { data, error } = await supabase.rpc("previsualizar_planilla_unificada", {
-        p_filas: filas, p_periodo: periodo,
-      });
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    importarPlanillaUnificada: async (filas, periodo, ceses = []) => {
-      if (!supabaseListo) throw new Error("La importación unificada requiere conexión a Supabase.");
-      const { data, error } = await supabase.rpc("importar_planilla_unificada", {
-        p_filas: filas, p_periodo: periodo, p_por: user?.nombre ?? "RRHH", p_ceses: ceses,
+    importarPadron: async (filas, ceses = []) => {
+      if (!supabaseListo) throw new Error("La importación del padrón requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("importar_padron", {
+        p_filas: filas, p_por: user?.nombre ?? "RRHH", p_ceses: ceses,
       });
       if (error) throw new Error(error.message);
       await recargar("personal");

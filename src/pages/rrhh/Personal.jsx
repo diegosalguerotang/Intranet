@@ -546,19 +546,18 @@ function AltaTrabajador({ open, onClose, onGuardar, sedes, personal }) {
   );
 }
 
-// RRH-05 — Importar planilla. Un solo botón para DOS formatos que se
-// distinguen por encabezados: el PLATRA1 clásico (una empresa) y la planilla
-// UNIFICADA (#10: varias razones sociales por RUC, pasos 4-6).
+// RRH-05 — Importar el padrón de planilla en su formato DEFINITIVO (spec
+// Tareas 31-08): 12 columnas con centro de costo y cargo, varias razones
+// sociales resueltas por RUC. Es el ÚNICO formato soportado: PLATRA1 y el
+// unificado con banco se retiraron (los datos bancarios ya no llegan por
+// archivo: se editan en la ficha y viven cifrados).
 function ImportarPlanilla({ open, onClose }) {
-  const { db, previsualizarImportacion, importarPlanilla, previsualizarPlanillaUnificada, importarPlanillaUnificada } = useApp();
+  const { previsualizarPadron, importarPadron } = useApp();
   const [paso, setPaso] = useState(1);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
   const [rechazo, setRechazo] = useState(null); // rechazo total: string, sin botón de continuar
-  const [analisis, setAnalisis] = useState(null); // {empresaId, empresaNombre, nombreArchivo, filas, errores, previa}
-  const [resultado, setResultado] = useState(null);
-  const [uni, setUni] = useState(null); // análisis unificado {periodo, empresas, filas, errores, nombreArchivo, previa, resultado}
-  const [periodoManual, setPeriodoManual] = useState("");
+  const [pad, setPad] = useState(null); // {empresas, filas, errores, nombreArchivo, previa, resultado}
   const [cesesMarcados, setCesesMarcados] = useState([]); // documentos cuyo cese confirmó el usuario
   // Vigencia de la "sesión" del modal: cerrar (X/backdrop) no cancela una
   // operación en vuelo (previsualizar/importar), pero incrementar este ref
@@ -567,18 +566,8 @@ function ImportarPlanilla({ open, onClose }) {
   const sesionRef = useRef(0);
   const cerrar = () => {
     sesionRef.current += 1;
-    setPaso(1); setOcupado(false); setError(null); setRechazo(null); setAnalisis(null); setResultado(null);
-    setUni(null); setPeriodoManual(""); setCesesMarcados([]);
+    setPaso(1); setOcupado(false); setError(null); setRechazo(null); setPad(null); setCesesMarcados([]);
     onClose();
-  };
-
-  // Flujo unificado: la vista previa exige el período (del nombre de la hoja
-  // o tecleado en el paso 4); el rechazo de una RS detiene TODO el archivo.
-  const previaUnificada = async (parseo, periodo, nombreArchivo, sesion) => {
-    const previa = await previsualizarPlanillaUnificada(parseo.filas, periodo);
-    if (sesionRef.current !== sesion) return;
-    setUni({ ...parseo, periodo, nombreArchivo, previa });
-    setPaso(5);
   };
 
   const analizar = async (archivo) => {
@@ -587,60 +576,25 @@ function ImportarPlanilla({ open, onClose }) {
     setRechazo(null);
     setOcupado(true);
     try {
-      const { leerXlsx, nombresHojas } = await import("../../lib/importar/xlsx.js");
-      const { parsearPlanilla, normalizar } = await import("../../lib/importar/planilla.js");
+      const { leerXlsx } = await import("../../lib/importar/xlsx.js");
+      const { parsearPadron } = await import("../../lib/importar/padron.js");
       const bytes = new Uint8Array(await archivo.arrayBuffer());
-      const filas = await leerXlsx(bytes);
-
-      // ¿Es el formato unificado? Se decide por los 12 encabezados.
-      let parseoU = null;
+      // Un solo formato: si los 12 encabezados no calzan, se dice y se detiene.
+      let parseo;
       try {
-        const { parsearPlanillaUnificada } = await import("../../lib/importar/planilla-unificada.js");
-        parseoU = parsearPlanillaUnificada(filas, { hoja: (await nombresHojas(bytes))[0] });
+        parseo = parsearPadron(await leerXlsx(bytes));
       } catch (e) {
-        if (!/formato de planilla unificada/i.test(e.message)) throw e;
-      }
-      if (parseoU) {
-        if (parseoU.filas.length === 0) {
-          if (sesionRef.current === sesion) setRechazo(
-            `El archivo no tiene filas importables.${parseoU.errores.length ? ` Errores: ${parseoU.errores.slice(0, 5).join(" · ")}` : ""}`);
-          return;
-        }
-        if (!parseoU.periodo) {
-          if (sesionRef.current === sesion) { setUni({ ...parseoU, nombreArchivo: archivo.name }); setPaso(4); }
-          return;
-        }
-        await previaUnificada(parseoU, parseoU.periodo, archivo.name, sesion);
+        if (sesionRef.current === sesion) setRechazo(e.message);
         return;
       }
-
-      const r = parsearPlanilla(filas);
-      // Empresa exacta primero, en TODO el catálogo (para poder distinguir
-      // "no existe" de "existe pero retirada"); solo si no hay exacta se
-      // busca por prefijo, y si el prefijo es ambiguo se rechaza sin elegir.
-      const empresaNorm = normalizar(r.empresa);
-      let emp = db.empresas.find((e) => normalizar(e.nombre) === empresaNorm);
-      if (!emp) {
-        const candidatas = db.empresas.filter((e) => empresaNorm.startsWith(normalizar(e.nombre)));
-        if (candidatas.length > 1) {
-          if (sesionRef.current === sesion) setRechazo(
-            `La razón social del reporte («${r.empresa}») coincide parcialmente con ${candidatas.length} empresas del catálogo (${candidatas.map((e) => e.nombre).join(", ")}) y no se puede determinar cuál es. Importación rechazada: ninguna fila se aplica.`);
-          return;
-        }
-        emp = candidatas[0];
-      }
-      if (!emp) {
+      if (parseo.filas.length === 0) {
         if (sesionRef.current === sesion) setRechazo(
-          `La razón social del reporte («${r.empresa}») no está en el catálogo de empresas del grupo. Importación rechazada: ninguna fila se aplica.`);
+          `El archivo no tiene filas importables.${parseo.errores.length ? ` Errores: ${parseo.errores.slice(0, 5).map((e) => `fila ${e.fila}: ${e.error}`).join(" · ")}` : ""}`);
         return;
       }
-      if (emp.estado === "retirada") {
-        if (sesionRef.current === sesion) setRechazo(`${emp.nombre} está retirada del grupo: no admite importaciones.`);
-        return;
-      }
-      const previa = await previsualizarImportacion(emp.id, r.filas);
+      const previa = await previsualizarPadron(parseo.filas);
       if (sesionRef.current !== sesion) return; // el modal se cerró/reabrió mientras se esperaba la RPC
-      setAnalisis({ empresaId: emp.id, empresaNombre: emp.nombre, nombreArchivo: archivo.name, ...r, previa });
+      setPad({ ...parseo, nombreArchivo: archivo.name, previa });
       setPaso(2);
     } catch (e) {
       if (sesionRef.current === sesion) setError(e.message);
@@ -654,9 +608,9 @@ function ImportarPlanilla({ open, onClose }) {
     setError(null);
     setOcupado(true);
     try {
-      const r = await importarPlanilla(analisis.empresaId, analisis.filas);
-      if (sesionRef.current !== sesion) return; // el modal se cerró/reabrió mientras se esperaba la RPC
-      setResultado(r);
+      const r = await importarPadron(pad.filas, cesesMarcados);
+      if (sesionRef.current !== sesion) return;
+      setPad((u) => ({ ...u, resultado: r }));
       setPaso(3);
     } catch (e) {
       if (sesionRef.current === sesion) setError(e.message);
@@ -665,25 +619,10 @@ function ImportarPlanilla({ open, onClose }) {
     }
   };
 
-  const confirmarUnificada = async () => {
-    const sesion = sesionRef.current;
-    setError(null);
-    setOcupado(true);
-    try {
-      const r = await importarPlanillaUnificada(uni.filas, uni.periodo, cesesMarcados);
-      if (sesionRef.current !== sesion) return;
-      setUni((u) => ({ ...u, resultado: r }));
-      setPaso(6);
-    } catch (e) {
-      if (sesionRef.current === sesion) setError(e.message);
-    } finally {
-      if (sesionRef.current === sesion) setOcupado(false);
-    }
-  };
-
-  const nombresPorConfirmar = analisis?.filas.filter((f) => f.nombreTruncado).length ?? 0;
   const empresasDe = (objeto) => Object.entries(objeto?.empresas ?? {}).map(([id, e]) => ({ id, ...e }));
-  const conAdvertencia = uni?.filas.filter((f) => f.advertencias.length > 0) ?? [];
+  const cargosCambiaron = pad?.previa
+    ? empresasDe(pad.previa).flatMap((e) => (e.cargosCambiaron ?? []).map((c) => ({ ...c, empresa: e.nombre })))
+    : [];
 
   return (
     <Modal open={open} onClose={cerrar} title="RRH-05 · Importar planilla" wide>
@@ -701,79 +640,21 @@ function ImportarPlanilla({ open, onClose }) {
                 onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) analizar(f); }}
               />
               <div className="text-[14px] font-semibold text-tinta-2">
-                {ocupado ? "Leyendo el archivo…" : "Haz clic para elegir el reporte PLATRA1 exportado a Excel (.xlsx)"}
+                {ocupado ? "Leyendo el archivo…" : "Haz clic para elegir el padrón de planilla (.xlsx, 12 columnas con centro de costo)"}
               </div>
-              <div className="mt-1 text-[12px] text-gris">La identificación es siempre por DNI, nunca por nombre ni posición de fila.</div>
+              <div className="mt-1 text-[12px] text-gris">La identificación es siempre por documento, nunca por nombre ni posición de fila.</div>
             </label>
             {rechazo && <Note tone="alerta">{rechazo}</Note>}
           </>
         )}
-        {paso === 2 && analisis && (
-          <>
-            <Note tone="neutral"><b>{analisis.nombreArchivo}</b> — {analisis.empresaNombre} · {analisis.filas.length} filas válidas</Note>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{analisis.previa.altas.length}</div><div className="font-mono text-[10px] uppercase text-gris">Altas</div></div>
-              <div className="rounded-md bg-pend-bg py-4"><div className="text-[22px] font-bold text-pend">{analisis.previa.actualizaciones.length}</div><div className="font-mono text-[10px] uppercase text-gris">A actualizar</div></div>
-              <div className="rounded-md bg-papel py-4"><div className="text-[22px] font-bold text-tinta-2">{analisis.previa.sin_cambio.length}</div><div className="font-mono text-[10px] uppercase text-gris">Sin cambio</div></div>
-            </div>
-            {analisis.errores.length > 0 && (
-              <Note tone="pend">
-                {analisis.errores.length} {analisis.errores.length === 1 ? "fila" : "filas"} con error, no se importan:
-                <ul className="mt-1 list-disc pl-4">
-                  {analisis.errores.map((e, i) => <li key={i}>{e}</li>)}
-                </ul>
-              </Note>
-            )}
-            {nombresPorConfirmar > 0 && (
-              <Note tone="pend">{nombresPorConfirmar} nombres quedarán «por confirmar» (truncados a 30 caracteres en el reporte).</Note>
-            )}
-            {error && <Note tone="alerta">{error}</Note>}
-            <div className="flex gap-2">
-              <Button onClick={confirmar} disabled={ocupado}>{ocupado ? "Importando…" : "Confirmar importación"}</Button>
-              <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
-            </div>
-          </>
-        )}
-        {paso === 3 && resultado && (
-          <>
-            <Note tone="conf">
-              Importación aplicada: {resultado.altas.length} altas, {resultado.actualizaciones.length} actualizaciones,
-              {" "}{resultado.sin_cambio.length} sin cambio.
-              {resultado.nombres_por_confirmar > 0 && ` ${resultado.nombres_por_confirmar} nombres quedaron «por confirmar».`}
-            </Note>
-            <Button onClick={cerrar}>Cerrar</Button>
-          </>
-        )}
-        {paso === 4 && uni && (
+        {paso === 2 && pad?.previa && (
           <>
             <Note tone="neutral">
-              <b>{uni.nombreArchivo}</b> es una planilla unificada, pero el nombre de la hoja («{uni.hoja}») no
-              dice el período. Indícalo para continuar.
-            </Note>
-            <Field label="Período de la planilla" required>
-              <Input type="month" value={periodoManual} onChange={(e) => setPeriodoManual(e.target.value)} style={{ maxWidth: 200 }} />
-            </Field>
-            {error && <Note tone="alerta">{error}</Note>}
-            <div className="flex gap-2">
-              <Button disabled={!periodoManual || ocupado} onClick={async () => {
-                const sesion = sesionRef.current;
-                setError(null); setOcupado(true);
-                try { await previaUnificada(uni, periodoManual, uni.nombreArchivo, sesion); }
-                catch (e) { if (sesionRef.current === sesion) setError(e.message); }
-                finally { if (sesionRef.current === sesion) setOcupado(false); }
-              }}>{ocupado ? "Analizando…" : "Continuar"}</Button>
-              <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
-            </div>
-          </>
-        )}
-        {paso === 5 && uni?.previa && (
-          <>
-            <Note tone="neutral">
-              <b>{uni.nombreArchivo}</b> · planilla unificada · período <b>{uni.periodo}</b> · {uni.filas.length} filas válidas.
-              {" "}Esta información será subida a <b>{empresasDe(uni.previa).map((e) => e.nombre).join(", ")}</b> (resolución por RUC).
+              <b>{pad.nombreArchivo}</b> · padrón de planilla · {pad.filas.length} filas válidas.
+              {" "}Esta información será subida a <b>{empresasDe(pad.previa).map((e) => e.nombre).join(", ")}</b> (resolución por RUC).
             </Note>
             <div className="grid gap-3 sm:grid-cols-3">
-              {empresasDe(uni.previa).map((e) => (
+              {empresasDe(pad.previa).map((e) => (
                 <div key={e.id} className="rounded-caja border border-borde bg-papel/60 p-3.5">
                   <div className="text-[13px] font-bold text-tinta">{e.nombre}</div>
                   <div className="font-mono text-[10.5px] text-gris-cl">RUC {e.ruc}</div>
@@ -785,43 +666,43 @@ function ImportarPlanilla({ open, onClose }) {
                 </div>
               ))}
             </div>
-            {empresasDe(uni.previa).flatMap((e) => e.cambiosCuenta.map((c) => ({ ...c, empresa: e.nombre }))).length > 0 && (
+            {cargosCambiaron.length > 0 && (
               <Note tone="pend">
-                Cambios de cuenta bancaria (revísalos antes de confirmar):
+                {cargosCambiaron.length === 1 ? "1 cargo cambió" : `${cargosCambiaron.length} cargos cambiaron`} respecto
+                de lo registrado. Un cambio de cargo NO cambia el perfil de acceso: queda como aviso para revisarlo.
                 <ul className="mt-1 list-disc pl-4">
-                  {empresasDe(uni.previa).flatMap((e) => e.cambiosCuenta).map((c, i) => (
-                    <li key={i}>
-                      {c.nombre} ({c.documento}): {c.antes?.banco ?? "sin banco"} ···· {c.antes?.ultimos4 ?? "—"} → {c.despues.banco} ···· {c.despues.ultimos4}
-                    </li>
+                  {cargosCambiaron.slice(0, 12).map((c, i) => (
+                    <li key={i}>{c.nombre} ({c.documento}): {c.antes ?? "sin cargo"} → {c.ahora}</li>
                   ))}
+                  {cargosCambiaron.length > 12 && <li>… y {cargosCambiaron.length - 12} más.</li>}
                 </ul>
               </Note>
             )}
-            {empresasDe(uni.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).length > 0 && (
+            {empresasDe(pad.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).length > 0 && (
               <Note tone="pend">
                 Traslados de razón social (el vínculo anterior SE CIERRA al confirmar y el movimiento queda en el legajo):
                 <ul className="mt-1 list-disc pl-4">
-                  {empresasDe(uni.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).map((t, i) => (
+                  {empresasDe(pad.previa).flatMap((e) => (e.traslados ?? []).map((t) => ({ ...t, a: e.nombre }))).map((t, i) => (
                     <li key={i}>{t.nombre} ({t.documento}): {t.desde} → {t.a}</li>
                   ))}
                 </ul>
               </Note>
             )}
-            {empresasDe(uni.previa).flatMap((e) => e.retornos ?? []).length > 0 && (
+            {empresasDe(pad.previa).flatMap((e) => e.retornos ?? []).length > 0 && (
               <Note tone="neutral">
                 Retornos al grupo (se les abre vínculo nuevo y queda en su historial):{" "}
-                {empresasDe(uni.previa).flatMap((e) => (e.retornos ?? []).map((d) => `${d} (${e.nombre})`)).join(" · ")}
+                {empresasDe(pad.previa).flatMap((e) => (e.retornos ?? []).map((d) => `${d} (${e.nombre})`)).join(" · ")}
               </Note>
             )}
-            {(uni.previa.posiblesCeses ?? []).length > 0 && (
+            {(pad.previa.posiblesCeses ?? []).length > 0 && (
               <Note tone="pend">
-                {(uni.previa.posiblesCeses ?? []).length === 1
-                  ? "1 trabajador vigente no viene en esta planilla."
-                  : `${uni.previa.posiblesCeses.length} trabajadores vigentes no vienen en esta planilla.`}{" "}
-                Marca SOLO a quienes ya no trabajan: su vínculo se cierra (fecha fin del mes anterior al período)
-                y el cese queda en su historial. Los que dejes sin marcar siguen igual — nadie cesa por ausencia.
+                {(pad.previa.posiblesCeses ?? []).length === 1
+                  ? "1 trabajador vigente no viene en este padrón."
+                  : `${pad.previa.posiblesCeses.length} trabajadores vigentes no vienen en este padrón.`}{" "}
+                Marca SOLO a quienes ya no trabajan: su vínculo se cierra y el cese queda en su historial.
+                Los que dejes sin marcar siguen igual — nadie cesa por ausencia.
                 <ul className="mt-2 space-y-1">
-                  {uni.previa.posiblesCeses.map((c) => (
+                  {pad.previa.posiblesCeses.map((c) => (
                     <li key={c.documento}>
                       <label className="flex cursor-pointer items-center gap-2">
                         <input
@@ -837,42 +718,37 @@ function ImportarPlanilla({ open, onClose }) {
                 </ul>
               </Note>
             )}
-            {conAdvertencia.length > 0 && (
-              <Note tone="pend">
-                {conAdvertencia.length} {conAdvertencia.length === 1 ? "fila con advertencia" : "filas con advertencias"} (se importan igual):
-                <ul className="mt-1 list-disc pl-4">
-                  {conAdvertencia.map((f, i) => <li key={i}>{f.nombre}: {f.advertencias.join(" · ")}</li>)}
-                </ul>
-              </Note>
-            )}
-            {(uni.errores.length > 0 || (uni.previa.problemas ?? []).length > 0) && (
+            {(pad.errores.length > 0 || (pad.previa.problemas ?? []).length > 0) && (
               <Note tone="alerta">
                 Filas que NO se importan (corrígelas a mano):
                 <ul className="mt-1 list-disc pl-4">
-                  {uni.errores.map((e, i) => <li key={`e${i}`}>{e}</li>)}
-                  {(uni.previa.problemas ?? []).map((p, i) => <li key={`p${i}`}>{p.nombre} ({p.documento}): {p.motivo}</li>)}
+                  {pad.errores.map((e, i) => <li key={`e${i}`}>Fila {e.fila}: {e.error}</li>)}
+                  {(pad.previa.problemas ?? []).map((p, i) => <li key={`p${i}`}>{p.nombre} ({p.documento}): {p.motivo}</li>)}
                 </ul>
               </Note>
             )}
+            <Note tone="neutral">
+              Este padrón no trae banco, cuenta, sede ni contrato: lo ya registrado en esos campos queda intacto.
+            </Note>
             {error && <Note tone="alerta">{error}</Note>}
             <div className="flex gap-2">
-              <Button onClick={confirmarUnificada} disabled={ocupado}>
-                {ocupado ? "Importando…" : `Sí, subir a ${empresasDe(uni.previa).length === 1 ? "esa razón social" : `las ${empresasDe(uni.previa).length} razones sociales`}${cesesMarcados.length ? ` y cesar a ${cesesMarcados.length}` : ""}`}
+              <Button onClick={confirmar} disabled={ocupado}>
+                {ocupado ? "Importando…" : `Sí, subir a ${empresasDe(pad.previa).length === 1 ? "esa razón social" : `las ${empresasDe(pad.previa).length} razones sociales`}${cesesMarcados.length ? ` y cesar a ${cesesMarcados.length}` : ""}`}
               </Button>
               <Button variant="secondary" onClick={cerrar} disabled={ocupado}>Cancelar</Button>
             </div>
           </>
         )}
-        {paso === 6 && uni?.resultado && (
+        {paso === 3 && pad?.resultado && (
           <>
             <Note tone="conf">
-              Planilla unificada del período {uni.resultado.periodo} aplicada:
-              {" "}{empresasDe(uni.resultado).map((e) =>
+              Padrón aplicado:
+              {" "}{empresasDe(pad.resultado).map((e) =>
                 `${e.nombre} (${e.altas.length} altas, ${e.vinculosNuevos.length} vínculos nuevos, ${e.actualizaciones.length} actualizadas${(e.traslados ?? []).length ? `, ${e.traslados.length} traslados` : ""}${(e.retornos ?? []).length ? `, ${e.retornos.length} retornos` : ""}${(e.cesados ?? []).length ? `, ${e.cesados.length} ceses` : ""})`).join(" · ")}.
             </Note>
-            {(uni.resultado.problemas ?? []).length > 0 && (
+            {(pad.resultado.problemas ?? []).length > 0 && (
               <Note tone="pend">
-                {(uni.resultado.problemas ?? []).length} filas quedaron para resolver a mano (documento ambiguo).
+                {(pad.resultado.problemas ?? []).length} filas quedaron para resolver a mano (documento ambiguo).
               </Note>
             )}
             <Button onClick={cerrar}>Cerrar</Button>
