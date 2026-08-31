@@ -623,6 +623,13 @@ function ImportarPlanilla({ open, onClose }) {
   const cargosCambiaron = pad?.previa
     ? empresasDe(pad.previa).flatMap((e) => (e.cargosCambiaron ?? []).map((c) => ({ ...c, empresa: e.nombre })))
     : [];
+  // Resumen de la sugerencia de perfiles (spec §5): la importación propone,
+  // el acceso lo otorga un superadmin desde la bandeja de ACC-01/ACC-04.
+  const perfilesResumen = pad?.previa ? {
+    propuestas: empresasDe(pad.previa).reduce((n, e) => n + (e.propuestas?.length ?? 0), 0),
+    soloPortal: empresasDe(pad.previa).reduce((n, e) => n + (e.soloPortal?.length ?? 0), 0),
+    sinSugerencia: empresasDe(pad.previa).flatMap((e) => e.sinSugerencia ?? []),
+  } : null;
 
   return (
     <Modal open={open} onClose={cerrar} title="RRH-05 · Importar planilla" wide>
@@ -725,6 +732,21 @@ function ImportarPlanilla({ open, onClose }) {
                   {pad.errores.map((e, i) => <li key={`e${i}`}>Fila {e.fila}: {e.error}</li>)}
                   {(pad.previa.problemas ?? []).map((p, i) => <li key={`p${i}`}>{p.nombre} ({p.documento}): {p.motivo}</li>)}
                 </ul>
+              </Note>
+            )}
+            {perfilesResumen && (
+              <Note tone="neutral">
+                <b>Perfiles de acceso:</b> {perfilesResumen.propuestas} propuestas por cargo,
+                {" "}{perfilesResumen.soloPortal} solo Portal y {perfilesResumen.sinSugerencia.length} sin sugerencia.
+                Ningún acceso al BackOffice se otorga por esta importación: las propuestas quedan en la bandeja de
+                Accesos y Roles y las decide un superadministrador.
+                {perfilesResumen.sinSugerencia.length > 0 && (
+                  <ul className="mt-1 list-disc pl-4">
+                    {perfilesResumen.sinSugerencia.map((s, i) => (
+                      <li key={i}>{s.nombre} ({s.documento}): cargo «{s.cargo}» sin correspondencia.</li>
+                    ))}
+                  </ul>
+                )}
               </Note>
             )}
             <Note tone="neutral">

@@ -512,6 +512,38 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("personal");
     },
+    // Bandeja de propuestas de perfil (spec Tareas 31-08 §5): la importación
+    // del padrón SUGIERE; solo un superadministrador decide, y la cuenta se
+    // crea en ACC-04 (exige correo). La vista trae también las decididas.
+    propuestasPerfil: async () => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_perfil_propuestas").select("*");
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    decidirPropuestaPerfil: async (id, decision) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("decidir_propuesta_perfil", {
+        p_id: id, p_decision: decision, p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) throw new Error(error.message);
+    },
+    // Correspondencia cargo → categoría: dato ADMINISTRADO (aparecerán cargos
+    // nuevos); el RPC exige nivel de acción en Configuración o Accesos.
+    cargoPerfiles: async () => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_cargo_perfiles").select("*");
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    guardarCargoPerfil: async (cargo, destino, perfil) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("guardar_cargo_perfil", {
+        p_cargo: cargo, p_destino: destino, p_perfil: perfil || null,
+        p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) throw new Error(error.message);
+    },
     // Hora de entrada versionada (2026-08-31): fija o corrige la hora con su
     // fecha de vigencia (hora null borra esa vigencia). El servidor exige
     // nivel de acción en Personal; jamás se supone una hora por defecto.

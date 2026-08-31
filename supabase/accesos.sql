@@ -785,3 +785,122 @@ left join personas pe on pe.dni = coalesce(u.persona_dni, r.dni)
 left join perfiles pf on pf.id = r.perfil_id and pf.version = r.perfil_version
 left join vinculos vi on vi.persona_dni = pe.dni and vi.fecha_fin is null
 order by r.fecha desc;
+
+-- ---------------------------------------------------------------------------
+-- DEL CARGO AL PERFIL (spec Tareas 31-08 §5): la importación del padrón
+-- SUGIERE, jamás otorga. Correspondencia administrada + bandeja de revisión.
+-- El seed de las 13 categorías y de los 34 cargos vive en la migración
+-- 2026-08-31-perfiles-cargos.sql (datos, no estructura).
+-- ---------------------------------------------------------------------------
+create table if not exists cargo_perfiles (
+  cargo   text primary key,   -- en MAYÚSCULAS y sin relleno (forma del padrón)
+  destino text not null default 'perfil' check (destino in ('perfil','portal','sin_sugerencia')),
+  perfil_id text,
+  actualizado_por text not null default 'spec 2026-08-31',
+  actualizado_en  timestamptz not null default now(),
+  check (destino <> 'perfil' or perfil_id is not null)
+);
+grant select on cargo_perfiles to authenticated;
+
+-- Emparejado normalizando y por prefijo (los cargos vienen truncados a 29):
+-- exacto primero; el prefijo inverso solo si el del archivo llega cortado al
+-- borde, para que «ASISTENTE» a secas jamás herede el perfil de sus derivados.
+create or replace function fn_perfil_para_cargo(p_cargo text)
+returns cargo_perfiles language sql stable
+set search_path = public, extensions as $$
+  select cp.* from cargo_perfiles cp
+  where cp.cargo = upper(trim(p_cargo))
+     or upper(trim(p_cargo)) like cp.cargo || '%'
+     or (length(trim(p_cargo)) >= 29 and cp.cargo like upper(trim(p_cargo)) || '%')
+  order by (cp.cargo = upper(trim(p_cargo))) desc, length(cp.cargo) desc
+  limit 1
+$$;
+
+create or replace function guardar_cargo_perfil(p_cargo text, p_destino text, p_perfil text, p_por text)
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if fn_nivel_modulo('configuracion') < 2 and fn_nivel_modulo('accesos') < 2 then
+    raise exception 'Tu categoría no permite editar la correspondencia de cargos.';
+  end if;
+  if p_destino = 'perfil' and not exists (
+    select 1 from perfiles where id = p_perfil and not es_superadmin) then
+    raise exception 'La categoría «%» no existe (la de superadministrador jamás se sugiere).', p_perfil;
+  end if;
+  insert into cargo_perfiles (cargo, destino, perfil_id, actualizado_por, actualizado_en)
+  values (upper(trim(p_cargo)), p_destino,
+          case when p_destino = 'perfil' then p_perfil end, p_por, now())
+  on conflict (cargo) do update
+    set destino = excluded.destino, perfil_id = excluded.perfil_id,
+        actualizado_por = excluded.actualizado_por, actualizado_en = now();
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('GUARDAR_CARGO_PERFIL', 'cargo_perfiles', null,
+    jsonb_build_object('cargo', upper(trim(p_cargo)), 'destino', p_destino,
+                       'perfil', p_perfil, 'por', p_por));
+end $$;
+
+create or replace view v_cargo_perfiles as
+select cp.cargo, cp.destino, cp.perfil_id as "perfilId",
+       (select nombre from perfiles pf where pf.id = cp.perfil_id
+        order by version desc limit 1) as "perfilNombre",
+       (select count(*) from vinculos v
+        where v.fecha_fin is null and upper(trim(v.cargo)) = cp.cargo)::int as vigentes,
+       cp.actualizado_por as "actualizadoPor",
+       to_char(cp.actualizado_en, 'YYYY-MM-DD') as actualizado
+from cargo_perfiles cp
+order by cp.cargo;
+grant select on v_cargo_perfiles to authenticated;
+
+-- Bandeja de propuestas: una por persona y razón social; reimportar no
+-- duplica (un cambio de cargo la REABRE). perfil_id null = sin sugerencia.
+create table if not exists perfil_propuestas (
+  id          bigint generated always as identity primary key,
+  persona_dni text not null references personas(dni),
+  empresa_id  text not null references empresas(id),
+  cargo       text not null,
+  perfil_id   text,
+  estado      text not null default 'pendiente'
+    check (estado in ('pendiente','aprobada','descartada')),
+  decidido_por text,
+  decidido_en  timestamptz,
+  creado_en    timestamptz not null default now(),
+  unique (persona_dni, empresa_id)
+);
+revoke all on perfil_propuestas from anon, authenticated;
+
+create or replace view v_perfil_propuestas as
+select pp.id, pp.persona_dni as documento, pe.nombre,
+       pp.empresa_id as empresa, em.nombre as "empresaNombre",
+       pp.cargo, pp.perfil_id as "perfilId",
+       (select nombre from perfiles pf where pf.id = pp.perfil_id
+        order by version desc limit 1) as "perfilNombre",
+       pp.estado, pe.correo,
+       exists (select 1 from usuarios_admin u where u.persona_dni = pp.persona_dni) as "tieneUsuario",
+       pp.decidido_por as "decididoPor",
+       to_char(pp.creado_en, 'YYYY-MM-DD') as creado
+from perfil_propuestas pp
+join personas pe on pe.dni = pp.persona_dni
+join empresas em on em.id = pp.empresa_id
+order by (pp.estado = 'pendiente') desc, pe.nombre;
+grant select on v_perfil_propuestas to authenticated;
+
+create or replace function decidir_propuesta_perfil(p_id bigint, p_decision text, p_por text)
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
+begin
+  if fn_nivel_modulo('accesos') < 99 then
+    raise exception 'Solo un superadministrador decide las propuestas de perfil.';
+  end if;
+  if p_decision not in ('aprobada','descartada','pendiente') then
+    raise exception 'Decisión no reconocida.';
+  end if;
+  update perfil_propuestas
+     set estado = p_decision,
+         decidido_por = case when p_decision = 'pendiente' then null else p_por end,
+         decidido_en  = case when p_decision = 'pendiente' then null else now() end
+   where id = p_id;
+  if not found then raise exception 'La propuesta no existe.'; end if;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('DECIDIR_PROPUESTA_PERFIL', 'perfil_propuestas', null,
+    jsonb_build_object('id', p_id, 'decision', p_decision, 'por', p_por));
+end $$;

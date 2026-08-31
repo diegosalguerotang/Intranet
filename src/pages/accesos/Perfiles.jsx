@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Copy, Ban, ShieldCheck, Users as UsersIcon, Pencil, Trash2 } from "lucide-react";
+import { Plus, Copy, Ban, ShieldCheck, Users as UsersIcon, Pencil, Trash2, Briefcase } from "lucide-react";
 import { useApp } from "../../state";
-import { PageHeader, Card, Table, Td, Badge, Button, Modal, Note, Field, Input } from "../../components/ui";
-import { MODULOS, NIVELES } from "../../data/modulos";
+import { PageHeader, Card, Table, Td, Badge, Button, Modal, Note, Field, Input, Select } from "../../components/ui";
+import { MODULOS, NIVELES, nivelDe } from "../../data/modulos";
 
 // Resumen visual de la matriz: cuántos módulos hay en cada nivel.
 function ResumenMatriz({ matriz }) {
@@ -25,9 +25,24 @@ function ResumenMatriz({ matriz }) {
 }
 
 export default function Perfiles() {
-  const { db, desactivarPerfil, eliminarPerfil } = useApp();
+  const { db, user, desactivarPerfil, eliminarPerfil, cargoPerfiles, guardarCargoPerfil } = useApp();
   const navigate = useNavigate();
   const [confirmar, setConfirmar] = useState(null);
+
+  // Correspondencia cargo → categoría (spec Tareas 31-08 §5): dato
+  // ADMINISTRADO — la importación del padrón sugiere según esta tabla.
+  const [cargos, setCargos] = useState(null);
+  const [errorCargo, setErrorCargo] = useState(null);
+  const cargarCargos = () => cargoPerfiles().then(setCargos).catch(() => setCargos([]));
+  useEffect(() => { cargarCargos(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const puedeEditarCargos = Boolean(user?.esSuperadmin || user?.acceso?.esSuperadmin
+    || nivelDe(user?.acceso, "configuracion") >= 2 || nivelDe(user?.acceso, "accesos") >= 2);
+  const asignarCargo = async (cargo, valor) => {
+    setErrorCargo(null);
+    const [destino, perfil] = valor.startsWith("perfil:") ? ["perfil", valor.slice(7)] : [valor, null];
+    try { await guardarCargoPerfil(cargo, destino, perfil); await cargarCargos(); }
+    catch (e) { setErrorCargo(e.message); }
+  };
   const [eliminar, setEliminar] = useState(null); // categoría a eliminar definitivamente
   const [confirmTexto, setConfirmTexto] = useState("");
   const [eliminando, setEliminando] = useState(false);
@@ -122,6 +137,45 @@ export default function Perfiles() {
           conserva el rastro).
         </Note>
       </div>
+
+      {cargos !== null && (
+        <Card className="mt-5" pad={false}>
+          <div className="flex items-center gap-2 border-b border-borde px-5 py-3.5">
+            <Briefcase size={15} className="text-petroleo" />
+            <span className="text-[14px] font-bold text-tinta">Correspondencia cargo → categoría</span>
+            <span className="text-[11.5px] text-gris">
+              La importación del padrón sugiere según esta tabla; jamás otorga un acceso.
+            </span>
+          </div>
+          {errorCargo && <div className="px-5 pt-3"><Note tone="alerta">{errorCargo}</Note></div>}
+          <Table head={["Cargo", "Vigentes", "Sugerencia"]}>
+            {cargos.map((c) => (
+              <tr key={c.cargo} className="hover:bg-papel/60">
+                <Td><span className="font-mono text-[12px] text-tinta">{c.cargo}</span></Td>
+                <Td>{c.vigentes}</Td>
+                <Td>
+                  {puedeEditarCargos ? (
+                    <Select
+                      value={c.destino === "perfil" ? `perfil:${c.perfilId}` : c.destino}
+                      onChange={(e) => asignarCargo(c.cargo, e.target.value)}
+                      style={{ maxWidth: 260 }}
+                    >
+                      <option value="portal">Solo Portal</option>
+                      <option value="sin_sugerencia">Sin sugerencia</option>
+                      {db.perfiles.filter((p) => !p.esSuperadmin && p.estado === "activo").map((p) => (
+                        <option key={p.id} value={`perfil:${p.id}`}>{p.nombre}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    c.destino === "perfil" ? c.perfilNombre
+                      : c.destino === "portal" ? "Solo Portal" : "Sin sugerencia"
+                  )}
+                </Td>
+              </tr>
+            ))}
+          </Table>
+        </Card>
+      )}
 
       <Modal open={!!confirmar} onClose={() => setConfirmar(null)} title={`Archivar «${confirmar?.nombre}»`}>
         {confirmar && (

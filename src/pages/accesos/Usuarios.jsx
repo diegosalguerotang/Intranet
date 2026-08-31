@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Plus, ShieldCheck, Send, Pencil, Ban, RotateCcw, Download, KeyRound, Trash2 } from "lucide-react";
+import { Plus, ShieldCheck, Send, Pencil, Ban, RotateCcw, Download, KeyRound, Trash2, Inbox, Check, X } from "lucide-react";
 import { useApp } from "../../state";
 import { PageHeader, Card, Stat, Table, Td, Badge, Button, Field, Input, Select, Modal, Note, EmptyState } from "../../components/ui";
 import { MODULOS, NIVELES, nivelDe } from "../../data/modulos";
@@ -8,15 +8,19 @@ import { MODULOS, NIVELES, nivelDe } from "../../data/modulos";
 // ACC-02 · Alta y edición de usuario administrativo (modal). Accesos v2: el
 // usuario HEREDA su categoría tal cual (módulos + razones sociales); el
 // código U-000N y la cuenta de ingreso los asignan la BD y el serverless.
-function FormUsuario({ usuario, onClose, onClave, onEditar }) {
+function FormUsuario({ usuario, inicial, onClose, onClave, onEditar }) {
   const { db, crearUsuarioAdmin, actualizarUsuarioAdmin } = useApp();
   const edicion = !!usuario;
 
   const [busca, setBusca] = useState("");
-  const [personaSel, setPersonaSel] = useState(edicion ? db.personal.find((p) => p.dni === usuario.dni) ?? { dni: usuario.dni, nombre: usuario.nombre } : null);
+  // `inicial` pre-carga persona y categoría desde la bandeja de propuestas
+  // (la importación del padrón sugiere; la cuenta se crea aquí, con correo).
+  const [personaSel, setPersonaSel] = useState(edicion
+    ? db.personal.find((p) => p.dni === usuario.dni) ?? { dni: usuario.dni, nombre: usuario.nombre }
+    : inicial ? db.personal.find((p) => p.dni === inicial.dni) ?? null : null);
   const [correo, setCorreo] = useState(usuario?.correo ?? "");
   const [celular, setCelular] = useState(usuario?.celular ?? "");
-  const [perfilId, setPerfilId] = useState(usuario?.perfil ?? "");
+  const [perfilId, setPerfilId] = useState(usuario?.perfil ?? inicial?.perfil ?? "");
   const [estado, setEstado] = useState(usuario?.estado ?? "activo");
   const [confirmSuper, setConfirmSuper] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -230,8 +234,23 @@ function FormUsuario({ usuario, onClose, onClave, onEditar }) {
 }
 
 export default function Usuarios() {
-  const { db, user, suspenderUsuarioAdmin, reactivarUsuarioAdmin, reenviarClaveCuenta, eliminarUsuarioAdmin } = useApp();
+  const { db, user, suspenderUsuarioAdmin, reactivarUsuarioAdmin, reenviarClaveCuenta, eliminarUsuarioAdmin,
+    propuestasPerfil, decidirPropuestaPerfil } = useApp();
   const [search] = useSearchParams();
+
+  // Bandeja de propuestas de la importación del padrón (spec §5): sugiere,
+  // jamás otorga. Decide SOLO un superadministrador; crear la cuenta es ACC-04.
+  const [propuestas, setPropuestas] = useState(null);
+  const [errorPropuesta, setErrorPropuesta] = useState(null);
+  const cargarPropuestas = () => propuestasPerfil().then(setPropuestas).catch(() => setPropuestas([]));
+  useEffect(() => { cargarPropuestas(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const pendientes = (propuestas ?? []).filter((p) => p.estado === "pendiente");
+  const esSuper = Boolean(user?.esSuperadmin || user?.acceso?.esSuperadmin);
+  const decidir = async (id, decision) => {
+    setErrorPropuesta(null);
+    try { await decidirPropuestaPerfil(id, decision); await cargarPropuestas(); }
+    catch (e) { setErrorPropuesta(e.message); }
+  };
 
   const [fPerfil, setFPerfil] = useState(search.get("perfil") ?? "");
   const [fEmpresa, setFEmpresa] = useState("");
@@ -321,6 +340,57 @@ export default function Usuarios() {
         <Stat label="Superadministradores" value={superadminsActivos.length} tone="pend" hint="El número que nadie debería descubrir por accidente." />
         <Stat label="Nunca ingresaron" value={usuarios.filter((u) => u.nuncaIngreso).length} tone="alerta" />
       </div>
+
+      {pendientes.length > 0 && (
+        <Card className="mb-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Inbox size={16} className="text-petroleo" />
+            <span className="text-[14px] font-bold text-tinta">Propuestas de perfil por cargo</span>
+            <Badge tone="pend">{pendientes.length} pendientes</Badge>
+          </div>
+          <Note tone="neutral">
+            Vienen de la importación del padrón: el cargo sugiere una categoría, pero <b>ningún acceso se otorga
+            solo</b>. Crear la cuenta pide correo (ACC-04). «Sin sugerencia» = cargo genérico, decídelo tú.
+          </Note>
+          {errorPropuesta && <Note tone="alerta">{errorPropuesta}</Note>}
+          <div className="mt-3 overflow-x-auto">
+            <Table head={["Trabajador", "Razón social", "Cargo", "Categoría sugerida", "Acciones"]}>
+              {pendientes.map((p) => (
+                <tr key={p.id} className="hover:bg-papel/60">
+                  <Td>
+                    <div className="font-semibold text-tinta">{p.nombre}</div>
+                    <div className="font-mono text-[11px] text-gris-cl">{p.documento}{p.correo ? ` · ${p.correo}` : " · sin correo"}</div>
+                  </Td>
+                  <Td>{p.empresaNombre}</Td>
+                  <Td><span className="text-[12px]">{p.cargo}</span></Td>
+                  <Td>
+                    {p.perfilNombre
+                      ? <Badge tone="tinta">{p.perfilNombre}</Badge>
+                      : <Badge tone="pend">Sin sugerencia</Badge>}
+                    {p.tieneUsuario && <Badge tone="neutral">Ya tiene usuario</Badge>}
+                  </Td>
+                  <Td className="whitespace-nowrap">
+                    <div className="flex gap-1">
+                      {esSuper && !p.tieneUsuario && (
+                        <Button size="sm" variant="ghost"
+                          onClick={() => setForm({ usuario: null, propuestaId: p.id, inicial: { dni: p.documento, perfil: p.perfilId ?? "" } })}>
+                          <Check size={12} /> Crear usuario
+                        </Button>
+                      )}
+                      {esSuper && (
+                        <Button size="sm" variant="ghost" onClick={() => decidir(p.id, "descartada")}>
+                          <X size={12} /> Descartar
+                        </Button>
+                      )}
+                      {!esSuper && <span className="text-[11px] text-gris">Decide un superadmin</span>}
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </Table>
+          </div>
+        </Card>
+      )}
 
       <Card className="mb-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
@@ -420,8 +490,13 @@ export default function Usuarios() {
         {form && (
           <FormUsuario
             usuario={form.usuario}
+            inicial={form.inicial}
             onClose={() => setForm(null)}
-            onClave={setClaveModal}
+            onClave={(x) => {
+              setClaveModal(x);
+              // Si el alta vino de la bandeja, la creación real ES la aprobación.
+              if (form.propuestaId) decidir(form.propuestaId, "aprobada");
+            }}
             onEditar={(u) => setForm({ usuario: u })}
           />
         )}
