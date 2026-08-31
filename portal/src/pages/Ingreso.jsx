@@ -56,6 +56,13 @@ export default function Ingreso() {
         return;
       }
       await rpc("portal_registrar_ingreso", { p_dni: dni, p_resultado: "exitoso", p_dispositivo: dispositivo });
+      // Guardado EXPLÍCITO de la credencial: dispara el «¿Guardar
+      // contraseña?» de Chrome/Edge sin depender de la heurística del SPA.
+      try {
+        if (window.PasswordCredential) {
+          await navigator.credentials.store(new window.PasswordCredential({ id: dni, password: clave }));
+        }
+      } catch { /* sin soporte o denegado: se sigue igual */ }
       // El guard central redirige al inicio (o al primer ingreso).
     } finally {
       setCargando(false);

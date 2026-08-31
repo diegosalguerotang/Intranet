@@ -151,6 +151,15 @@ export default function AdminLogin() {
         return;
       }
       await supabase.rpc("registrar_ingreso", { p_correo: email, p_resultado: "exitoso", p_dispositivo: dispositivo });
+      // Guardado EXPLÍCITO de la credencial (Credential Management API):
+      // en una SPA la heurística de «¿Guardar contraseña?» es caprichosa;
+      // esto la dispara de forma determinística en Chrome/Edge. El navegador
+      // decide (y respeta «nunca para este sitio»); jamás bloquea el ingreso.
+      try {
+        if (window.PasswordCredential) {
+          await navigator.credentials.store(new window.PasswordCredential({ id: email, password: clave }));
+        }
+      } catch { /* sin soporte o denegado: se sigue igual */ }
       // Sesión única (gana el login nuevo): se registra el marcador de ESTE
       // ingreso; el equipo anterior se autoexpulsa en su próximo chequeo. Si
       // falla, no se bloquea el ingreso.
