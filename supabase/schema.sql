@@ -654,17 +654,23 @@ end $$;
 -- del reloj. Guarda marcaciones (no clasifica ausencias); el cálculo es
 -- referencial y la planilla es la fuente de verdad.
 
--- Parámetro configurable del umbral de "doble marcación" (spec §6). Fila única.
+-- Parámetros configurables (umbral de doble marcación del reloj, y desde
+-- 2026-08-31 la tolerancia del control semanal: las 3 primeras tardanzas del
+-- mes con 30 min de gracia — regla en configuración, no en código). Fila única.
 create table asistencia_config (
   id                  int primary key default 1 check (id = 1),
-  doble_marcacion_min int not null default 15 check (doble_marcacion_min > 0)
+  doble_marcacion_min int not null default 15 check (doble_marcacion_min > 0),
+  tolerancia_dias     int not null default 3 check (tolerancia_dias >= 0),
+  tolerancia_min      int not null default 30 check (tolerancia_min >= 0),
+  jornada_min         int not null default 480 check (jornada_min > 0)
 );
 insert into asistencia_config (id) values (1) on conflict (id) do nothing;
 
--- Lote de importación: procedencia (spec §5).
+-- Lote de importación: procedencia (spec §5). El lote del CONTROL SEMANAL
+-- abarca varias razones sociales → empresa_id null y origen 'control'.
 create table asistencia_lotes (
   id           bigint generated always as identity primary key,
-  empresa_id   text not null references empresas(id),
+  empresa_id   text references empresas(id),
   archivo      text,
   rango_desde  date,
   rango_hasta  date,
@@ -672,22 +678,39 @@ create table asistencia_lotes (
   filas        int not null default 0,
   anomalias    jsonb not null default '[]'::jsonb,
   creado_por   text not null,
-  creado_en    timestamptz not null default now()
+  creado_en    timestamptz not null default now(),
+  origen       text not null default 'reloj' check (origen in ('reloj','control'))
 );
 
 -- Marcaciones diarias. Llave natural: empresa + documento + fecha (spec §5).
 -- documento = DNI canónico del maestro cuando resuelve; si no, el código
 -- normalizado (la anomalía "documento no encontrado" lo reporta aparte).
 -- m1..m4 en orden: entrada, salida a refrigerio, retorno, salida final (texto HH:MM).
+-- Desde 2026-08-31 el CONTROL SEMANAL guarda además el día clasificado y las
+-- cifras DECLARADAS (h:mm en minutos); `calc` lleva las recalculadas propias
+-- (conviven; si difieren se muestra, no se elige ganador) y `recalculado` el
+-- motivo del último recálculo reactivo (solicitud aprobada, feriado nuevo).
 create table marcaciones (
   empresa_id text not null references empresas(id),
   documento  text not null,
   fecha      date not null,
   m1 text, m2 text, m3 text, m4 text,
   lote_id    bigint references asistencia_lotes(id),
+  tipo text check (tipo in ('laborable','sabado_libre','domingo_libre','sabado_trabajo',
+                            'domingo_trabajo','feriado','reporte','revisar')),
+  feriado_nombre text,
+  min_trab int, min_exceso int, min_deficit int,
+  tard_raw int, tard_efec int,
+  observacion text,
+  editado boolean not null default false,
+  motivo_edicion text,
+  origen text not null default 'reloj' check (origen in ('reloj','control')),
+  calc jsonb,
+  recalculado text,
   primary key (empresa_id, documento, fecha)
 );
 create index ix_marcaciones_doc on marcaciones (documento);
+create index ix_marcaciones_doc_fecha on marcaciones (documento, fecha);
 
 -- RPCs de importación (fase 2, 2026-08-21). Patrón importar_activos + PV999.
 -- Importación transaccional con REEMPLAZO POR RANGO: reimportar el mismo
@@ -804,22 +827,69 @@ end $$;
 
 -- Lecturas: la interfaz nunca lee tablas crudas cuando hay contrato de datos.
 create view v_asistencia_lotes as
-select l.id, l.empresa_id as empresa, e.nombre as empresa_nombre, l.archivo,
+select l.id, l.empresa_id as empresa,
+       coalesce(e.nombre, 'Todo el grupo') as empresa_nombre,
+       l.origen, l.archivo,
        to_char(l.rango_desde, 'YYYY-MM-DD') as desde,
        to_char(l.rango_hasta, 'YYYY-MM-DD') as hasta,
        l.trabajadores, l.filas, l.anomalias, l.creado_por,
        to_char(l.creado_en, 'YYYY-MM-DD HH24:MI') as creado_en
 from asistencia_lotes l
-join empresas e on e.id = l.empresa_id
+left join empresas e on e.id = l.empresa_id
 order by l.id desc;
 
 create view v_marcaciones as
 select m.empresa_id as empresa, m.documento, p.nombre,
        (p.dni is not null) as reconocido,
        to_char(m.fecha, 'YYYY-MM-DD') as fecha,
-       m.m1, m.m2, m.m3, m.m4, m.lote_id
+       m.m1, m.m2, m.m3, m.m4, m.lote_id,
+       m.tipo, m.feriado_nombre as "feriadoNombre",
+       m.min_trab as "minTrab", m.min_exceso as "minExceso",
+       m.min_deficit as "minDeficit", m.tard_raw as "tardRaw",
+       m.tard_efec as "tardEfec", m.observacion, m.editado,
+       m.motivo_edicion as "motivoEdicion", m.origen, m.calc, m.recalculado
 from marcaciones m
 left join personas p on p.dni = m.documento;
+
+-- «HH:MM» → minutos (null si vacío o ilegible). Lo usa el recálculo propio.
+create or replace function fn_min_hhmm(t text) returns int
+language sql immutable as $$
+  select case when t ~ '^\d{1,3}:[0-5]\d$'
+              then split_part(t, ':', 1)::int * 60 + split_part(t, ':', 2)::int end
+$$;
+
+-- Las RPC del CONTROL SEMANAL (importar_control / previsualizar_control /
+-- fn_recalcular_control) tienen su canónico en la migración
+-- supabase/migraciones/2026-08-31-control-semanal.sql (dependen de
+-- solicitudes y v_mi_acceso, que se crean después de este archivo).
+
+-- Tablero mensual del control: agrupa por la MISMA llave que Personal
+-- (centro de costo del vínculo vigente); el alcance por RS lo aplica la
+-- pantalla sobre la columna empresa.
+create or replace view v_asistencia_mensual as
+select m.documento, coalesce(p.nombre, m.documento) as nombre,
+       m.empresa_id as empresa,
+       vi.centro_costo as "centroCosto",
+       to_char(m.fecha, 'YYYY-MM') as periodo,
+       count(*) filter (where m.tipo = 'laborable') as laborables,
+       count(*) filter (where m.tipo = 'revisar'
+                          and coalesce(m.calc->>'tipoEfectivo', 'revisar') = 'revisar') as revisar,
+       count(*) filter (where m.tipo in ('sabado_trabajo','domingo_trabajo')) as "finSemana",
+       sum(coalesce(m.min_trab, 0))::int as "minTrab",
+       sum(coalesce(m.tard_raw, 0))::int as "tardRaw",
+       sum(coalesce(m.tard_efec, 0))::int as "tardEfec",
+       count(*) filter (where coalesce(m.tard_efec, 0) > 0) as "diasTardanza",
+       count(*) filter (where m.recalculado is not null) as recalculados,
+       count(*) filter (where m.editado) as editados,
+       (fn_hora_entrada(m.documento) is null) as "sinHora",
+       to_char(fn_hora_entrada(m.documento), 'HH24:MI') as "horaEntrada"
+from marcaciones m
+left join personas p on p.dni = m.documento
+left join vinculos vi on vi.persona_dni = m.documento
+  and vi.empresa_id = m.empresa_id and vi.fecha_fin is null
+where m.origen = 'control'
+group by m.documento, p.nombre, m.empresa_id, vi.centro_costo, to_char(m.fecha, 'YYYY-MM');
+grant select on v_asistencia_mensual to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- CONTRATOS Y PLANTILLAS
