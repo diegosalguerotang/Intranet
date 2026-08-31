@@ -34,7 +34,8 @@ const fmtHoras = (min) => min == null ? "—" : `${Math.floor(min / 60)}h ${Stri
 // costo, con tardanzas y tolerancia YA calculadas) + reporte del reloj
 // (marcaciones crudas por día) + lotes importados.
 export default function Asistencia() {
-  const { db, user, empresaId, empresa, cargarMarcaciones, tableroAsistencia } = useApp();
+  const { db, user, empresaId, empresa, cargarMarcaciones, tableroAsistencia,
+    cargarFeriados, guardarFeriado, eliminarFeriado } = useApp();
   const puedeImportar = nivelDe(user?.acceso, "asistencia") >= 2;
   const [abierto, setAbierto] = useState(false);
   const [fecha, setFecha] = useState("");
@@ -69,6 +70,36 @@ export default function Asistencia() {
     }
     return [...m.entries()];
   }, [tablero]);
+
+  // Calendario de feriados administrado (agregar/retirar recalcula el mes).
+  const [feriados, setFeriados] = useState(null);
+  const [feriadoNuevo, setFeriadoNuevo] = useState({ fecha: "", nombre: "" });
+  const [feriadoAviso, setFeriadoAviso] = useState(null);
+  const [feriadoOcupado, setFeriadoOcupado] = useState(false);
+  const refrescarFeriados = () => cargarFeriados().then(setFeriados).catch(() => setFeriados([]));
+  useEffect(() => { refrescarFeriados(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const agregarFeriado = async () => {
+    if (feriadoOcupado || !feriadoNuevo.fecha || !feriadoNuevo.nombre.trim()) return;
+    setFeriadoOcupado(true); setFeriadoAviso(null);
+    try {
+      const n = await guardarFeriado(feriadoNuevo.fecha, feriadoNuevo.nombre.trim());
+      setFeriadoAviso({ tone: "conf", texto: `Feriado registrado.${n > 0 ? ` Se recalculó el mes de ${n} trabajador${n === 1 ? "" : "es"} (los días cambiados quedan marcados).` : ""}` });
+      setFeriadoNuevo({ fecha: "", nombre: "" });
+      refrescarFeriados();
+      if (periodo) tableroAsistencia(empresaId, periodo).then(setTablero).catch(() => {});
+    } catch (e) { setFeriadoAviso({ tone: "alerta", texto: e.message }); }
+    finally { setFeriadoOcupado(false); }
+  };
+  const quitarFeriado = async (f) => {
+    if (feriadoOcupado) return;
+    setFeriadoOcupado(true); setFeriadoAviso(null);
+    try {
+      const n = await eliminarFeriado(f.fecha);
+      setFeriadoAviso({ tone: "conf", texto: `Feriado «${f.nombre}» retirado.${n > 0 ? ` Se recalculó el mes de ${n} trabajador${n === 1 ? "" : "es"}.` : ""}` });
+      refrescarFeriados();
+    } catch (e) { setFeriadoAviso({ tone: "alerta", texto: e.message }); }
+    finally { setFeriadoOcupado(false); }
+  };
 
   // Fecha por defecto: el último día con datos de la empresa activa.
   useEffect(() => { setFecha(lotes[0]?.hasta ?? ""); }, [empresaId, lotes[0]?.hasta]);
@@ -216,6 +247,46 @@ export default function Asistencia() {
               <tr><Td colSpan={6} className="text-center text-gris">Todavía no se importa ningún reporte para esta empresa.</Td></tr>
             )}
           </Table>
+        </Card>
+      </div>
+
+      <div className="mt-5">
+        <Card pad={false}>
+          <div className="border-b border-borde bg-papel/50 p-3.5 font-mono text-[10px] uppercase tracking-wide text-gris">
+            Calendario de feriados (administrado)
+          </div>
+          <div className="space-y-3 p-3.5">
+            <Note tone="neutral">
+              Agregar o retirar un feriado <b>recalcula solo los días afectados</b> del control ya importado,
+              sin volver a cargar el archivo; los días cambiados quedan marcados «recalculado» con el motivo.
+            </Note>
+            {feriadoAviso && <Note tone={feriadoAviso.tone}>{feriadoAviso.texto}</Note>}
+            {puedeImportar && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Input type="date" value={feriadoNuevo.fecha} disabled={feriadoOcupado}
+                  onChange={(e) => setFeriadoNuevo((f) => ({ ...f, fecha: e.target.value }))} style={{ maxWidth: 170 }} />
+                <Input placeholder="Nombre del feriado" value={feriadoNuevo.nombre} disabled={feriadoOcupado}
+                  onChange={(e) => setFeriadoNuevo((f) => ({ ...f, nombre: e.target.value }))} style={{ maxWidth: 260 }} />
+                <Button size="sm" onClick={agregarFeriado} disabled={feriadoOcupado || !feriadoNuevo.fecha || !feriadoNuevo.nombre.trim()}>
+                  {feriadoOcupado ? "Guardando…" : "Agregar feriado"}
+                </Button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {(feriados ?? []).map((f) => (
+                <span key={f.fecha} className="inline-flex items-center gap-1.5 rounded-full border border-borde bg-papel/60 px-3 py-1 text-[12px] text-tinta-2">
+                  <span className="font-mono text-[11px] text-gris">{f.fecha}</span> {f.nombre}
+                  {puedeImportar && (
+                    <button className="ml-0.5 text-gris hover:text-alerta" title="Retirar del calendario"
+                      onClick={() => quitarFeriado(f)} disabled={feriadoOcupado}>×</button>
+                  )}
+                </span>
+              ))}
+              {(feriados ?? []).length === 0 && feriados !== null && (
+                <span className="text-[12.5px] text-gris">Sin feriados registrados.</span>
+              )}
+            </div>
+          </div>
         </Card>
       </div>
 

@@ -862,6 +862,31 @@ export function AppProvider({ children }) {
       await recargar("asistenciaLotes", "personal");
       return data;
     },
+    // Calendario de feriados ADMINISTRADO: agregar o retirar uno recalcula el
+    // mes afectado de todos los que tengan control importado (y los días
+    // cambiados quedan marcados «recalculado» con el motivo).
+    cargarFeriados: async () => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.from("v_feriados").select("*");
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    guardarFeriado: async (fecha, nombre) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("guardar_feriado", {
+        p_fecha: fecha, p_nombre: nombre, p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) throw new Error(error.message);
+      return data; // trabajadores recalculados
+    },
+    eliminarFeriado: async (fecha) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { data, error } = await supabase.rpc("eliminar_feriado", {
+        p_fecha: fecha, p_por: user?.nombre ?? "BackOffice",
+      });
+      if (error) throw new Error(error.message);
+      return data;
+    },
     // Tablero mensual del control, agrupado por centro de costo (bajo demanda:
     // un mes por consulta; el alcance por RS lo aplica la pantalla).
     tableroAsistencia: async (empresaIdArg, periodo) => {
