@@ -105,7 +105,7 @@ async function llamarServerless(ruta, cuerpo) {
 const cuentaAdmin = (accion, usuarioId) => llamarServerless("/api/admin-usuarios", { accion, usuario_id: usuarioId });
 
 // Política de sesión (BackOffice): cierre por inactividad y sesión única.
-const INACTIVIDAD_MS = 10 * 60 * 1000; // 10 minutos sin actividad → cierre
+const INACTIVIDAD_MS = 60 * 60 * 1000; // 1 hora sin actividad → cierre (decisión Diego 2026-08-31)
 const CLAVE_MARCADOR = "backoffice-sesion-marker";
 
 export function AppProvider({ children }) {
@@ -193,7 +193,7 @@ export function AppProvider({ children }) {
     setUser(null);
   };
 
-  // Política de sesión: cierre por inactividad (10 min) y sesión única (el
+  // Política de sesión: cierre por inactividad (1 hora) y sesión única (el
   // login nuevo gana; este equipo se autoexpulsa si el marcador del servidor
   // cambió). Activo solo mientras hay usuario autenticado.
   useEffect(() => {

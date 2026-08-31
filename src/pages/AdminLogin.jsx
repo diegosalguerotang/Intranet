@@ -74,6 +74,9 @@ export default function AdminLogin() {
 
   const entrar = async (e) => {
     e.preventDefault();
+    // El campo vuelve a type=password antes de autenticar: con el ojito
+    // activo el navegador no lo reconocería como clave y no ofrece guardarla.
+    setVerClave(false);
     if (!supabaseListo) return setError("El servicio de autenticación no está disponible.");
     // El parche del interceptor puede aterrizar DESPUÉS de cargar la app:
     // re-blindar Headers justo antes de usar supabase-js.
@@ -196,6 +199,8 @@ export default function AdminLogin() {
                 <Mail size={18} className="shrink-0 text-gris-cl transition-colors group-focus-within:text-petroleo" />
                 <input
                   type="email"
+                  name="username"
+                  id="login-correo"
                   placeholder="Correo electrónico"
                   autoFocus
                   autoComplete="username"
@@ -212,6 +217,8 @@ export default function AdminLogin() {
                 <KeyRound size={18} className="shrink-0 text-gris-cl transition-colors group-focus-within:text-petroleo" />
                 <input
                   type={verClave ? "text" : "password"}
+                  name="password"
+                  id="login-clave"
                   placeholder="Clave"
                   autoComplete="current-password"
                   value={clave}

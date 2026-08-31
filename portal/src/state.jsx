@@ -4,9 +4,9 @@ import { auth, vista, rpc } from "./lib/api";
 
 const Ctx = createContext(null);
 
-// Política de sesión del portal: inactividad 10 min + sesión única (gana el
+// Política de sesión del portal: inactividad 1 hora + sesión única (gana el
 // login nuevo; este equipo se autoexpulsa si el marcador del servidor cambió).
-const INACTIVIDAD_MS = 10 * 60 * 1000;
+const INACTIVIDAD_MS = 60 * 60 * 1000; // 1 hora (decisión Diego 2026-08-31)
 const CLAVE_MARCADOR = "portal-sesion-marker";
 const nuevoMarcador = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID)

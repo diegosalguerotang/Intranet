@@ -35,6 +35,9 @@ export default function Ingreso() {
 
   const ingresar = async (e) => {
     e.preventDefault();
+    // El campo vuelve a type=password antes de autenticar: con el ojito
+    // activo el navegador no lo reconocería como clave y no ofrece guardarla.
+    setVer(false);
     if (!TIPOS_DOC[tipoDoc].regex.test(dni)) return setError(TIPOS_DOC[tipoDoc].error);
     setError(null);
     setCargando(true);
@@ -93,6 +96,8 @@ export default function Ingreso() {
           <span className="mb-1 block text-[13px] font-semibold text-tinta">Número de documento</span>
           <input
             type="text"
+            name="username"
+            id="ingreso-documento"
             inputMode={TIPOS_DOC[tipoDoc].numerico ? "numeric" : "text"}
             autoComplete="username"
             maxLength={TIPOS_DOC[tipoDoc].max}
@@ -109,6 +114,8 @@ export default function Ingreso() {
           <div className="flex items-center rounded-caja border border-borde-f bg-white focus-within:border-petroleo">
             <input
               type={ver ? "text" : "password"}
+              name="password"
+              id="ingreso-clave"
               autoComplete="current-password"
               value={clave}
               onInput={(e) => setClave(e.currentTarget.value)}
