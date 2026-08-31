@@ -37,18 +37,26 @@ Decisiones (aprobadas por Diego 2026-08-31, con las propuestas del reconocimient
 
 ## Bloque B — Lectura del Control Semanal (módulo Asistencia)
 
-- [ ] B1 Parser `control-semanal.js` (TDD): solo Detalle Diario; banner = fila sin
-      documento en B; 9 tipos (FERIADO con nombre extraído); h:mm vs decimal
-      cotejados; EDITADO/MOTIVO opcionales; H.E. = hora de entrada.
-- [ ] B2 BD: modelo ampliado (tipo de día, H.E., minutos trabajados/exceso/déficit/
-      tardanzas, observación, editado+motivo, estado Revisar), importación
-      multi-empresa por padrón quitando ceros, excepciones (42242854), reemplazo
-      idempotente por rango.
-- [ ] B3 Recálculo propio + contraste con Resumen Mensual (reporta trabajador y
-      columna); tolerancia 3 tardanzas × 30 min en configuración; primera importación
-      puebla H.E., las siguientes contrastan.
-- [ ] B4 Pantalla RRH-22 «Importar control» (convive con el reporte del reloj);
-      tablero por centro de costo con alcance por RS.
-- [ ] B5 Recálculo reactivo (solicitud aprobada / feriado nuevo → reclasifica el día,
-      marca «recalculado») + mini-UI de feriados en Configuración.
-- [ ] B6 Suite E2E + los 15 criterios de aceptación.
+- [x] B1 Parser `control-semanal.js` (TDD 15/15 contra el archivo real): solo
+      Detalle Diario; fila de datos = documento en B; 9 tipos (FERIADO con nombre
+      extraído); h:mm en minutos cotejado contra el decimal; EDITADO/MOTIVO
+      opcionales; H.E. verificada contra ENT1−tardanza; el Resumen Mensual se
+      RECALCULA desde el detalle y se contrasta (41/41 en cero diferencias; el
+      total de horas del archivo incluye el fin de semana trabajado).
+- [x] B2 BD (migración `2026-08-31-control-semanal.sql`, aplicada): marcaciones
+      ampliada (declarado + calc conviven), tolerancia/jornada en configuración,
+      `importar_control` multi-empresa por documento sin ceros (sin vínculo =
+      excepción; primera importación puebla H.E., después contrasta), reemplazo
+      por rango. Preflight `previa-control.mjs`: 39 resueltos, 0 diferencias.
+- [x] B3 Absorbida en B1 (contraste de resumen en el parser) y B2
+      (`fn_recalcular_control` con tolerancia mensual en SQL).
+- [x] B4 RRH-22: «Importar control» detecta el formato junto al reporte del reloj
+      (vista previa completa); tablero mensual por centro de costo
+      (v_asistencia_mensual) con pendientes de configurar; lotes Reloj/Control.
+- [x] B5 (migración `2026-08-31-recalculo-reactivo.sql`, aplicada; canónico de
+      fn_recalcular_control v2): trigger de solicitud aprobada + feriados
+      administrables (`guardar/eliminar_feriado` recalculan el mes y marcan los
+      días con el motivo); tarjeta Calendario de feriados en RRH-22.
+- [x] B6 Suite `scripts/verificar-control-semanal.mjs`: 20/20 en producción,
+      incluida la tolerancia exacta (40→10, 20→0, 10→0, 15→15) y el ciclo
+      feriado agregado/retirado con trabajador sintético en 2027-02.
