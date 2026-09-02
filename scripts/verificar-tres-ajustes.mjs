@@ -35,8 +35,19 @@ await prueba("no se puede crear un vínculo en BREMCO", async () => {
   igual(fallo, true, "el insert debió fallar");
 });
 await prueba("los históricos de BREMCO siguen consultables", async () => {
-  const [r] = await sql("select count(*)::int n from vinculos where empresa_id='bremco'");
-  igual(r.n >= 2, true, "vínculos históricos");
+  // La limpieza de producción (2026-08-27) borró los vínculos demo, así que
+  // la prueba crea su propio histórico: el trigger solo bloquea INSERTs
+  // nuevos, se apaga un instante (patrón de las limpiezas) y se deja igual.
+  const [s] = await sql("select id from sedes limit 1");
+  await sql("insert into personas (dni, nombre) values ('ZZPRUEBATA1', 'ZZ Prueba Históricos') on conflict (dni) do nothing");
+  await sql(`alter table vinculos disable trigger trg_vinculo_empresa_activa;
+    insert into vinculos (persona_dni, empresa_id, sede_id, cargo, fecha_inicio, fecha_fin)
+    values ('ZZPRUEBATA1','bremco','${s.id}','Operario de limpieza','2025-01-01','2025-12-31');
+    alter table vinculos enable trigger trg_vinculo_empresa_activa;`);
+  const [r] = await sql(
+    "select count(*)::int n from vinculos where empresa_id='bremco' and persona_dni='ZZPRUEBATA1'");
+  igual(r.n, 1, "vínculo histórico consultable");
+  await sql("delete from vinculos where persona_dni='ZZPRUEBATA1'; delete from personas where dni='ZZPRUEBATA1'");
 });
 await prueba("catálogo de cargos existe", async () => {
   const [r] = await sql("select count(*)::int n from cargos");
