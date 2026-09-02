@@ -29,7 +29,7 @@ drop function if exists fn_bloquear_cambios, fn_auditar, alta_trabajador,
   previsualizar_importacion, publicar_lote_pdf, fn_valor_importado,
   importar_activos, previsualizar_importacion_activos, crear_sede,
   editar_activo, fn_sumar_dias, notificar_memorandum, editar_trabajador,
-  crear_activo, eliminar_sede cascade;
+  crear_activo, eliminar_sede, fijar_correo_persona cascade;
 
 -- ---------------------------------------------------------------------------
 -- NÚCLEO ORGANIZACIONAL
@@ -1535,6 +1535,36 @@ begin
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);
+end $$;
+
+-- fijar_correo_persona (2026-09-02): fija SOLO el correo de contacto (paso
+-- «completar correos» del modal masivo de cuentas del portal, RRH-02). No se
+-- reutiliza editar_trabajador: reemplaza toda la fila y limpia «por confirmar».
+create function fijar_correo_persona(p_dni text, p_correo text)
+returns void language plpgsql security definer
+set search_path = public, extensions as $$
+declare v_correo text; j_antes jsonb; j_despues jsonb;
+begin
+  if fn_nivel_modulo('personal') < 2 then
+    raise exception 'Tu categoría no permite editar datos de Personal.';
+  end if;
+  if not exists (select 1 from personas where dni = p_dni) then
+    raise exception 'La persona % no existe.', p_dni;
+  end if;
+  v_correo := nullif(lower(trim(coalesce(p_correo, ''))), '');
+  if v_correo is not null and v_correo !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
+    raise exception 'El correo no tiene un formato válido.';
+  end if;
+  select jsonb_build_object('dni', dni, 'correo', correo, 'correo_verificado', correo_verificado)
+    into j_antes from personas where dni = p_dni;
+  update personas set
+    correo_verificado = case when v_correo is distinct from correo then false else correo_verificado end,
+    correo = v_correo
+  where dni = p_dni;
+  select jsonb_build_object('dni', dni, 'correo', correo, 'correo_verificado', correo_verificado)
+    into j_despues from personas where dni = p_dni;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('FIJAR_CORREO', 'personas', j_antes, j_despues);
 end $$;
 
 -- Publicación del RIT con acuse (2026-08-19): un documento por vínculo
