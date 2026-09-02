@@ -17,7 +17,7 @@ const PORTAL_BADGE = {
 };
 
 export default function Personal() {
-  const { empresaId, db, sede, user, addPersonal, deletePersonal, cuentaPortal, cuentasPortalLote, refrescarPersonal } = useApp();
+  const { empresaId, db, sede, user, addPersonal, deletePersonal, cuentaPortal, cuentasPortalLote, refrescarPersonal, fijarCorreo } = useApp();
   const acceso = user?.acceso ?? { esSuperadmin: user?.esSuperadmin };
   const puedeExportar = acceso.esSuperadmin || acceso.exportarDatosPersonales;
   const [q, setQ] = useState("");
@@ -257,6 +257,7 @@ export default function Personal() {
       <CuentasMasa
         open={masa} onClose={() => setMasa(false)} personal={db.personal} empresaId={empresaId}
         sedes={sedesEmpresa} cuentasPortalLote={cuentasPortalLote} refrescarPersonal={refrescarPersonal}
+        fijarCorreo={fijarCorreo}
       />
 
       <Modal open={!!eliminar} onClose={() => setEliminar(null)} title="Eliminar trabajador">
@@ -285,9 +286,12 @@ export default function Personal() {
 // de la razón social activa, las crea por tramos de 10 (tope del endpoint:
 // cada envío SMTP suma segundos) y entrega un CSV con las claves — que no se
 // pueden volver a consultar — para quienes no tienen correo.
-function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalLote, refrescarPersonal }) {
+function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalLote, refrescarPersonal, fijarCorreo }) {
   const [fSede, setFSede] = useState("");
   const [enviarCorreo, setEnviarCorreo] = useState(true);
+  const [correos, setCorreos] = useState({});             // dni → texto tecleado
+  const [erroresCorreo, setErroresCorreo] = useState({}); // dni → mensaje
+  const [guardandoCorreos, setGuardandoCorreos] = useState(false);
   const [paso, setPaso] = useState(1);
   const [avance, setAvance] = useState(0);
   const [total, setTotal] = useState(0);
@@ -303,11 +307,41 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
   );
   const conCorreoN = candidatos.filter((p) => p.correo).length;
   const envios = enviarCorreo ? conCorreoN : 0;
+  const sinCorreo = candidatos.filter((p) => !p.correo);
+  const porGuardarN = sinCorreo.filter((p) => (correos[p.dni] ?? "").trim()).length;
 
   const cerrar = () => {
     sesionRef.current += 1;
     setPaso(1); setAvance(0); setTotal(0); setResultados([]); setFSede(""); setEnviarCorreo(true);
+    setCorreos({}); setErroresCorreo({}); setGuardandoCorreos(false);
     onClose();
+  };
+
+  // Guarda en bloque los correos tecleados (RPC fijar_correo_persona: SOLO el
+  // correo, queda «sin verificar»). Formato validado en cliente Y servidor; el
+  // maestro se recarga UNA vez al final y los guardados pasan solos al grupo
+  // «con correo».
+  const guardarCorreos = async () => {
+    if (guardandoCorreos) return;
+    const pendientes = sinCorreo
+      .map((p) => [p.dni, (correos[p.dni] ?? "").trim().toLowerCase()])
+      .filter(([, c]) => c);
+    const errores = Object.fromEntries(pendientes
+      .filter(([, c]) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c))
+      .map(([dni]) => [dni, "Formato de correo inválido."]));
+    setErroresCorreo(errores);
+    const validos = pendientes.filter(([dni]) => !errores[dni]);
+    if (validos.length === 0) return;
+    setGuardandoCorreos(true);
+    for (const [dni, c] of validos) {
+      try {
+        await fijarCorreo(dni, c);
+        setCorreos((m) => { const n = { ...m }; delete n[dni]; return n; });
+      } catch (e) { errores[dni] = e.message; }
+    }
+    setErroresCorreo({ ...errores });
+    setGuardandoCorreos(false);
+    refrescarPersonal();
   };
 
   const crear = async () => {
@@ -362,6 +396,34 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
               <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{conCorreoN}</div><div className="font-mono text-[10px] uppercase text-gris">Con correo</div></div>
               <div className="rounded-md bg-papel py-4"><div className="text-[22px] font-bold text-tinta-2">{candidatos.length - conCorreoN}</div><div className="font-mono text-[10px] uppercase text-gris">Solo CSV</div></div>
             </div>
+            {sinCorreo.length > 0 && (
+              <div className="rounded-caja border border-borde">
+                <div className="border-b border-borde bg-papel/50 px-3.5 py-2.5 text-[12.5px] font-semibold text-tinta-2">
+                  Completar correos — {sinCorreo.length} sin correo (opcional: sin correo, su clave sale en el CSV)
+                </div>
+                <div className="max-h-56 space-y-1.5 overflow-y-auto p-3">
+                  {sinCorreo.map((p) => (
+                    <div key={p.dni} className="flex items-center gap-2">
+                      <div className="w-24 shrink-0 font-mono text-[11.5px] text-gris">{p.dni}</div>
+                      <div className="min-w-0 flex-1 truncate text-[12.5px] text-tinta-2">{p.nombre}</div>
+                      <div className="w-60 shrink-0">
+                        <Input type="email" placeholder="persona@correo.com" value={correos[p.dni] ?? ""}
+                          onChange={(e) => setCorreos((m) => ({ ...m, [p.dni]: e.target.value }))} />
+                        {erroresCorreo[p.dni] && (
+                          <div className="mt-0.5 text-[11px] text-alerta">{erroresCorreo[p.dni]}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-borde px-3 py-2.5">
+                  <Button variant="secondary" size="sm" onClick={guardarCorreos}
+                    disabled={guardandoCorreos || porGuardarN === 0}>
+                    {guardandoCorreos ? "Guardando…" : `Guardar correos (${porGuardarN})`}
+                  </Button>
+                </div>
+              </div>
+            )}
             <label className="flex items-center gap-2 text-[13px] text-gris">
               <input type="checkbox" checked={enviarCorreo} onChange={(e) => setEnviarCorreo(e.target.checked)} />
               Enviar el acceso por correo a quienes lo tienen registrado ({conCorreoN})
