@@ -488,6 +488,14 @@ export function AppProvider({ children }) {
     cuentasPortalLote: async (dnis, enviarCorreo) =>
       llamarServerless("/api/portal-cuentas", { accion: "crear-lote", dnis, enviarCorreo }),
     refrescarPersonal: () => recargar("personal"),
+    // Correo de contacto SOLO (paso «completar correos» del modal masivo,
+    // RRH-02): no pasa por editar_trabajador para no tocar nombre/celular/
+    // banco ni limpiar «por confirmar». El caller recarga al final.
+    fijarCorreo: async (dni, correo) => {
+      if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("fijar_correo_persona", { p_dni: dni, p_correo: correo });
+      if (error) throw new Error(error.message);
+    },
     // Recordatorio por correo a un trabajador con acuses pendientes (RRH-06/11).
     // El endpoint valida nivel ≥2 en Acuses y que exista correo + cuenta portal.
     recordarAcuse: async (dni) => llamarServerless("/api/enviar-correo", { accion: "recordatorio-acuse", dni }),
