@@ -314,19 +314,26 @@ end $$;
 
 -- Nivel del llamador en el módulo memorandums (disciplinario 2026-08-17):
 -- valida server-side quién puede imponer qué sanción. Vive aquí y no en
--- schema.sql porque depende de usuarios_admin/perfiles. Sin JWT (llamadas de
--- servicio) devuelve 99.
+-- schema.sql porque depende de usuarios_admin/perfiles. Sin JWT devuelve 0,
+-- salvo postgres/service_role/supabase_admin (99).
 -- Nivel del llamador en CUALQUIER módulo (edición de Personal, etc.).
 create function fn_nivel_modulo(p_modulo text)
-returns int language plpgsql stable security definer as $$
-declare v_correo text; v_nivel int;
+returns int language plpgsql stable security definer set search_path = public, extensions as $$
+declare v_correo text; v_nivel int; v_rol text;
 begin
   begin
     v_correo := nullif(auth.jwt() ->> 'email', '');
   exception when others then
     v_correo := null;
   end;
-  if v_correo is null then return 99; end if;
+  if v_correo is null then
+    -- Dentro de un security definer current_user es el dueño; el rol real
+    -- viene en los claims de PostgREST o, sin ellos (Management API), en
+    -- session_user.
+    v_rol := coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', session_user::text);
+    if v_rol in ('postgres', 'service_role', 'supabase_admin') then return 99; end if;
+    return 0;
+  end if;
   select case when p.es_superadmin then 99
               else coalesce((select pp.nivel from perfil_permisos pp
                              where pp.perfil_id = u.perfil_id
@@ -490,6 +497,10 @@ begin
     update usuarios_admin set ultimo_ingreso = now() where id = u.id;
   end if;
 end $$;
+
+-- Únicas RPCs ejecutables sin sesión (login del BackOffice).
+grant execute on function verificar_bloqueo(text) to anon;
+grant execute on function registrar_ingreso(text, text, text) to anon;
 
 create function marcar_clave_cambiada(p_correo text) returns void
 language plpgsql security definer as $$
@@ -672,7 +683,7 @@ begin
     'usuarios_admin','politica_acceso','registro_accesos']
   loop
     execute format('alter table %I enable row level security', t);
-    execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
+    execute format('create policy acceso_demo on %I for all to authenticated using (true) with check (true)', t);
   end loop;
 end $$;
 revoke update, delete on registro_accesos from anon, authenticated;

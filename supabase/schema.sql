@@ -256,7 +256,7 @@ left join empresas eo on eo.id = m.empresa_origen
 left join empresas ed on ed.id = m.empresa_destino
 order by m.creado_en desc;
 
-grant select on v_vinculos_persona, v_movimientos_persona to anon, authenticated;
+grant select on v_vinculos_persona, v_movimientos_persona to authenticated;
 revoke all on movimientos from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -379,7 +379,7 @@ insert into centros_costo (codigo) values
   ('ADM'), ('RRHH'), ('OPE'), ('LOGISTICA'),
   ('COMERCIAL'), ('SIST/GG'), ('SST/GG'), ('LEGAL/GG')
 on conflict (codigo) do nothing;
-grant select on centros_costo to anon, authenticated;
+grant select on centros_costo to authenticated;
 
 -- Nada nuevo sobre una empresa retirada (vínculos y lotes; contratos y
 -- comunicados nuevos quedan bloqueados por la UI, que filtra activas).
@@ -892,7 +892,7 @@ left join vinculos vi on vi.persona_dni = m.documento
   and vi.empresa_id = m.empresa_id and vi.fecha_fin is null
 where m.origen = 'control'
 group by m.documento, p.nombre, m.empresa_id, vi.centro_costo, to_char(m.fecha, 'YYYY-MM');
-grant select on v_asistencia_mensual to anon, authenticated;
+grant select on v_asistencia_mensual to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- CONTRATOS Y PLANTILLAS
@@ -2456,11 +2456,24 @@ exception when sqlstate 'PV999' then
 end $$;
 
 -- ---------------------------------------------------------------------------
--- SEGURIDAD (nivel demostración)
--- RLS habilitado con política permisiva: el candado existe y se aprieta cuando
--- entre Supabase Auth (roles por empresa y sede). Los registros probatorios
--- están protegidos por triggers y revocación aunque la política sea abierta.
+-- SEGURIDAD · anon cerrado (hardening fase 1, 2026-09-14)
+-- Sin JWT no se lee ni se ejecuta nada, salvo las 4 RPCs de login (ver
+-- accesos.sql / portal.sql). RLS habilitado con política permisiva SOLO para
+-- authenticated (acceso_demo); la fase 2 la sustituye por políticas por rol.
+-- Los registros probatorios están protegidos por triggers y revocación.
+-- Migración de referencia: migraciones/2026-09-14-cerrar-anon.sql.
 -- ---------------------------------------------------------------------------
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+revoke all on all functions in schema public from anon;
+alter default privileges for role postgres in schema public revoke all on tables from anon;
+alter default privileges for role postgres in schema public revoke all on sequences from anon;
+alter default privileges for role postgres in schema public revoke all on functions from anon;
+-- Las funciones nuevas heredan EXECUTE de PUBLIC por el default interno de
+-- Postgres (los defaults por esquema se FUSIONAN con él): hay que cerrarlo
+-- también. Lo nuevo queda para postgres/authenticated/service_role.
+alter default privileges for role postgres in schema public revoke execute on functions from public;
+
 do $$
 declare t text;
 begin
@@ -2471,7 +2484,7 @@ begin
     'asistencia_config','asistencia_lotes','marcaciones','bancos']
   loop
     execute format('alter table %I enable row level security', t);
-    execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
+    execute format('create policy acceso_demo on %I for all to authenticated using (true) with check (true)', t);
   end loop;
 end $$;
 

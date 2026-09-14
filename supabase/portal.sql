@@ -218,6 +218,10 @@ begin
   end if;
 end $$;
 
+-- Únicas RPCs ejecutables sin sesión (login del portal).
+grant execute on function portal_verificar_bloqueo(text) to anon;
+grant execute on function portal_registrar_ingreso(text, text, text) to anon;
+
 -- 6 · RPCs con sesión (el dni sale del JWT, jamás de un parámetro) -------------
 -- Desde 2026-08-17 también captura el correo (opcional): con correo
 -- verificado el trabajador puede recuperar su clave por enlace.
@@ -501,7 +505,7 @@ begin
   loop
     execute format('alter table %I enable row level security', t);
     if not exists (select 1 from pg_policies where tablename = t and policyname = 'acceso_demo') then
-      execute format('create policy acceso_demo on %I for all to anon, authenticated using (true) with check (true)', t);
+      execute format('create policy acceso_demo on %I for all to authenticated using (true) with check (true)', t);
     end if;
     if not exists (select 1 from pg_trigger where tgname = 'trg_auditar_' || t) then
       execute format('create trigger trg_auditar_%s after insert or update or delete on %I
