@@ -134,7 +134,7 @@ function NavGroup({ title, items, acceso }) {
 }
 
 export default function Shell() {
-  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen, db } = useApp();
+  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen, db, reintentarCarga } = useApp();
   // Buzón personal: cuántas de MIS solicitudes siguen sin respuesta (enviadas)
   // o me fueron devueltas para corregir (observadas). Alimenta el globito del
   // botón flotante para que el usuario sepa que hay movimiento sin navegar.
@@ -222,9 +222,21 @@ export default function Shell() {
             </select>
           )}
           <span className="ml-auto font-mono text-[10.5px] text-gris-cl">
-            {origen === "supabase" ? "Conectado a Supabase" : "Datos locales de demostración"}
+            {origen === "supabase" ? "Conectado a Supabase" : origen === "local" ? "Datos locales de demostración" : "Error de carga"}
           </span>
         </header>
+        {origen === "error" && (
+          <div role="alert" className="flex items-center gap-3 border-b border-borde-f bg-[#fff4f2] px-5 py-2 text-[13px] text-tinta">
+            <span>No se pudieron cargar los datos. Revisa tu conexión o vuelve a intentarlo.</span>
+            <button
+              type="button"
+              onClick={() => reintentarCarga()}
+              className="rounded-caja border border-borde-f bg-white px-2.5 py-1 font-semibold text-petroleo hover:bg-[#f3f7fb]"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
         <main className="mx-auto max-w-[1180px] px-6 py-7">
           <Outlet />
         </main>

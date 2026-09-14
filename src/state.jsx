@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { supabase, supabaseListo } from "./lib/supabase";
 import * as MOCK from "./data/mock";
+import { dbInicial, dbVacia, origenDesde } from "./lib/carga";
 
 const AppCtx = createContext(null);
 
@@ -122,11 +123,15 @@ export function AppProvider({ children }) {
     try { localStorage.setItem(CLAVE_EMPRESA, id); } catch { /* modo privado */ }
     setEmpresaIdEstado(id);
   };
-  const [db, setDb] = useState(LOCAL);
-  const [origen, setOrigen] = useState("local"); // "supabase" | "local"
+  // Con Supabase la app arranca VACÍA y carga tras resolver el usuario
+  // (hardening fase 1: anon ya no puede leer nada). El mock solo existe sin
+  // Supabase configurado o en MODO_DEMO.
+  const conSupabase = supabaseListo && !MODO_DEMO;
+  const [db, setDb] = useState(() => dbInicial(conSupabase, FUENTES, LOCAL));
+  const [origen, setOrigen] = useState(conSupabase ? "supabase" : "local"); // "supabase" | "local" | "error"
 
   const recargar = async (...claves) => {
-    if (!supabaseListo) return;
+    if (!conSupabase) return true;
     const lista = claves.length ? claves : Object.keys(FUENTES);
     const resultados = await Promise.all(lista.map((k) => supabase.from(FUENTES[k]).select("*")));
     setDb((d) => {
@@ -137,13 +142,13 @@ export function AppProvider({ children }) {
       });
       return nuevo;
     });
-    return resultados.every((r) => !r.error);
+    const ok = resultados.every((r) => !r.error);
+    // Solo la carga completa decide el origen; una recarga parcial que falla
+    // no debe ocultar un estado sano ni al revés.
+    if (!claves.length) setOrigen(origenDesde(conSupabase, resultados));
+    return ok;
   };
-
-  useEffect(() => {
-    if (!supabaseListo) return;
-    recargar().then((ok) => setOrigen(ok ? "supabase" : "local"));
-  }, []);
+  const reintentarCarga = () => recargar();
 
   // Cierre de acceso: el usuario se deriva de la sesión de Supabase Auth y
   // del padrón de usuarios administrativos. Tener cuenta en el proveedor no
@@ -161,9 +166,15 @@ export function AppProvider({ children }) {
       if (!activo) return;
       if (error || !data || data.estado !== "activo") {
         await supabase.auth.signOut();
+        setDb(dbVacia(FUENTES));
         setUser(null);
         return;
       }
+      // La carga completa va ANTES de publicar el usuario: la interfaz nunca
+      // se pinta autenticada con colecciones vacías. Si algo falla, origen
+      // queda en "error" y el Shell ofrece reintentar.
+      await recargar();
+      if (!activo) return;
       setUser({
         id: data.id, codigo: data.codigo, nombre: data.nombre, rol: data.perfilNombre,
         correo: data.correo, esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
@@ -190,6 +201,7 @@ export function AppProvider({ children }) {
       if (aviso) sessionStorage.setItem("aviso-sesion", aviso);
     } catch { /* modo privado */ }
     if (supabaseListo) await supabase.auth.signOut();
+    if (conSupabase) setDb(dbVacia(FUENTES));
     setUser(null);
   };
 
@@ -935,7 +947,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppCtx.Provider
-      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, ...acciones }}
+      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga, ...acciones }}
     >
       {children}
     </AppCtx.Provider>
