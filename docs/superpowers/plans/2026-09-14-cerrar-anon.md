@@ -78,7 +78,14 @@ const filas = async (r) => { const t = await r.text(); try { const j = JSON.pars
 
 const TABLAS_SENSIBLES = ["personas", "usuarios_admin", "cuentas_portal", "registro_accesos", "auditoria",
   "vinculos", "v_personal", "v_usuarios_admin", "v_registro_accesos", "v_activos", "v_sedes", "v_portal_datos"];
-const RPCS_NEGOCIO = ["importar_padron", "eliminar_trabajador", "crear_usuario_admin", "fn_nivel_modulo", "fn_ver_cuenta_bancaria"];
+// Con los argumentos reales: sin ellos PostgREST responde 404 (no encuentra la
+// sobrecarga) antes de evaluar permisos, y la prueba no mediría nada.
+const RPCS_NEGOCIO = [
+  ["importar_padron", { p_filas: [], p_por: "verificar-cierre-anon" }],
+  ["eliminar_trabajador", { p_dni: "00000000" }],
+  ["fn_ver_cuenta_bancaria", { p_dni: "00000000" }],
+  ["fn_nivel_modulo", { p_modulo: "personal" }],
+];
 const RPCS_LOGIN = [
   ["verificar_bloqueo", { p_correo: "nadie@ejemplo.com" }],
   ["registrar_ingreso", { p_correo: "nadie@ejemplo.com", p_resultado: "fallido", p_dispositivo: "verificar-cierre-anon" }],
@@ -103,9 +110,9 @@ await prueba("anon vía proxy: v_personal no se lee", async () => {
 });
 
 // 2 · RPCs de negocio: sin sesión falla por PERMISO (no por validación).
-for (const fn of RPCS_NEGOCIO) {
+for (const [fn, args] of RPCS_NEGOCIO) {
   await prueba(`anon directo: rpc ${fn} denegada por permiso`, async () => {
-    const r = await anonDirecto(`rest/v1/rpc/${fn}`, { method: "POST", body: "{}" });
+    const r = await anonDirecto(`rest/v1/rpc/${fn}`, { method: "POST", body: JSON.stringify(args) });
     const cuerpo = await r.text();
     enLista(r.status, [401, 403], `status (${cuerpo.slice(0, 120)})`);
     igual(/permission denied|42501|Unauthorized|JWT/i.test(cuerpo), true, `motivo (${cuerpo.slice(0, 120)})`);
@@ -116,7 +123,8 @@ for (const fn of RPCS_NEGOCIO) {
 for (const [fn, args] of RPCS_LOGIN) {
   await prueba(`anon directo: rpc ${fn} sigue abierta`, async () => {
     const r = await anonDirecto(`rest/v1/rpc/${fn}`, { method: "POST", body: JSON.stringify(args) });
-    igual(r.status, 200, `status (${(await r.text()).slice(0, 120)})`);
+    // Las de registro son `returns void` → PostgREST responde 204.
+    enLista(r.status, [200, 204], `status (${(await r.text()).slice(0, 120)})`);
   });
 }
 
