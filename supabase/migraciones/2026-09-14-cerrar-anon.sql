@@ -129,9 +129,13 @@ begin
   end if;
   select count(*) into n from pg_policies where schemaname = 'public' and policyname = 'acceso_demo' and 'anon' = any(roles);
   if n > 0 then raise exception 'cerrar-anon: % políticas acceso_demo siguen incluyendo a anon', n; end if;
+  -- Solo public y los defaults globales: los de storage/graphql son de la
+  -- plataforma Supabase y no se tocan.
   select count(*) into n from pg_default_acl
-   where defaclrole = 'postgres'::regrole and defaclacl::text like '%anon=%';
-  if n > 0 then raise exception 'cerrar-anon: % default ACL de postgres siguen incluyendo a anon (algún esquema)', n; end if;
+   where defaclrole = 'postgres'::regrole
+     and (defaclnamespace = 'public'::regnamespace or defaclnamespace = 0)
+     and defaclacl::text like '%anon=%';
+  if n > 0 then raise exception 'cerrar-anon: % default ACL de postgres (public o global) siguen incluyendo a anon', n; end if;
   select count(*) into n from pg_default_acl
    where defaclnamespace = 'public'::regnamespace and defaclrole = 'postgres'::regrole
      and defaclobjtype = 'f' and defaclacl::text ~ '[{,]=X/';
