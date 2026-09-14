@@ -176,7 +176,7 @@ create or replace function portal_mi_sesion()
 returns text language sql security definer as $$
   select sesion_actual from cuentas_portal where dni = portal_dni()
 $$;
-grant execute on function portal_registrar_sesion(text), portal_mi_sesion() to authenticated, anon;
+grant execute on function portal_registrar_sesion(text), portal_mi_sesion() to authenticated;
 
 -- Modo del trabajador: vigente | solo-lectura (cesado ≤ 12 meses) | expirado.
 create or replace function portal_modo(p_dni text) returns text language sql stable as $$
@@ -221,6 +221,9 @@ end $$;
 -- Únicas RPCs ejecutables sin sesión (login del portal).
 grant execute on function portal_verificar_bloqueo(text) to anon;
 grant execute on function portal_registrar_ingreso(text, text, text) to anon;
+-- Único frente anónimo: fijar search_path (convención 2026-08-24).
+alter function portal_verificar_bloqueo(text) set search_path = public, extensions;
+alter function portal_registrar_ingreso(text, text, text) set search_path = public, extensions;
 
 -- 6 · RPCs con sesión (el dni sale del JWT, jamás de un parámetro) -------------
 -- Desde 2026-08-17 también captura el correo (opcional): con correo

@@ -340,7 +340,7 @@ set search_path = public, extensions as $$
     (coalesce(nullif(current_setting('request.headers', true), ''), '{}')::jsonb ->> p_nombre)
   ), '')
 $$;
-revoke all on function fn_cabecera(text) from anon, authenticated;
+revoke all on function fn_cabecera(text) from public, anon, authenticated;
 
 -- Evidencia de NOTIFICACIÓN (D.Leg. 1310): la puesta a disposición se prueba
 -- con documentos.publicado_en; este log prueba además que se AVISÓ al
@@ -2466,6 +2466,10 @@ end $$;
 revoke all on all tables in schema public from anon;
 revoke all on all sequences in schema public from anon;
 revoke all on all functions in schema public from anon;
+-- El default interno de Postgres da EXECUTE a PUBLIC en cada función creada
+-- arriba; cerrarlo aquí. authenticated/service_role ya tienen grant explícito
+-- por los default privileges de Supabase.
+revoke execute on all functions in schema public from public;
 alter default privileges for role postgres in schema public revoke all on tables from anon;
 alter default privileges for role postgres in schema public revoke all on sequences from anon;
 alter default privileges for role postgres in schema public revoke all on functions from anon;
@@ -2473,6 +2477,7 @@ alter default privileges for role postgres in schema public revoke all on functi
 -- Postgres (los defaults por esquema se FUSIONAN con él): hay que cerrarlo
 -- también. Lo nuevo queda para postgres/authenticated/service_role.
 alter default privileges for role postgres in schema public revoke execute on functions from public;
+alter default privileges for role postgres in schema public grant execute on functions to authenticated, service_role;
 
 do $$
 declare t text;

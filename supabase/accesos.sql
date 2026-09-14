@@ -501,6 +501,9 @@ end $$;
 -- Únicas RPCs ejecutables sin sesión (login del BackOffice).
 grant execute on function verificar_bloqueo(text) to anon;
 grant execute on function registrar_ingreso(text, text, text) to anon;
+-- Único frente anónimo: fijar search_path (convención 2026-08-24).
+alter function verificar_bloqueo(text) set search_path = public, extensions;
+alter function registrar_ingreso(text, text, text) set search_path = public, extensions;
 
 create function marcar_clave_cambiada(p_correo text) returns void
 language plpgsql security definer as $$
@@ -528,7 +531,7 @@ returns text language sql security definer set search_path = public, auth as $$
   join auth.users au on au.email = u.correo
   where au.id = auth.uid()
 $$;
-grant execute on function registrar_sesion_backoffice(text), mi_sesion_backoffice() to authenticated, anon;
+grant execute on function registrar_sesion_backoffice(text), mi_sesion_backoffice() to authenticated;
 
 -- Task 12: helper para políticas RLS que necesitan saber si el JWT actual
 -- pertenece a un usuario del BackOffice activo (p. ej. storage.objects del

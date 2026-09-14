@@ -3,12 +3,20 @@
 -- docs/superpowers/specs/2026-09-14-cerrar-anon-design.md). Idempotente.
 -- Desplegar DESPUÉS del frontend que carga datos tras la sesión.
 --
--- Rollback (solo si hace falta volver al estado de demostración):
+-- Rollback (solo para volver al estado de demostración; NUNCA reabrir las
+-- funciones de cifrado):
 --   grant select on all tables in schema public to anon;
 --   grant execute on all functions in schema public to anon;
+--   revoke all on function fn_clave_cuentas(), fn_cifrar_cuenta(text),
+--     fn_descifrar_cuenta(bytea), fn_cabecera(text) from public, anon, authenticated;
+--   alter default privileges for role postgres in schema public grant all on tables to anon;
+--   alter default privileges for role postgres in schema public grant all on sequences to anon;
+--   alter default privileges for role postgres in schema public grant all on functions to anon;
 --   y recrear acceso_demo con "to anon, authenticated".
 
 begin;
+
+set local search_path = public, extensions;
 
 -- 1 · Revocar a anon todo lo existente (tablas y vistas, secuencias, funciones).
 revoke all on all tables in schema public from anon;
@@ -30,6 +38,10 @@ begin
   end loop;
 end $$;
 
+-- fn_cabecera: las cabeceras son evidencia, no entrada del usuario (2026-08-26);
+-- el bucle 1b la habría reabierto a authenticated por venir de PUBLIC.
+revoke all on function fn_cabecera(text) from public, anon, authenticated;
+
 -- 2 · Privilegios por defecto: lo nuevo nace cerrado para anon.
 alter default privileges for role postgres in schema public revoke all on tables from anon;
 alter default privileges for role postgres in schema public revoke all on sequences from anon;
@@ -38,6 +50,7 @@ alter default privileges for role postgres in schema public revoke all on functi
 -- Postgres (los defaults por esquema se FUSIONAN con él): hay que cerrarlo
 -- también. Lo nuevo queda para postgres/authenticated/service_role.
 alter default privileges for role postgres in schema public revoke execute on functions from public;
+alter default privileges for role postgres in schema public grant execute on functions to authenticated, service_role;
 do $$
 begin
   -- supabase_admin también tiene default ACL; postgres no siempre puede tocarla.
@@ -95,6 +108,12 @@ grant execute on function registrar_ingreso(text, text, text) to anon;
 grant execute on function portal_verificar_bloqueo(text) to anon;
 grant execute on function portal_registrar_ingreso(text, text, text) to anon;
 
+-- Único frente anónimo: fijar search_path (convención 2026-08-24).
+alter function verificar_bloqueo(text) set search_path = public, extensions;
+alter function registrar_ingreso(text, text, text) set search_path = public, extensions;
+alter function portal_verificar_bloqueo(text) set search_path = public, extensions;
+alter function portal_registrar_ingreso(text, text, text) set search_path = public, extensions;
+
 -- 6 · Verificación embebida: si algo quedó abierto, la migración no se aplica.
 do $$
 declare n int; lista text;
@@ -111,9 +130,12 @@ begin
   select count(*) into n from pg_policies where schemaname = 'public' and policyname = 'acceso_demo' and 'anon' = any(roles);
   if n > 0 then raise exception 'cerrar-anon: % políticas acceso_demo siguen incluyendo a anon', n; end if;
   select count(*) into n from pg_default_acl
+   where defaclrole = 'postgres'::regrole and defaclacl::text like '%anon=%';
+  if n > 0 then raise exception 'cerrar-anon: % default ACL de postgres siguen incluyendo a anon (algún esquema)', n; end if;
+  select count(*) into n from pg_default_acl
    where defaclnamespace = 'public'::regnamespace and defaclrole = 'postgres'::regrole
-     and (defaclacl::text like '%anon=%' or (defaclobjtype = 'f' and defaclacl::text ~ '[{,]=X/'));
-  if n > 0 then raise exception 'cerrar-anon: los privilegios por defecto de postgres siguen abiertos a anon o PUBLIC en funciones'; end if;
+     and defaclobjtype = 'f' and defaclacl::text ~ '[{,]=X/';
+  if n > 0 then raise exception 'cerrar-anon: los privilegios por defecto de postgres en functions siguen abiertos a PUBLIC'; end if;
 end $$;
 
 commit;
