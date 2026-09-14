@@ -96,13 +96,13 @@ if (!DNI) { mal("dni de prueba", "no se encontró un DNI libre"); process.exit(1
 
 const [sede] = await sql(`select s.id, s.empresa_id from sedes s
   join empresas e on e.id = s.empresa_id where e.estado = 'activa' limit 1`);
-const alta = await fetch(`${APP}/api/supa/rest/v1/rpc/alta_trabajador?apikey=${APIKEY}`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json", authorization: `Bearer ${admin.access_token}` },
-  body: JSON.stringify({ p_dni: DNI, p_nombre: `ZZPRUEBA MASA ${DNI}`, p_cargo: "Operario de limpieza",
-    p_sede: sede.id, p_empresa: sede.empresa_id, p_ingreso: "2026-08-01" }),
-});
-alta.ok ? ok(`persona de prueba ${DNI} en ${sede.empresa_id}`) : mal("alta_trabajador", await alta.text());
+// alta_trabajador es un RPC de negocio: desde el cierre del anon (2026-09-14)
+// PostgREST ya no lo ejecuta sin sesión, y /api/supa descarta la cabecera
+// authorization cruda (solo traduce x-sesion) — se llama por SQL directo
+// (Management API, rol postgres) igual que en verificar-sedes.mjs.
+const alta = await sql(`select alta_trabajador('${DNI}', 'ZZPRUEBA MASA ${DNI}', 'Operario de limpieza',
+  '${sede.id}', '${sede.empresa_id}', '2026-08-01')`);
+Array.isArray(alta) ? ok(`persona de prueba ${DNI} en ${sede.empresa_id}`) : mal("alta_trabajador", JSON.stringify(alta));
 
 console.log("1 · crear-lote sin correo → clave aleatoria de 6 dígitos");
 const lote = await endpoint({ accion: "crear-lote", dnis: [DNI] });

@@ -9,7 +9,6 @@
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-solicitud-pdf.mjs
 const APP = "https://intranet-general.vercel.app";
 const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const APIKEY = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
 const { ADMIN_EMAIL, ADMIN_CLAVE, SUPABASE_ACCESS_TOKEN } = process.env;
 if (!SUPABASE_ACCESS_TOKEN) { console.error("Falta SUPABASE_ACCESS_TOKEN."); process.exit(1); }
 
@@ -94,13 +93,13 @@ for (let i = 0; i < 5 && !DNI; i++) {
 if (!DNI) { mal("dni de prueba", "no se encontró un DNI libre"); process.exit(1); }
 const [sede] = await sql(`select s.id, s.empresa_id from sedes s
   join empresas e on e.id = s.empresa_id where e.estado = 'activa' limit 1`);
-const alta = await fetch(`${APP}/api/supa/rest/v1/rpc/alta_trabajador?apikey=${APIKEY}`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json", authorization: `Bearer ${admin.access_token}` },
-  body: JSON.stringify({ p_dni: DNI, p_nombre: `ZZPRUEBA PDF ${DNI}`, p_cargo: "Operario de limpieza",
-    p_sede: sede.id, p_empresa: sede.empresa_id, p_ingreso: "2026-08-01" }),
-});
-alta.ok ? ok(`trabajador de prueba ${DNI} en ${sede.empresa_id}`) : mal("alta_trabajador", await alta.text());
+// alta_trabajador es un RPC de negocio: desde el cierre del anon (2026-09-14)
+// PostgREST ya no lo ejecuta sin sesión, y /api/supa descarta la cabecera
+// authorization cruda (solo traduce x-sesion) — se llama por SQL directo
+// (Management API, rol postgres) igual que en verificar-sedes.mjs.
+const alta = await sql(`select alta_trabajador('${DNI}', 'ZZPRUEBA PDF ${DNI}', 'Operario de limpieza',
+  '${sede.id}', '${sede.empresa_id}', '2026-08-01')`);
+Array.isArray(alta) ? ok(`trabajador de prueba ${DNI} en ${sede.empresa_id}`) : mal("alta_trabajador", JSON.stringify(alta));
 
 const VAC = { tipo_goce: "Efectivas / Gozadas", desde: "2026-12-01", hasta: "2026-12-07",
   dias_gozados: 7, periodo: "ZZPRUEBA 2025-2026" };
