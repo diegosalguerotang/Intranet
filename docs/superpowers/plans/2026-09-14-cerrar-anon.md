@@ -195,7 +195,9 @@ process.exit(fallos ? 1 : 0);
 - [ ] **Step 2: Correrla y confirmar que falla (BD aún abierta)**
 
 Run (PowerShell): `. .\scripts\token-supabase.ps1; node scripts/verificar-cierre-anon.mjs`
-Expected: exit 1. Deben fallar al menos las 12 de tablas (status 200), las 5 de RPC de negocio, la de «rol anon → 0» y las 4 de catálogo. Deben pasar las 4 de login y «Management API → 99».
+Expected: exit 1. Deben fallar al menos las 12 de tablas (status 200), las 4 de RPC de negocio, la de «rol anon → 0» y las 4 de catálogo. Deben pasar las 4 de login y «Management API → 99».
+
+**Efecto acotado aceptado por Diego (2026-09-14):** mientras la BD siga abierta, cada corrida en rojo deja 2 filas en `auditoria` (IMPORTAR_PADRON con 0 filas y VER_CUENTA_BANCARIA del DNI 00000000, firmadas «verificar-cierre-anon») e intenta borrar al DNI 00000000, que no existe. Es la evidencia de la brecha; tras la migración la suite no escribe nada.
 
 - [ ] **Step 3: Commit (lo hace el controlador)**
 
