@@ -73,12 +73,23 @@ personas ──< tardanzas (importación idempotente por dni+periodo)
 
 ## Seguridad — estado actual y siguiente paso
 
-RLS está **habilitado en todas las tablas** con una política permisiva de
-demostración (`acceso_demo`). Cuando entre Supabase Auth:
+**Fase 1 (2026-09-14, aplicada): el rol `anon` está cerrado.** Sin JWT no se
+lee ninguna tabla ni vista de `public`, no se ejecuta ninguna función salvo
+las 4 RPCs de login (`verificar_bloqueo`, `registrar_ingreso`,
+`portal_verificar_bloqueo`, `portal_registrar_ingreso`), y los privilegios por
+defecto del esquema ya no incluyen a `anon`, así que lo nuevo nace cerrado.
+`fn_nivel_modulo` devuelve 0 sin JWT, salvo cuando el rol de sesión es
+`postgres` o `service_role` (Management API, funciones serverless), donde
+sigue siendo 99. El BackOffice carga datos solo tras resolver el usuario y en
+producción nunca muestra datos de demostración. Suite:
+`scripts/verificar-cierre-anon.mjs`; radiografía: `scripts/diagnostico-permisos.mjs`.
+
+RLS está habilitado en las tablas con la política permisiva `acceso_demo`,
+ahora **solo para `authenticated`**. Siguiente paso (fase 2):
 
 1. Reemplazar `acceso_demo` por políticas por rol (Trabajador: solo sus filas
    vía `persona_dni = auth.jwt() ->> 'dni'`; Analista: empresas asignadas;
-   Auditor: solo lectura).
+   Auditor: solo lectura) y vistas `security_invoker`.
 2. El alcance se evalúa **en cada consulta**, no en la interfaz — tal como
    exige el documento de arquitectura ("ocultar un botón no es un control de
    acceso").
