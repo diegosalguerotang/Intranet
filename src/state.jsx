@@ -156,14 +156,25 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (MODO_DEMO || !supabaseListo) return;
     let activo = true;
+    // Guardas de concurrencia (revisión 2026-09-14): getSession() y
+    // onAuthStateChange (INITIAL_SESSION/SIGNED_IN) invocan resolver con la
+    // misma sesión al arrancar; sin esto la carga completa se dispara dos
+    // veces y gana la que termine última. Misma sesión en curso → no-op;
+    // sesión más nueva → la vieja no publica nada.
+    let generacion = 0;
+    let tokenEnCurso = null;
     const resolver = async (session) => {
+      const token = session?.access_token ?? null;
+      if (token && token === tokenEnCurso) return;
+      tokenEnCurso = token;
+      const mia = ++generacion;
       const email = session?.user?.email;
       if (!email) { if (activo) setUser(null); return; }
       const [{ data, error }, { data: acc }] = await Promise.all([
         supabase.from("v_usuarios_admin").select("*").eq("correo", email).maybeSingle(),
         supabase.from("v_mi_acceso").select("*").eq("correo", email).maybeSingle(),
       ]);
-      if (!activo) return;
+      if (!activo || mia !== generacion) return;
       if (error || !data || data.estado !== "activo") {
         await supabase.auth.signOut();
         setDb(dbVacia(FUENTES));
@@ -174,7 +185,7 @@ export function AppProvider({ children }) {
       // se pinta autenticada con colecciones vacías. Si algo falla, origen
       // queda en "error" y el Shell ofrece reintentar.
       await recargar();
-      if (!activo) return;
+      if (!activo || mia !== generacion) return;
       setUser({
         id: data.id, codigo: data.codigo, nombre: data.nombre, rol: data.perfilNombre,
         correo: data.correo, esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
