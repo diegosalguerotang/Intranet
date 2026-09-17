@@ -13,3 +13,6 @@ portal/.env.local
 # Fixture con datos personales reales (cuentas bancarias): NUNCA al repo.
 # La suite planilla-unificada se salta sola si falta (describe.skipIf).
 tests/fixtures/OFICINA_JUL_2026_UNIFICADO.xlsx
+
+# Postgres local embebido para ensayar migraciones (scripts/pg-local.mjs)
+.pg-local

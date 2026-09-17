@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, CheckCircle2 } from "lucide-react";
-import { vista, rpc } from "../lib/api";
+import { vista, rpc, tokenSesion } from "../lib/api";
 import { usePortal } from "../state";
 import { Tarjeta, Boton, Nota, Etiqueta, Cargando, Vacio } from "../components/ui";
 
@@ -66,7 +66,7 @@ export default function Solicitudes() {
             onEnviar={async (datos) => {
               const { error } = await rpc("reenviar_solicitud", { p_id: corrigiendo.id, p_datos: datos });
               if (error) throw new Error(error.message);
-              fetch("/api/enviar-correo", { method: "POST", headers: { "Content-Type": "application/json" },
+              fetch("/api/enviar-correo", { method: "POST", headers: { "Content-Type": "application/json", "x-sesion": tokenSesion() ?? "" },
                 body: JSON.stringify({ accion: "aviso-solicitud", numero: corrigiendo.numero, evento: "estado" }) }).catch(() => {});
               setCorrigiendo(null);
               cargar();
@@ -84,7 +84,7 @@ export default function Solicitudes() {
             onEnviar={async (datos) => {
               const { data, error } = await rpc("portal_crear_solicitud", { p_tipo: "vacaciones", p_datos: datos });
               if (error) throw new Error(error.message);
-              fetch("/api/enviar-correo", { method: "POST", headers: { "Content-Type": "application/json" },
+              fetch("/api/enviar-correo", { method: "POST", headers: { "Content-Type": "application/json", "x-sesion": tokenSesion() ?? "" },
                 body: JSON.stringify({ accion: "aviso-solicitud", numero: data, evento: "creada" }) }).catch(() => {});
               setCreando(false);
               setCreada(data);

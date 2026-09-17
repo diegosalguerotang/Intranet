@@ -191,6 +191,7 @@ create table vinculos (
   fecha_inicio date not null,
   fecha_fin    date check (fecha_fin is null or fecha_fin >= fecha_inicio),
   centro_costo text,
+  contrato     text,   -- tipo de contrato del archivo (migración 2026-08-22)
   -- Área del archivo de padrón (2026-08-31): se guarda por herencia y JAMÁS
   -- agrupa ni filtra; la agrupación oficial es centro_costo (catálogo).
   area_heredada text,
@@ -518,6 +519,9 @@ create table if not exists feriados (
   fecha  date primary key,
   nombre text not null
 );
+-- Lectura del calendario (canónico de migraciones/2026-08-31-recalculo-reactivo.sql).
+create or replace view v_feriados as
+select to_char(fecha, 'YYYY-MM-DD') as fecha, nombre from feriados order by fecha;
 insert into feriados (fecha, nombre) values
   ('2026-01-01', 'Año Nuevo'),
   ('2026-04-02', 'Jueves Santo'),

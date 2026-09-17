@@ -195,10 +195,15 @@ export function FormVacaciones({ inicial = {}, onEnviar, ocupado, textoEnviar = 
 
 // Aviso por correo del Centro de Solicitudes. Fire-and-forget: el fallo de
 // correo jamás bloquea el registro (queda visible en la pantalla que llama).
-export function avisarSolicitud(numero, evento) {
-  return fetch("/api/enviar-correo", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accion: "aviso-solicitud", numero, evento }),
-  }).then((r) => r.ok).catch(() => false);
+// Desde la fase 0 de seguridad el endpoint exige la sesión (x-sesion).
+export async function avisarSolicitud(numero, evento) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const r = await fetch("/api/enviar-correo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sesion": data?.session?.access_token ?? "" },
+      body: JSON.stringify({ accion: "aviso-solicitud", numero, evento }),
+    });
+    return r.ok;
+  } catch { return false; }
 }

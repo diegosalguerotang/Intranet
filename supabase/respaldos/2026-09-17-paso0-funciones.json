@@ -1,0 +1,2010 @@
+[
+  {
+    "nombre": "actualizar_ticket",
+    "args": "p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "actualizar_usuario_admin",
+    "args": "p_id bigint, p_perfil text, p_correo text, p_celular text, p_estado text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "alta_trabajador",
+    "args": "p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text, p_ingreso date, p_celular text, p_banco text, p_cuenta text, p_correo text, p_cci text, p_tipo_documento text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_cifrar_cuenta",
+      "fn_resolver_banco",
+      "fn_validar_documento"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "alternar_ticket_subtipo",
+    "args": "p_id integer, p_activo boolean",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "alternar_ticket_tipo",
+    "args": "p_id integer, p_activo boolean",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "asignar_activo",
+    "args": "p_codigo text, p_dni text, p_condicion text, p_antivirus boolean, p_comentario text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "asignar_activo",
+    "args": "p_codigo text, p_dni text, p_condicion text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "asignar_rit_sede",
+    "args": "p_sede text, p_rit text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_activo",
+    "args": "p_codigo text, p_categoria text, p_empresa text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_imei text, p_valor numeric, p_compra date, p_observaciones text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_rit",
+    "args": "p_nombre text, p_archivo text, p_hash text, p_vigente date",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_sede",
+    "args": "p_empresa text, p_nombre text, p_cliente text, p_direccion text, p_por text, p_rit text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_solicitud_admin",
+    "args": "p_dni text, p_tipo text, p_datos jsonb, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_solicitud_insertar"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_solicitud_propia",
+    "args": "p_tipo text, p_datos jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_persona_llamador"
+    ],
+    "llama": [
+      "fn_persona_llamador",
+      "fn_solicitud_insertar"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_ticket_admin",
+    "args": "p_dni text, p_tipo integer, p_subtipo integer, p_comentario text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_ticket_insertar"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "crear_usuario_admin",
+    "args": "p_dni text, p_perfil text, p_correo text, p_celular text, p_clave text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "decidir_propuesta_perfil",
+    "args": "p_id bigint, p_decision text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "desactivar_perfil",
+    "args": "p_id text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "devolver_activo",
+    "args": "p_codigo text, p_destino text, p_condicion text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "editar_activo",
+    "args": "p_codigo text, p_nuevo_codigo text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_area text, p_asignado_sin_confirmar text, p_observaciones text, p_por text, p_ip text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "editar_trabajador",
+    "args": "p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text, p_cci text, p_tipo_documento text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_cifrar_cuenta",
+      "fn_nivel_modulo",
+      "fn_resolver_banco",
+      "fn_validar_documento"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_feriado",
+    "args": "p_fecha date, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_recalcular_mes_feriado"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_perfil",
+    "args": "p_id text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_sede",
+    "args": "p_sede text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_solicitud_aviso",
+    "args": "p_id bigint",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_ticket_aviso",
+    "args": "p_correo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_trabajador",
+    "args": "p_dni text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "eliminar_usuario_admin",
+    "args": "p_id bigint",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "api"
+    ]
+  },
+  {
+    "nombre": "emitir_memorandum",
+    "args": "p_dni text, p_tipo_sancion text, p_falta_id bigint, p_motivo text, p_suspension_dias integer, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_memorandums"
+    ],
+    "llama": [
+      "fn_nivel_memorandums"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "es_admin_activo",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_uid"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fijar_correo_persona",
+    "args": "p_dni text, p_correo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "fijar_hora_entrada",
+    "args": "p_dni text, p_hora time without time zone, p_desde date, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "fn_auditar",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_bloquear_cambios",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_cabecera",
+    "args": "p_nombre text",
+    "definer": false,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": false,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "current_setting"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_cifrar_cuenta",
+    "args": "p_texto text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": false,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_clave_cuentas"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_clave_cuentas",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": false,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_descifrar_cuenta",
+    "args": "p_cifrado bytea",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": false,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_clave_cuentas"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_es_prefijo_truncado",
+    "args": "p_nuevo text, p_actual text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_hora_entrada",
+    "args": "p_dni text, p_fecha date",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_min_hhmm",
+    "args": "t text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_movimientos_solo_insertar",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_nivel_memorandums",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_nivel_modulo",
+    "args": "p_modulo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt",
+      "jwt_claims",
+      "current_setting"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_perfil_nombre_unico",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_perfil_para_cargo",
+    "args": "p_cargo text",
+    "definer": false,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_persona_llamador",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_proteger_ultimo_superadmin",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_recalcular_control",
+    "args": "p_documento text, p_desde date, p_hasta date, p_motivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_hora_entrada",
+      "fn_min_hhmm"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_recalcular_mes_feriado",
+    "args": "p_fecha date, p_motivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_recalcular_control"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_registro_solo_desvincular",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_resolver_banco",
+    "args": "p_texto text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_sede_para_importacion",
+    "args": "p_empresa text, p_sede text, p_cliente text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solicitud_eventos_inmutables",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solicitud_insertar",
+    "args": "p_dni text, p_tipo text, p_datos jsonb, p_por text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_persona_llamador"
+    ],
+    "llama": [
+      "fn_persona_llamador",
+      "fn_solicitud_numero",
+      "fn_solicitud_validar"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solicitud_numero",
+    "args": "p_tipo text, p_empresa text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solicitud_recalcula_asistencia",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_recalcular_control"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solicitud_validar",
+    "args": "p_tipo text, p_datos jsonb",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_solo_empresa_activa",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_sumar_dias",
+    "args": "p_desde date, p_dias integer, p_habiles boolean",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_superadmin_sin_matriz",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": true,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_ticket_insertar",
+    "args": "p_dni text, p_tipo integer, p_subtipo integer, p_comentario text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_ticket_numero"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_ticket_numero",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_validar_documento",
+    "args": "p_tipo text, p_numero text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_valor_importado",
+    "args": "p_nuevo text, p_actual text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_es_prefijo_truncado"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "fn_ver_cuenta_bancaria",
+    "args": "p_dni text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt"
+    ],
+    "llama": [
+      "fn_descifrar_cuenta"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_cargo_perfil",
+    "args": "p_cargo text, p_destino text, p_perfil text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_clave_equipo",
+    "args": "p_codigo text, p_clave text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_feriado",
+    "args": "p_fecha date, p_nombre text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_recalcular_mes_feriado"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_perfil",
+    "args": "p_id text, p_nombre text, p_descripcion text, p_superadmin boolean, p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean, p_matriz jsonb, p_empresas text[], p_por text, p_ver_bancarios boolean",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_politica",
+    "args": "p_backoffice_horas integer, p_portal_dias integer, p_multisesion_backoffice boolean, p_multisesion_portal boolean, p_intentos integer, p_bloqueo_min integer, p_recuperacion text, p_clave_min_portal integer, p_clave_min_backoffice integer, p_provisional_dias integer, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_solicitud_aviso",
+    "args": "p_tipo text, p_correo text, p_copia boolean, p_activo boolean",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_ticket_aviso",
+    "args": "p_correo text, p_activo boolean",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_ticket_subtipo",
+    "args": "p_id integer, p_tipo integer, p_nombre text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "guardar_ticket_tipo",
+    "args": "p_id integer, p_nombre text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "importar_activos",
+    "args": "p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_valor_importado"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "importar_asistencia",
+    "args": "p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "importar_control",
+    "args": "p_registros jsonb, p_trabajadores jsonb, p_archivo text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt",
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_hora_entrada",
+      "fn_nivel_modulo",
+      "fn_recalcular_control"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "importar_padron",
+    "args": "p_filas jsonb, p_por text, p_ceses jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt",
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_es_prefijo_truncado",
+      "fn_nivel_modulo",
+      "fn_perfil_para_cargo",
+      "fn_sede_para_importacion"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "importar_planilla",
+    "args": "p_empresa text, p_filas jsonb, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_es_prefijo_truncado",
+      "fn_sede_para_importacion"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "importar_planilla_unificada",
+    "args": "p_filas jsonb, p_periodo text, p_por text, p_ceses jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt"
+    ],
+    "llama": [
+      "fn_cifrar_cuenta",
+      "fn_descifrar_cuenta",
+      "fn_es_prefijo_truncado",
+      "fn_sede_para_importacion"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "marcar_clave_cambiada",
+    "args": "p_correo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "mi_sesion_backoffice",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_uid"
+    ],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "notificar_memorandum",
+    "args": "p_id text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_sumar_dias"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "portal_actualizar_datos",
+    "args": "p_celular text, p_direccion text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "portal_dni",
+      "portal_modo"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_confirmar_lectura",
+    "args": "p_comunicado_id bigint, p_dispositivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_cabecera",
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_cabecera",
+      "portal_dni",
+      "portal_modo"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_confirmar_recepcion",
+    "args": "p_documento_id bigint, p_dispositivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_cabecera",
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_cabecera",
+      "portal_dni",
+      "portal_modo"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_crear_solicitud",
+    "args": "p_tipo text, p_datos jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_solicitud_insertar",
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_crear_ticket",
+    "args": "p_tipo integer, p_subtipo integer, p_comentario text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_ticket_insertar",
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_dni",
+    "args": "",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_jwt"
+    ],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "portal_marcar_visto",
+    "args": "p_comunicado_id bigint",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_mi_sesion",
+    "args": "",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_modo",
+    "args": "p_dni text",
+    "definer": false,
+    "search_path_fijo": false,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "portal_primer_ingreso",
+    "args": "p_celular text, p_sin_celular boolean, p_politica_version integer, p_correo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_cabecera",
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_cabecera",
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_registrar_ingreso",
+    "args": "p_dni text, p_resultado text, p_dispositivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": true,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_registrar_sesion",
+    "args": "p_marker text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "portal_dni"
+    ],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "portal_solicitar_cambio_cuenta",
+    "args": "p_motivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "portal_dni"
+    ],
+    "llama": [
+      "portal_dni",
+      "portal_modo"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "portal_verificar_bloqueo",
+    "args": "p_dni text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": true,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "portal"
+    ]
+  },
+  {
+    "nombre": "previsualizar_asistencia",
+    "args": "p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "importar_asistencia"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "previsualizar_control",
+    "args": "p_registros jsonb, p_trabajadores jsonb, p_archivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "importar_control"
+    ],
+    "llama": [
+      "importar_control"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "previsualizar_importacion",
+    "args": "p_empresa text, p_filas jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "importar_planilla"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "previsualizar_importacion_activos",
+    "args": "p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "importar_activos"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "previsualizar_padron",
+    "args": "p_filas jsonb, p_ceses jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "importar_padron"
+    ],
+    "llama": [
+      "importar_padron"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "previsualizar_planilla_unificada",
+    "args": "p_filas jsonb, p_periodo text, p_ceses jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "importar_planilla_unificada"
+    ],
+    "llama": [
+      "importar_planilla_unificada"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "publicar_comunicado",
+    "args": "p_titulo text, p_cuerpo text, p_vence date, p_exige boolean, p_segmento text, p_alcance integer, p_empresa text, p_sede text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "publicar_lote",
+    "args": "p_empresa text, p_tipo text, p_periodo text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "publicar_lote_pdf",
+    "args": "p_empresa text, p_tipo text, p_periodo text, p_por text, p_boletas jsonb",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [
+      "fn_es_prefijo_truncado"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "publicar_rit",
+    "args": "p_archivo_url text, p_hash text, p_titulo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": []
+  },
+  {
+    "nombre": "puede",
+    "args": "p_usuario bigint, p_modulo text, p_nivel integer, p_empresa text, p_sede text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": []
+  },
+  {
+    "nombre": "reactivar_usuario_admin",
+    "args": "p_id bigint",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "reenviar_clave",
+    "args": "p_id bigint, p_clave text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "reenviar_solicitud",
+    "args": "p_id bigint, p_datos jsonb, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador",
+      "portal_dni"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador",
+      "fn_solicitud_validar",
+      "portal_dni"
+    ],
+    "usada_por": [
+      "backoffice",
+      "portal"
+    ]
+  },
+  {
+    "nombre": "registrar_acuse_asistido",
+    "args": "p_dni text, p_lote text, p_motivo text, p_entrega timestamp with time zone, p_adjunto text, p_dispositivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_cabecera",
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "llama": [
+      "fn_cabecera",
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "registrar_epp",
+    "args": "p_dni text, p_items text, p_entrega date, p_reposicion date",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "registrar_ingreso",
+    "args": "p_correo text, p_resultado text, p_dispositivo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": true,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "registrar_sesion_backoffice",
+    "args": "p_marker text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "auth_uid"
+    ],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "resolver_memorandum",
+    "args": "p_id text, p_decision text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "resolver_solicitud",
+    "args": "p_id bigint, p_decision text, p_comentario text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "llama": [
+      "fn_nivel_modulo",
+      "fn_persona_llamador"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "suspender_usuario_admin",
+    "args": "p_id bigint",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "ver_clave_equipo",
+    "args": "p_codigo text, p_por text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": false,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": true,
+    "guarda_via": [
+      "fn_nivel_modulo"
+    ],
+    "llama": [
+      "fn_nivel_modulo"
+    ],
+    "usada_por": [
+      "backoffice"
+    ]
+  },
+  {
+    "nombre": "verificar_bloqueo",
+    "args": "p_correo text",
+    "definer": true,
+    "search_path_fijo": true,
+    "anon": true,
+    "authenticated": true,
+    "es_trigger": false,
+    "guarda": false,
+    "guarda_via": [],
+    "llama": [],
+    "usada_por": [
+      "backoffice"
+    ]
+  }
+]

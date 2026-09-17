@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { LifeBuoy, CheckCircle2 } from "lucide-react";
-import { vista, rpc } from "../lib/api";
+import { vista, rpc, tokenSesion } from "../lib/api";
 import { Tarjeta, Boton, Nota, Etiqueta, Cargando, Vacio } from "../components/ui";
 
 const ESTADOS = {
@@ -56,7 +56,7 @@ export default function Soporte() {
     // Aviso al equipo de TI: fire-and-forget (sin proveedor de correo no falla el ticket).
     fetch("/api/enviar-correo", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-sesion": tokenSesion() ?? "" },
       body: JSON.stringify({ accion: "aviso-ticket", numero: data }),
     }).catch(() => {});
     setCreado(data);

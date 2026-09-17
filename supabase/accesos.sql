@@ -556,6 +556,17 @@ $$;
 revoke all on function es_admin_activo() from public;
 grant execute on function es_admin_activo() to authenticated;
 
+-- documentos: la ÚNICA política real de la base (canónico de
+-- migraciones/2026-08-16-privacidad-documentos.sql): solo un administrador
+-- activo toca la tabla directo; el Portal la lee por vistas/RPC.
+alter table documentos enable row level security;
+drop policy if exists acceso_demo on documentos;
+drop policy if exists documentos_admin on documentos;
+create policy documentos_admin on documentos
+  for all to authenticated
+  using (public.es_admin_activo())
+  with check (public.es_admin_activo());
+
 -- LA regla de evaluación (una sola, aplica en todas partes). Queda lista para
 -- conectarse a Supabase Auth + RLS; el alcance debe aplicarse como filtro de
 -- fila (resultado vacío), no como error de permiso.

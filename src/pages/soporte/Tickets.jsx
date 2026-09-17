@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { TicketPlus } from "lucide-react";
 import { useApp } from "../../state";
+import { supabase } from "../../lib/supabase";
 import { nivelDe } from "../../data/modulos";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Input, Select, Field, Modal, Note, Textarea, EmptyState,
@@ -15,12 +16,16 @@ const ESTADOS = {
 
 // Dispara el aviso por correo a los configurados en SOP-02. Fire-and-forget:
 // un fallo de correo no es un fallo del ticket (puede no haber proveedor aún).
-export function avisarTicket(numero) {
-  fetch("/api/enviar-correo", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accion: "aviso-ticket", numero }),
-  }).catch(() => {});
+// Desde la fase 0 de seguridad el endpoint exige la sesión (x-sesion).
+export async function avisarTicket(numero) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    await fetch("/api/enviar-correo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sesion": data?.session?.access_token ?? "" },
+      body: JSON.stringify({ accion: "aviso-ticket", numero }),
+    });
+  } catch { /* fire-and-forget */ }
 }
 
 // SOP-01 — Tickets de soporte (incidencias TI). Las solicitudes formales con

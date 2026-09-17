@@ -6,7 +6,12 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > **Orden de aplicación en un reset:** primero `schema.sql` (esquema base) y
 > después `accesos.sql` (módulo de Accesos y Roles). El segundo depende de
 > `personas`, `empresas`, `sedes`, `vinculos`, `fn_bloquear_cambios` y
-> `fn_auditar`.
+> `fn_auditar`. Siguen `portal.sql`, `solicitudes.sql`, `soporte.sql`, las
+> migraciones cuyo canónico es la propia migración (lista en
+> `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (permisos de la fase 0
+> de la corrección de seguridad, 2026-09-17). `node scripts/pg-local.mjs`
+> reproduce ese orden en un Postgres local y lo compara con la foto de
+> producción; `scripts/ensayar-fase0.mjs` ensaya la migración y su reversión.
 
 ## Principios (no negociables)
 

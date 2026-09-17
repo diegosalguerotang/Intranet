@@ -1,0 +1,4929 @@
+{
+  "fecha": "2026-09-17T16:45:17.781Z",
+  "proyecto": "mzpbdkrmokfxrrsotfgs",
+  "funciones": [
+    {
+      "oid": 18767,
+      "nombre": "actualizar_ticket",
+      "args": "p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18231,
+      "nombre": "actualizar_usuario_admin",
+      "args": "p_id bigint, p_perfil text, p_correo text, p_celular text, p_estado text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18947,
+      "nombre": "alta_trabajador",
+      "args": "p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text, p_ingreso date, p_celular text, p_banco text, p_cuenta text, p_correo text, p_cci text, p_tipo_documento text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cifrar_cuenta",
+        "fn_resolver_banco",
+        "fn_validar_documento"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18771,
+      "nombre": "alternar_ticket_subtipo",
+      "args": "p_id integer, p_activo boolean",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18770,
+      "nombre": "alternar_ticket_tipo",
+      "args": "p_id integer, p_activo boolean",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18689,
+      "nombre": "asignar_activo",
+      "args": "p_codigo text, p_dni text, p_condicion text, p_antivirus boolean, p_comentario text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17883,
+      "nombre": "asignar_activo",
+      "args": "p_codigo text, p_dni text, p_condicion text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18976,
+      "nombre": "asignar_rit_sede",
+      "args": "p_sede text, p_rit text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19369,
+      "nombre": "crear_activo",
+      "args": "p_codigo text, p_categoria text, p_empresa text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_imei text, p_valor numeric, p_compra date, p_observaciones text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18975,
+      "nombre": "crear_rit",
+      "args": "p_nombre text, p_archivo text, p_hash text, p_vigente date",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18977,
+      "nombre": "crear_sede",
+      "args": "p_empresa text, p_nombre text, p_cliente text, p_direccion text, p_por text, p_rit text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18908,
+      "nombre": "crear_solicitud_admin",
+      "args": "p_dni text, p_tipo text, p_datos jsonb, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_solicitud_insertar"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18993,
+      "nombre": "crear_solicitud_propia",
+      "args": "p_tipo text, p_datos jsonb",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_persona_llamador",
+        "fn_solicitud_insertar"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_persona_llamador"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18766,
+      "nombre": "crear_ticket_admin",
+      "args": "p_dni text, p_tipo integer, p_subtipo integer, p_comentario text, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_ticket_insertar"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18230,
+      "nombre": "crear_usuario_admin",
+      "args": "p_dni text, p_perfil text, p_correo text, p_celular text, p_clave text, p_por text",
+      "kind": "f",
+      "retorna": "bigint",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19532,
+      "nombre": "decidir_propuesta_perfil",
+      "args": "p_id bigint, p_decision text, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18052,
+      "nombre": "desactivar_perfil",
+      "args": "p_id text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17884,
+      "nombre": "devolver_activo",
+      "args": "p_codigo text, p_destino text, p_condicion text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18690,
+      "nombre": "editar_activo",
+      "args": "p_codigo text, p_nuevo_codigo text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_area text, p_asignado_sin_confirmar text, p_observaciones text, p_por text, p_ip text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18948,
+      "nombre": "editar_trabajador",
+      "args": "p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text, p_cci text, p_tipo_documento text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cifrar_cuenta",
+        "fn_nivel_modulo",
+        "fn_resolver_banco",
+        "fn_validar_documento"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19577,
+      "nombre": "eliminar_feriado",
+      "args": "p_fecha date, p_por text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_recalcular_mes_feriado"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18522,
+      "nombre": "eliminar_perfil",
+      "args": "p_id text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19423,
+      "nombre": "eliminar_sede",
+      "args": "p_sede text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18912,
+      "nombre": "eliminar_solicitud_aviso",
+      "args": "p_id bigint",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18773,
+      "nombre": "eliminar_ticket_aviso",
+      "args": "p_correo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17878,
+      "nombre": "eliminar_trabajador",
+      "args": "p_dni text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18232,
+      "nombre": "eliminar_usuario_admin",
+      "args": "p_id bigint",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "api"
+      ]
+    },
+    {
+      "oid": 18625,
+      "nombre": "emitir_memorandum",
+      "args": "p_dni text, p_tipo_sancion text, p_falta_id bigint, p_motivo text, p_suspension_dias integer, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_memorandums"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_memorandums"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18441,
+      "nombre": "es_admin_activo",
+      "args": "",
+      "kind": "f",
+      "retorna": "boolean",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, auth",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [
+        "auth_uid"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_uid"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 19602,
+      "nombre": "fijar_correo_persona",
+      "args": "p_dni text, p_correo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19479,
+      "nombre": "fijar_hora_entrada",
+      "args": "p_dni text, p_hora time without time zone, p_desde date, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17822,
+      "nombre": "fn_auditar",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 17629,
+      "nombre": "fn_bloquear_cambios",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19381,
+      "nombre": "fn_cabecera",
+      "args": "p_nombre text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": false,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [
+        "current_setting"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "current_setting"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 19252,
+      "nombre": "fn_cifrar_cuenta",
+      "args": "p_texto text",
+      "kind": "f",
+      "retorna": "bytea",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": false,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [
+        "fn_clave_cuentas"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19251,
+      "nombre": "fn_clave_cuentas",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, vault",
+      "anon": false,
+      "authenticated": false,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19253,
+      "nombre": "fn_descifrar_cuenta",
+      "args": "p_cifrado bytea",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": false,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [
+        "fn_clave_cuentas"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18410,
+      "nombre": "fn_es_prefijo_truncado",
+      "args": "p_nuevo text, p_actual text",
+      "kind": "f",
+      "retorna": "boolean",
+      "definer": false,
+      "volatil": "i",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19478,
+      "nombre": "fn_hora_entrada",
+      "args": "p_dni text, p_fecha date",
+      "kind": "f",
+      "retorna": "time without time zone",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19551,
+      "nombre": "fn_min_hhmm",
+      "args": "t text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": false,
+      "volatil": "i",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19309,
+      "nombre": "fn_movimientos_solo_insertar",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18616,
+      "nombre": "fn_nivel_memorandums",
+      "args": "",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18672,
+      "nombre": "fn_nivel_modulo",
+      "args": "p_modulo text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [
+        "auth_jwt",
+        "jwt_claims",
+        "current_setting"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt",
+        "jwt_claims",
+        "current_setting"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 17929,
+      "nombre": "fn_perfil_nombre_unico",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19497,
+      "nombre": "fn_perfil_para_cargo",
+      "args": "p_cargo text",
+      "kind": "f",
+      "retorna": "cargo_perfiles",
+      "definer": false,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18903,
+      "nombre": "fn_persona_llamador",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18007,
+      "nombre": "fn_proteger_ultimo_superadmin",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19552,
+      "nombre": "fn_recalcular_control",
+      "args": "p_documento text, p_desde date, p_hasta date, p_motivo text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_hora_entrada",
+        "fn_min_hhmm"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19575,
+      "nombre": "fn_recalcular_mes_feriado",
+      "args": "p_fecha date, p_motivo text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_recalcular_control"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18227,
+      "nombre": "fn_registro_solo_desvincular",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19242,
+      "nombre": "fn_resolver_banco",
+      "args": "p_texto text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "s",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18411,
+      "nombre": "fn_sede_para_importacion",
+      "args": "p_empresa text, p_sede text, p_cliente text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18884,
+      "nombre": "fn_solicitud_eventos_inmutables",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18906,
+      "nombre": "fn_solicitud_insertar",
+      "args": "p_dni text, p_tipo text, p_datos jsonb, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_persona_llamador",
+        "fn_solicitud_numero",
+        "fn_solicitud_validar"
+      ],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_persona_llamador"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18904,
+      "nombre": "fn_solicitud_numero",
+      "args": "p_tipo text, p_empresa text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19573,
+      "nombre": "fn_solicitud_recalcula_asistencia",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_recalcular_control"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18905,
+      "nombre": "fn_solicitud_validar",
+      "args": "p_tipo text, p_datos jsonb",
+      "kind": "f",
+      "retorna": "void",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18390,
+      "nombre": "fn_solo_empresa_activa",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18615,
+      "nombre": "fn_sumar_dias",
+      "args": "p_desde date, p_dias integer, p_habiles boolean",
+      "kind": "f",
+      "retorna": "date",
+      "definer": false,
+      "volatil": "s",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 17946,
+      "nombre": "fn_superadmin_sin_matriz",
+      "args": "",
+      "kind": "f",
+      "retorna": "trigger",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": true,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18764,
+      "nombre": "fn_ticket_insertar",
+      "args": "p_dni text, p_tipo integer, p_subtipo integer, p_comentario text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_ticket_numero"
+      ],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18763,
+      "nombre": "fn_ticket_numero",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18946,
+      "nombre": "fn_validar_documento",
+      "args": "p_tipo text, p_numero text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "v",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18511,
+      "nombre": "fn_valor_importado",
+      "args": "p_nuevo text, p_actual text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "i",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [
+        "fn_es_prefijo_truncado"
+      ],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19263,
+      "nombre": "fn_ver_cuenta_bancaria",
+      "args": "p_dni text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_descifrar_cuenta"
+      ],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19498,
+      "nombre": "guardar_cargo_perfil",
+      "args": "p_cargo text, p_destino text, p_perfil text, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18691,
+      "nombre": "guardar_clave_equipo",
+      "args": "p_codigo text, p_clave text, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19576,
+      "nombre": "guardar_feriado",
+      "args": "p_fecha date, p_nombre text, p_por text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_recalcular_mes_feriado"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19260,
+      "nombre": "guardar_perfil",
+      "args": "p_id text, p_nombre text, p_descripcion text, p_superadmin boolean, p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean, p_matriz jsonb, p_empresas text[], p_por text, p_ver_bancarios boolean",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18103,
+      "nombre": "guardar_politica",
+      "args": "p_backoffice_horas integer, p_portal_dias integer, p_multisesion_backoffice boolean, p_multisesion_portal boolean, p_intentos integer, p_bloqueo_min integer, p_recuperacion text, p_clave_min_portal integer, p_clave_min_backoffice integer, p_provisional_dias integer, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18911,
+      "nombre": "guardar_solicitud_aviso",
+      "args": "p_tipo text, p_correo text, p_copia boolean, p_activo boolean",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18772,
+      "nombre": "guardar_ticket_aviso",
+      "args": "p_correo text, p_activo boolean",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18769,
+      "nombre": "guardar_ticket_subtipo",
+      "args": "p_id integer, p_tipo integer, p_nombre text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18768,
+      "nombre": "guardar_ticket_tipo",
+      "args": "p_id integer, p_nombre text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18512,
+      "nombre": "importar_activos",
+      "args": "p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text, p_por text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_valor_importado"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19068,
+      "nombre": "importar_asistencia",
+      "args": "p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb, p_por text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19554,
+      "nombre": "importar_control",
+      "args": "p_registros jsonb, p_trabajadores jsonb, p_archivo text, p_por text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_hora_entrada",
+        "fn_nivel_modulo",
+        "fn_recalcular_control"
+      ],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt",
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19533,
+      "nombre": "importar_padron",
+      "args": "p_filas jsonb, p_por text, p_ceses jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_es_prefijo_truncado",
+        "fn_nivel_modulo",
+        "fn_perfil_para_cargo",
+        "fn_sede_para_importacion"
+      ],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt",
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18412,
+      "nombre": "importar_planilla",
+      "args": "p_empresa text, p_filas jsonb, p_por text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_es_prefijo_truncado",
+        "fn_sede_para_importacion"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 19346,
+      "nombre": "importar_planilla_unificada",
+      "args": "p_filas jsonb, p_periodo text, p_por text, p_ceses jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cifrar_cuenta",
+        "fn_descifrar_cuenta",
+        "fn_es_prefijo_truncado",
+        "fn_sede_para_importacion"
+      ],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18106,
+      "nombre": "marcar_clave_cambiada",
+      "args": "p_correo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19014,
+      "nombre": "mi_sesion_backoffice",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, auth",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [
+        "auth_uid"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_uid"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18627,
+      "nombre": "notificar_memorandum",
+      "args": "p_id text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_sumar_dias"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18330,
+      "nombre": "portal_actualizar_datos",
+      "args": "p_celular text, p_direccion text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "portal_dni",
+        "portal_modo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18329,
+      "nombre": "portal_confirmar_lectura",
+      "args": "p_comunicado_id bigint, p_dispositivo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cabecera",
+        "portal_dni",
+        "portal_modo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_cabecera",
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18327,
+      "nombre": "portal_confirmar_recepcion",
+      "args": "p_documento_id bigint, p_dispositivo text",
+      "kind": "f",
+      "retorna": "bigint",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cabecera",
+        "portal_dni",
+        "portal_modo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_cabecera",
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18907,
+      "nombre": "portal_crear_solicitud",
+      "args": "p_tipo text, p_datos jsonb",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_solicitud_insertar",
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18765,
+      "nombre": "portal_crear_ticket",
+      "args": "p_tipo integer, p_subtipo integer, p_comentario text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_ticket_insertar",
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18322,
+      "nombre": "portal_dni",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "s",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [
+        "auth_jwt"
+      ],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_jwt"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18328,
+      "nombre": "portal_marcar_visto",
+      "args": "p_comunicado_id bigint",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 19016,
+      "nombre": "portal_mi_sesion",
+      "args": "",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18323,
+      "nombre": "portal_modo",
+      "args": "p_dni text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": false,
+      "volatil": "s",
+      "config": "",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "sql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": false,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18669,
+      "nombre": "portal_primer_ingreso",
+      "args": "p_celular text, p_sin_celular boolean, p_politica_version integer, p_correo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cabecera",
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_cabecera",
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18325,
+      "nombre": "portal_registrar_ingreso",
+      "args": "p_dni text, p_resultado text, p_dispositivo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": true,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,anon=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 19015,
+      "nombre": "portal_registrar_sesion",
+      "args": "p_marker text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 18331,
+      "nombre": "portal_solicitar_cambio_cuenta",
+      "args": "p_motivo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "portal_dni",
+        "portal_modo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "portal_dni"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18324,
+      "nombre": "portal_verificar_bloqueo",
+      "args": "p_dni text",
+      "kind": "f",
+      "retorna": "boolean",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": true,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,anon=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "portal"
+      ]
+    },
+    {
+      "oid": 19070,
+      "nombre": "previsualizar_asistencia",
+      "args": "p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_asistencia"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19556,
+      "nombre": "previsualizar_control",
+      "args": "p_registros jsonb, p_trabajadores jsonb, p_archivo text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_control"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "importar_control"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18413,
+      "nombre": "previsualizar_importacion",
+      "args": "p_empresa text, p_filas jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_planilla"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18514,
+      "nombre": "previsualizar_importacion_activos",
+      "args": "p_empresa text, p_activos jsonb, p_razon_social text, p_archivo text",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_activos"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19463,
+      "nombre": "previsualizar_padron",
+      "args": "p_filas jsonb, p_ceses jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_padron"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "importar_padron"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19348,
+      "nombre": "previsualizar_planilla_unificada",
+      "args": "p_filas jsonb, p_periodo text, p_ceses jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "importar_planilla_unificada"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "importar_planilla_unificada"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18558,
+      "nombre": "publicar_comunicado",
+      "args": "p_titulo text, p_cuerpo text, p_vence date, p_exige boolean, p_segmento text, p_alcance integer, p_empresa text, p_sede text",
+      "kind": "f",
+      "retorna": "bigint",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17879,
+      "nombre": "publicar_lote",
+      "args": "p_empresa text, p_tipo text, p_periodo text, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18465,
+      "nombre": "publicar_lote_pdf",
+      "args": "p_empresa text, p_tipo text, p_periodo text, p_por text, p_boletas jsonb",
+      "kind": "f",
+      "retorna": "jsonb",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_es_prefijo_truncado"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18961,
+      "nombre": "publicar_rit",
+      "args": "p_archivo_url text, p_hash text, p_titulo text",
+      "kind": "f",
+      "retorna": "integer",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": []
+    },
+    {
+      "oid": 18059,
+      "nombre": "puede",
+      "args": "p_usuario bigint, p_modulo text, p_nivel integer, p_empresa text, p_sede text",
+      "kind": "f",
+      "retorna": "boolean",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": []
+    },
+    {
+      "oid": 18056,
+      "nombre": "reactivar_usuario_admin",
+      "args": "p_id bigint",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18057,
+      "nombre": "reenviar_clave",
+      "args": "p_id bigint, p_clave text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18910,
+      "nombre": "reenviar_solicitud",
+      "args": "p_id bigint, p_datos jsonb, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador",
+        "fn_solicitud_validar",
+        "portal_dni"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador",
+        "portal_dni"
+      ],
+      "usada_por": [
+        "backoffice",
+        "portal"
+      ]
+    },
+    {
+      "oid": 19368,
+      "nombre": "registrar_acuse_asistido",
+      "args": "p_dni text, p_lote text, p_motivo text, p_entrega timestamp with time zone, p_adjunto text, p_dispositivo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_cabecera",
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_cabecera",
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17885,
+      "nombre": "registrar_epp",
+      "args": "p_dni text, p_items text, p_entrega date, p_reposicion date",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18105,
+      "nombre": "registrar_ingreso",
+      "args": "p_correo text, p_resultado text, p_dispositivo text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": true,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,anon=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 19013,
+      "nombre": "registrar_sesion_backoffice",
+      "args": "p_marker text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, auth",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [
+        "auth_uid"
+      ],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "auth_uid"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 17882,
+      "nombre": "resolver_memorandum",
+      "args": "p_id text, p_decision text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18909,
+      "nombre": "resolver_solicitud",
+      "args": "p_id bigint, p_decision text, p_comentario text, p_por text",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo",
+        "fn_persona_llamador"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18055,
+      "nombre": "suspender_usuario_admin",
+      "args": "p_id bigint",
+      "kind": "f",
+      "retorna": "void",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18692,
+      "nombre": "ver_clave_equipo",
+      "args": "p_codigo text, p_por text",
+      "kind": "f",
+      "retorna": "text",
+      "definer": true,
+      "volatil": "v",
+      "config": "search_path=public, extensions",
+      "anon": false,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [
+        "fn_nivel_modulo"
+      ],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": true,
+      "guarda_via": [
+        "fn_nivel_modulo"
+      ],
+      "usada_por": [
+        "backoffice"
+      ]
+    },
+    {
+      "oid": 18104,
+      "nombre": "verificar_bloqueo",
+      "args": "p_correo text",
+      "kind": "f",
+      "retorna": "boolean",
+      "definer": true,
+      "volatil": "s",
+      "config": "search_path=public, extensions",
+      "anon": true,
+      "authenticated": true,
+      "service_role": true,
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,anon=X/postgres}",
+      "lenguaje": "plpgsql",
+      "llama": [],
+      "senales": [],
+      "search_path_fijo": true,
+      "es_trigger": false,
+      "guarda": false,
+      "guarda_via": [],
+      "usada_por": [
+        "backoffice"
+      ]
+    }
+  ],
+  "tablas": [
+    {
+      "tabla": "activos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "acuses",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "asignaciones",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "asistencia_config",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "asistencia_lotes",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "auditoria",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "bancos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "cargo_perfiles",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "cargos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "centros_costo",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "comunicado_lecturas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "comunicados",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "consentimientos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "contratos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "correo_tokens",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=Dxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "cuentas_portal",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "declaraciones",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "descargos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "documentos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "empresas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "epp_entregas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "feriados",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "horarios_entrada",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "lineas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "lotes",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "marcaciones",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "memorandums",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "movimientos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "notificaciones_documento",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "perfil_empresas",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "perfil_permisos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "perfil_propuestas",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "perfiles",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "personas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "plantillas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "politica_acceso",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "registro_accesos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "rit_faltas",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "rits",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "sedes",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitud_avisos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitud_correlativos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitud_eventos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitud_tipos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitudes",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "solicitudes_cambio_cuenta",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "tardanzas",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "ticket_avisos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "ticket_subtipos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "ticket_tipos",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "tickets",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "tipos_sancion",
+      "rls": false,
+      "rls_forzada": false,
+      "politicas": 0,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "usuarios_admin",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "tabla": "vinculos",
+      "rls": true,
+      "rls_forzada": false,
+      "politicas": 1,
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    }
+  ],
+  "politicas": [
+    {
+      "schemaname": "public",
+      "tablename": "activos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "acuses",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "asignaciones",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "asistencia_config",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "asistencia_lotes",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "auditoria",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "bancos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "cargos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "comunicado_lecturas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "comunicados",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "contratos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "cuentas_portal",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "declaraciones",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "descargos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "documentos",
+      "policyname": "documentos_admin",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "es_admin_activo()",
+      "with_check": "es_admin_activo()"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "empresas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "epp_entregas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "lineas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "lotes",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "marcaciones",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "memorandums",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "perfil_permisos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "perfiles",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "personas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "plantillas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "politica_acceso",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "registro_accesos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "sedes",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "solicitudes_cambio_cuenta",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "tardanzas",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "usuarios_admin",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "vinculos",
+      "policyname": "acceso_demo",
+      "permissive": "PERMISSIVE",
+      "roles": "{authenticated}",
+      "cmd": "ALL",
+      "qual": "true",
+      "with_check": "true"
+    }
+  ],
+  "vistas": [
+    {
+      "vista": "v_actividad_persona",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_activos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_acuses",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_asistencia_lotes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_asistencia_mensual",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_cargo_perfiles",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_comunicado_pendientes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_comunicados",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_contratos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_declaraciones_vigentes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_epp_entregas",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_feriados",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_lotes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_marcaciones",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_memorandums",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_mi_acceso",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_mis_solicitudes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_movimientos_persona",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_perfil_propuestas",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_perfil_versiones",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_perfiles",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_personal",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_politica_acceso",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_boletas",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_comunicados",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_datos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_mes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_pendientes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_perfil",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_rit",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_solicitudes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_portal_tickets",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_registro_accesos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_rit_faltas",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_rits",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_sedes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_solicitud_avisos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_solicitud_eventos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_solicitud_tipos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_solicitudes",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_ticket_avisos",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_ticket_catalogo",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_ticket_config",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_tickets",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_tipos_sancion",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_usuarios_admin",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "vista": "v_vinculos_persona",
+      "opciones": "",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    }
+  ],
+  "grants": [
+    {
+      "grantee": "authenticated",
+      "objeto": "activos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "acuses",
+      "tipo": "r",
+      "privilegios": "INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "asignaciones",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "asistencia_config",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "asistencia_lotes",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "auditoria",
+      "tipo": "r",
+      "privilegios": "INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "bancos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "cargo_perfiles",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "cargos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "centros_costo",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "comunicado_lecturas",
+      "tipo": "r",
+      "privilegios": "INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "comunicados",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "contratos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "correo_tokens",
+      "tipo": "r",
+      "privilegios": "REFERENCES,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "cuentas_portal",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "declaraciones",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "descargos",
+      "tipo": "r",
+      "privilegios": "INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "documentos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "empresas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "epp_entregas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "feriados",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "lineas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "lotes",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "marcaciones",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "memorandums",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "perfil_empresas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "perfil_permisos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "perfiles",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "personas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "plantillas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "politica_acceso",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "registro_accesos",
+      "tipo": "r",
+      "privilegios": "INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "rit_faltas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "sedes",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "solicitudes_cambio_cuenta",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "tardanzas",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "tipos_sancion",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "usuarios_admin",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "vinculos",
+      "tipo": "r",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_actividad_persona",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_activos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_acuses",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_asistencia_lotes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_asistencia_mensual",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_cargo_perfiles",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_comunicado_pendientes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_comunicados",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_contratos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_declaraciones_vigentes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_epp_entregas",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_feriados",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_lotes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_marcaciones",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_memorandums",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_mi_acceso",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_mis_solicitudes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_movimientos_persona",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_perfil_propuestas",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_perfil_versiones",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_perfiles",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_personal",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_politica_acceso",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_boletas",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_comunicados",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_datos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_mes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_pendientes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_perfil",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_rit",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_solicitudes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_portal_tickets",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_registro_accesos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_rit_faltas",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_rits",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_sedes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_solicitud_avisos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_solicitud_eventos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_solicitud_tipos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_solicitudes",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_ticket_avisos",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_ticket_catalogo",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_ticket_config",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_tickets",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_tipos_sancion",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_usuarios_admin",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "objeto": "v_vinculos_persona",
+      "tipo": "v",
+      "privilegios": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+    }
+  ],
+  "secuencias": [
+    {
+      "secuencia": "acuses_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "asignaciones_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "asistencia_lotes_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "auditoria_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "comunicados_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "consentimientos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "contratos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "documentos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "epp_entregas_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "movimientos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "notificaciones_documento_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "perfil_propuestas_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "plantillas_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "registro_accesos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "rit_faltas_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "seq_sede_codigo",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "seq_ticket_numero",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "seq_usuario_codigo",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "solicitud_avisos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "solicitud_eventos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "solicitudes_cambio_cuenta_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "solicitudes_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "ticket_subtipos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "ticket_tipos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "tickets_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "usuarios_admin_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    },
+    {
+      "secuencia": "vinculos_id_seq",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}",
+      "auth_usage": true,
+      "anon_usage": false
+    }
+  ],
+  "defaults": [
+    {
+      "rol": "postgres",
+      "esquema": "public",
+      "tipo": "S",
+      "acl": "{postgres=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"
+    },
+    {
+      "rol": "postgres",
+      "esquema": "public",
+      "tipo": "f",
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+    },
+    {
+      "rol": "postgres",
+      "esquema": "public",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "rol": "postgres",
+      "esquema": "storage",
+      "tipo": "S",
+      "acl": "{postgres=rwU/postgres,anon=rwU/postgres,authenticated=rwU/postgres,service_role=rwU/postgres}"
+    },
+    {
+      "rol": "postgres",
+      "esquema": "storage",
+      "tipo": "f",
+      "acl": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+    },
+    {
+      "rol": "postgres",
+      "esquema": "storage",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "extensions",
+      "tipo": "S",
+      "acl": "{postgres=r*w*U*/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "extensions",
+      "tipo": "f",
+      "acl": "{postgres=X*/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "extensions",
+      "tipo": "r",
+      "acl": "{postgres=a*r*w*d*D*x*t*m*/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql",
+      "tipo": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql",
+      "tipo": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql_public",
+      "tipo": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql_public",
+      "tipo": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "graphql_public",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "public",
+      "tipo": "S",
+      "acl": "{postgres=rwU/supabase_admin,anon=rwU/supabase_admin,authenticated=rwU/supabase_admin,service_role=rwU/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "public",
+      "tipo": "f",
+      "acl": "{postgres=X/supabase_admin,anon=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "public",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,anon=arwdDxtm/supabase_admin,authenticated=arwdDxtm/supabase_admin,service_role=arwdDxtm/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "realtime",
+      "tipo": "S",
+      "acl": "{postgres=rwU/supabase_admin,dashboard_user=rwU/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "realtime",
+      "tipo": "f",
+      "acl": "{postgres=X/supabase_admin,dashboard_user=X/supabase_admin}"
+    },
+    {
+      "rol": "supabase_admin",
+      "esquema": "realtime",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/supabase_admin,dashboard_user=arwdDxtm/supabase_admin}"
+    },
+    {
+      "rol": "supabase_auth_admin",
+      "esquema": "auth",
+      "tipo": "S",
+      "acl": "{postgres=rwU/supabase_auth_admin,dashboard_user=rwU/supabase_auth_admin}"
+    },
+    {
+      "rol": "supabase_auth_admin",
+      "esquema": "auth",
+      "tipo": "f",
+      "acl": "{postgres=X/supabase_auth_admin,dashboard_user=X/supabase_auth_admin}"
+    },
+    {
+      "rol": "supabase_auth_admin",
+      "esquema": "auth",
+      "tipo": "r",
+      "acl": "{postgres=arwdDxtm/supabase_auth_admin,dashboard_user=arwdDxtm/supabase_auth_admin}"
+    }
+  ],
+  "esquemas": [
+    {
+      "esquema": "auth",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "extensions",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "graphql",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "graphql_public",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "public",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "realtime",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "storage",
+      "auth_usage": true,
+      "anon_usage": true
+    },
+    {
+      "esquema": "vault",
+      "auth_usage": false,
+      "anon_usage": false
+    }
+  ]
+}
