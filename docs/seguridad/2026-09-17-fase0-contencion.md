@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 0 — Contención
 
-Fecha: 2026-09-17 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **migración APLICADA en producción el 2026-09-17 (catálogo verificado 7/7); pendientes: verificación con sesiones, rotación de Gmail y push del código**.
+Fecha: 2026-09-17 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **migración APLICADA en producción el 2026-09-17 (catálogo verificado 7/7); código desplegado (push 5cd901d, endpoint 401 sin sesión verificado); pendientes: prueba en navegador con sesión real y rotación de Gmail**.
 
 Prompt de Diego: `Downloads/Prompt_Correccion_Seguridad.docx` (decisiones cerradas en `Decisiones_Seguridad_QA.docx`). Estado real medido: `2026-09-17-paso0-resultados.md`.
 
