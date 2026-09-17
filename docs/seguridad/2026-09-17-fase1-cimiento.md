@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 1 — Cimiento
 
-Fecha: 2026-09-17 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **preparada y ensayada en local (31/31); pendiente de aplicar en producción**.
+Fecha: 2026-09-17 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **APLICADA en producción el 2026-09-17 (catálogo verificado 6/6); pendiente la prueba con sesiones reales**.
 
 Requiere la fase 0 y 0b aplicadas (`2026-09-17-fase0-contencion.md`).
 
