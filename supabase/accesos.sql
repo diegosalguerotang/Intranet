@@ -226,6 +226,7 @@ create function guardar_perfil(
 ) returns integer language plpgsql security definer as $$
 declare v_version int; v_mod text; v_nivel text; v_empresas text[]; e text;
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   select coalesce(max(version), 0) + 1 into v_version from perfiles where id = p_id;
   insert into perfiles (id, version, nombre, descripcion, es_superadmin,
                         ver_remuneracion, ver_documentos_terceros,
@@ -259,6 +260,7 @@ end $$;
 create function desactivar_perfil(p_id text) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   update perfiles set estado = 'desactivado' where id = p_id;
 end $$;
 
@@ -270,6 +272,7 @@ create function eliminar_perfil(p_id text) returns void
 language plpgsql security definer as $$
 declare v_nombre text;
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   select nombre into v_nombre from perfiles where id = p_id order by version desc limit 1;
   if v_nombre is null then
     raise exception 'La categoría no existe.';
@@ -346,6 +349,56 @@ begin
   return coalesce(v_nivel, 0);
 end $$;
 
+-- ---------------------------------------------------------------------------
+-- GUARDA CENTRAL (corrección de seguridad · fase 1, 2026-09-17). Identidad
+-- por PETICIÓN: correo del JWT → usuarios_admin activo → categoría vigente.
+-- Los requiere_* lanzan insufficient_privilege (42501). Canónico de
+-- migraciones/2026-09-17-fase1-cimiento.sql.
+-- ---------------------------------------------------------------------------
+create or replace function correo_llamador() returns text
+language sql stable security definer set search_path = public, extensions as $$
+  select nullif(lower(coalesce(auth.jwt() ->> 'email', '')), '')
+$$;
+create or replace function nivel_en(p_modulo text) returns int
+language sql stable security definer set search_path = public, extensions as $$
+  select fn_nivel_modulo(p_modulo)
+$$;
+create or replace function es_superadmin() returns boolean
+language sql stable security definer set search_path = public, extensions as $$
+  select nivel_en('accesos') >= 99
+$$;
+create or replace function es_admin() returns boolean
+language plpgsql stable security definer set search_path = public, extensions as $$
+begin
+  if correo_llamador() is null then return es_superadmin(); end if;  -- postgres / service_role sin JWT
+  return exists (select 1 from usuarios_admin u where lower(u.correo) = correo_llamador() and u.estado = 'activo');
+end $$;
+create or replace function requiere_nivel(p_modulo text, p_nivel int, p_modulo_alt text default null) returns void
+language plpgsql stable security definer set search_path = public, extensions as $$
+begin
+  if nivel_en(p_modulo) >= p_nivel then return; end if;
+  if p_modulo_alt is not null and nivel_en(p_modulo_alt) >= p_nivel then return; end if;
+  raise insufficient_privilege using message = format('Permiso insuficiente: requiere nivel %s en %s%s.',
+    p_nivel, p_modulo, case when p_modulo_alt is null then '' else ' o en ' || p_modulo_alt end);
+end $$;
+create or replace function requiere_superadmin() returns void
+language plpgsql stable security definer set search_path = public, extensions as $$
+begin
+  if not es_superadmin() then
+    raise insufficient_privilege using message = 'Permiso insuficiente: solo un superadministrador puede hacerlo.';
+  end if;
+end $$;
+create or replace function requiere_correo_propio(p_correo text) returns void
+language plpgsql stable security definer set search_path = public, extensions as $$
+begin
+  if not es_admin() or lower(coalesce(p_correo, '')) is distinct from correo_llamador() then
+    raise insufficient_privilege using message = 'Permiso insuficiente: solo sobre la propia cuenta.';
+  end if;
+end $$;
+revoke all on function correo_llamador(), nivel_en(text), es_superadmin(), es_admin(),
+  requiere_nivel(text, int, text), requiere_superadmin(), requiere_correo_propio(text) from public, anon, authenticated;
+grant execute on function es_admin(), es_superadmin(), nivel_en(text) to authenticated;
+
 create function fn_nivel_memorandums()
 returns int language plpgsql stable security definer as $$
 declare v_correo text; v_nivel int;
@@ -373,6 +426,7 @@ create function crear_usuario_admin(
 ) returns bigint language plpgsql security definer as $$
 declare v_id bigint; v_version int;
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   if not exists (select 1 from personas where dni = p_dni) then
     raise exception 'La persona % no existe en el maestro de Personal.', p_dni;
   end if;
@@ -397,6 +451,7 @@ create function actualizar_usuario_admin(
 ) returns void language plpgsql security definer as $$
 declare v_version int;
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   select version into v_version
   from perfiles where id = p_perfil and estado = 'activo'
   order by version desc limit 1;
@@ -414,6 +469,7 @@ end $$;
 create function eliminar_usuario_admin(p_id bigint) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   if not exists (select 1 from usuarios_admin where id = p_id) then
     raise exception 'El usuario no existe.';
   end if;
@@ -424,18 +480,21 @@ end $$;
 create function suspender_usuario_admin(p_id bigint) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   update usuarios_admin set estado = 'suspendido' where id = p_id;
 end $$;
 
 create function reactivar_usuario_admin(p_id bigint) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   update usuarios_admin set estado = 'activo' where id = p_id;
 end $$;
 
 create function reenviar_clave(p_id bigint, p_clave text) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   update usuarios_admin
   set clave_provisional = p_clave,
       clave_entregada = case when correo is null then 'pantalla' else 'correo' end
@@ -450,6 +509,7 @@ create function guardar_politica(
   p_provisional_dias int, p_por text
 ) returns void language plpgsql security definer as $$
 begin
+  perform requiere_superadmin();  -- fase 1: guarda central
   update politica_acceso
   set sesion_backoffice_horas       = p_backoffice_horas,
       sesion_portal_dias            = p_portal_dias,
@@ -508,6 +568,7 @@ alter function registrar_ingreso(text, text, text) set search_path = public, ext
 create function marcar_clave_cambiada(p_correo text) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_correo_propio(p_correo);  -- fase 1: guarda central
   update usuarios_admin
   set requiere_cambio_clave = false, clave_provisional = null
   where correo = p_correo;

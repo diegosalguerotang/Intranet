@@ -15,7 +15,7 @@ Prompt de Diego: `Downloads/Prompt_Correccion_Seguridad.docx` (decisiones cerrad
 | Endpoint de correo endurecido (decisión 8) | `api/enviar-correo.js` + `tests/api/enviar-correo.test.js` | 19 pruebas; vitest 170/170 |
 | Verificación en producción tras aplicar | `scripts/verificar-fase0.mjs` | lo corre Diego |
 | Informe forense (solo lectura) | `scripts/fase0-forense.mjs` → `docs/seguridad/<fecha>-fase0-forense.md` | lo corre Diego |
-| Espejo canónico del estado de permisos | `supabase/seguridad.sql` (aplicar al final; `PG_LOCAL_FASE0=1` en pg-local) | listo |
+| Espejo canónico del estado de permisos | `supabase/seguridad.sql` (aplicar al final; `PG_LOCAL_SEGURIDAD=1` en pg-local) | listo |
 
 ## 2. Qué hace la migración
 

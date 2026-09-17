@@ -826,6 +826,7 @@ create function previsualizar_asistencia(
 ) returns jsonb language plpgsql security definer as $$
 declare v jsonb;
 begin
+  perform requiere_nivel('asistencia', 2);  -- fase 1: guarda central
   v := importar_asistencia(p_empresa, p_registros, p_archivo, p_resumen, '(vista previa)');
   raise exception using errcode = 'PV999', message = v::text; -- revertir TODO
 exception when sqlstate 'PV999' then
@@ -1449,6 +1450,7 @@ create function alta_trabajador(
 ) returns void language plpgsql security definer as $$
 declare v_num text; v_banco_id text; v_banco text; v_cifrada bytea; v_u4 text;
 begin
+  perform requiere_nivel('personal', 2);  -- fase 1: guarda central
   v_num := fn_validar_documento(p_tipo_documento, p_dni);
   v_banco_id := fn_resolver_banco(p_banco);
   v_banco := coalesce((select nombre from bancos where codigo = v_banco_id),
@@ -1607,6 +1609,7 @@ create function eliminar_trabajador(p_dni text) returns text
 language plpgsql security definer as $$
 declare tiene_historial boolean;
 begin
+  perform requiere_nivel('personal', 3);  -- fase 1: guarda central
   select exists (
     select 1 from documentos d join vinculos v on v.id = d.vinculo_id
     where v.persona_dni = p_dni
@@ -1637,6 +1640,7 @@ declare
   v_id text;
   v_avisos int;
 begin
+  perform requiere_nivel('boletas', 2);  -- fase 1: guarda central
   select coalesce(max(version), 0) + 1 into v_version
   from lotes where empresa_id = p_empresa and tipo = p_tipo and periodo = p_periodo;
 
@@ -1694,6 +1698,7 @@ create function publicar_lote_pdf(
 declare
   b jsonb; v_version int; v_id text; v_avisos int; v_vinculo bigint; v_docs int := 0;
 begin
+  perform requiere_nivel('boletas', 2);  -- fase 1: guarda central
   -- Validación previa completa: entra todo o no entra nada.
   for b in select * from jsonb_array_elements(p_boletas) loop
     if coalesce(b->>'dni','') = '' or coalesce(b->>'hash','') = '' or coalesce(b->>'archivo_url','') = '' then
@@ -1900,6 +1905,7 @@ create function notificar_memorandum(p_id text)
 returns void language plpgsql security definer as $$
 declare m memorandums%rowtype; t tipos_sancion%rowtype;
 begin
+  perform requiere_nivel('memorandums', 2);  -- fase 1: guarda central
   select * into m from memorandums where id = p_id;
   if m.id is null then raise exception 'El memorándum % no existe.', p_id; end if;
   if m.estado = 'registro_interno' then
@@ -1927,6 +1933,7 @@ end $$;
 create function resolver_memorandum(p_id text, p_decision text) returns void
 language plpgsql security definer as $$
 begin
+  perform requiere_nivel('memorandums', 3);  -- fase 1: guarda central
   update memorandums
   set estado = 'resuelto', resuelto_en = current_date, resolucion = p_decision
   where id = p_id;
@@ -1939,6 +1946,7 @@ create function asignar_activo(
   p_antivirus boolean default null, p_comentario text default null
 ) returns void language plpgsql security definer as $$
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   if exists (select 1 from asignaciones where activo_codigo = p_codigo and devuelto_en is null) then
     raise exception 'El activo % ya está asignado. Regístrese la devolución primero.', p_codigo;
   end if;
@@ -1952,6 +1960,7 @@ end $$;
 create function devolver_activo(p_codigo text, p_destino text, p_condicion text default 'Buen estado')
 returns void language plpgsql security definer as $$
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   update asignaciones
   set devuelto_en = current_date, condicion_devolucion = p_condicion, destino = p_destino
   where activo_codigo = p_codigo and devuelto_en is null;
@@ -1996,6 +2005,7 @@ end $$;
 create function registrar_epp(p_dni text, p_items text, p_entrega date, p_reposicion date)
 returns void language plpgsql security definer as $$
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   insert into epp_entregas (dni, items, entrega, reposicion)
   values (p_dni, p_items, p_entrega, p_reposicion);
 end $$;
@@ -2006,6 +2016,7 @@ create function publicar_comunicado(
 ) returns bigint language plpgsql security definer as $$
 declare v_id bigint;
 begin
+  perform requiere_nivel('comunicados', 2);  -- fase 1: guarda central
   insert into comunicados (titulo, cuerpo, vence, exige_acuse, segmento, alcance, empresa_id, sede_id)
   values (p_titulo, p_cuerpo, p_vence, p_exige, p_segmento, p_alcance,
           nullif(p_empresa, ''), nullif(p_sede, ''))
@@ -2055,6 +2066,7 @@ create function crear_sede(
 ) returns jsonb language plpgsql security definer as $$
 declare v_id text; v_codigo text;
 begin
+  perform requiere_nivel('configuracion', 2, 'personal');  -- fase 1: guarda central
   if (select estado from empresas where id = p_empresa) is distinct from 'activa' then
     raise exception 'La empresa % no está activa.', p_empresa;
   end if;
@@ -2293,6 +2305,7 @@ declare
   v_campos text[] := array['marca','modelo','serie','tipo','area',
     'asignado_sin_confirmar','usuario_anterior','observaciones','por_corregir'];
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   if (select estado from empresas where id = p_empresa) is distinct from 'activa' then
     raise exception 'La empresa % no está activa: importación rechazada completa.', p_empresa;
   end if;
@@ -2385,6 +2398,7 @@ create function editar_activo(
 ) returns void language plpgsql security definer as $$
 declare v_nuevo text; j_antes jsonb; j_despues jsonb;
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   if not exists (select 1 from activos where codigo = p_codigo) then
     raise exception 'El activo % no existe.', p_codigo;
   end if;
@@ -2453,6 +2467,7 @@ create function previsualizar_importacion_activos(
 ) returns jsonb language plpgsql security definer as $$
 declare v jsonb;
 begin
+  perform requiere_nivel('activos', 2);  -- fase 1: guarda central
   v := importar_activos(p_empresa, p_activos, p_razon_social, p_archivo, '(vista previa)');
   raise exception using errcode = 'PV999', message = v::text; -- revertir TODO
 exception when sqlstate 'PV999' then

@@ -87,6 +87,9 @@ const USUARIO_DEMO = {
 
 // Llama a una función serverless propia con el JWT de la sesión en x-sesion.
 // Devuelve { ...json } o { error }.
+// Si el servidor responde 401 (sesión inválida o vencida), la app cierra la
+// sesión en vez de seguir mostrando datos ya cargados (Diego, 2026-09-17).
+let alSesionInvalida = null;
 async function llamarServerless(ruta, cuerpo) {
   try {
     const { data } = await supabase.auth.getSession();
@@ -98,6 +101,7 @@ async function llamarServerless(ruta, cuerpo) {
       body: JSON.stringify(cuerpo),
     });
     const json = await r.json().catch(() => ({}));
+    if (r.status === 401 && typeof alSesionInvalida === "function") alSesionInvalida();
     return r.ok ? json : { error: json.error ?? `Error ${r.status}` };
   } catch (e) {
     return { error: e.message ?? "Fallo de red." };
@@ -215,6 +219,12 @@ export function AppProvider({ children }) {
     if (conSupabase) setDb(dbVacia(FUENTES));
     setUser(null);
   };
+  // Un 401 de cualquier función serverless significa que la sesión ya no vale
+  // en el servidor: se cierra aquí también.
+  useEffect(() => {
+    alSesionInvalida = () => salir("Tu sesión ya no es válida en el servidor. Vuelve a ingresar.");
+    return () => { alSesionInvalida = null; };
+  });
 
   // Política de sesión: cierre por inactividad (1 hora) y sesión única (el
   // login nuevo gana; este equipo se autoexpulsa si el marcador del servidor

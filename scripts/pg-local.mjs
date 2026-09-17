@@ -115,7 +115,7 @@ alter default privileges for role postgres in schema public grant all on sequenc
 alter default privileges for role postgres in schema public grant all on functions to anon, authenticated, service_role;
 `;
 
-export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true, fase0 = process.env.PG_LOCAL_FASE0 === "1" } = {}) {
+export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true, seguridad = process.env.PG_LOCAL_SEGURIDAD === "1" } = {}) {
   if (existsSync(DIR_DATOS)) rmSync(DIR_DATOS, { recursive: true, force: true });
   const servidor = new EmbeddedPostgres({
     databaseDir: DIR_DATOS, user: "postgres", password: "postgres", port: PUERTO, persistent: false,
@@ -168,8 +168,8 @@ export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true,
       revoke execute on function asignar_activo(text, text, text) from public, anon;
       grant execute on function asignar_activo(text, text, text) to authenticated, service_role`);
     // Estado de permisos de la fase 0 (supabase/seguridad.sql): se carga cuando
-    // producción ya la tiene aplicada (PG_LOCAL_FASE0=1 o la opción fase0).
-    if (fase0) await sql(readFileSync(join(RAIZ, "supabase/seguridad.sql"), "utf8"));
+    // producción ya la tiene aplicada (PG_LOCAL_SEGURIDAD=1 o la opción seguridad).
+    if (seguridad) await sql(readFileSync(join(RAIZ, "supabase/seguridad.sql"), "utf8"));
   }
   const parar = async () => { await cliente.end().catch(() => {}); await servidor.stop().catch(() => {}); };
   return { sql, cliente, parar, puerto: PUERTO };
