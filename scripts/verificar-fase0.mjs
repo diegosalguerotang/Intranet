@@ -95,6 +95,8 @@ if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD_INICIAL) console.log("(sin SUPERAD
 else {
   let jwt;
   await prueba("login BackOffice por el proxy", async () => { jwt = await login(SUPERADMIN_EMAIL, SUPERADMIN_PASSWORD_INICIAL); });
+  if (!jwt) console.log("(login fallido: se saltan las pruebas con sesión de administrador)");
+  else {
   for (const v of ["v_personal", "v_usuarios_admin", "v_mi_acceso", "v_asistencia_mensual", "v_feriados", "v_sedes", "v_solicitudes", "v_tickets"]) {
     await prueba(`admin: ${v} se lee`, async () => {
       const r = await proxy(`rest/v1/${v}?select=*&limit=1`, { headers: { "x-sesion": jwt } });
@@ -121,6 +123,7 @@ else {
     const r = await proxy(`rest/v1/lineas?select=numero&limit=1`, { headers: { "x-sesion": jwt } });
     igual(r.status, 200, `status (${(await r.text()).slice(0, 120)})`);
   });
+  }
 }
 
 console.log("\n== Sesión de trabajador del Portal: cada función administrativa, una por una");
@@ -128,6 +131,8 @@ if (!PORTAL_DNI || !PORTAL_CLAVE) console.log("(sin PORTAL_DNI/PORTAL_CLAVE — 
 else {
   let jwt;
   await prueba("login del Portal por el proxy", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.grupoer.pe`, PORTAL_CLAVE); });
+  if (!jwt) console.log("(login fallido: se salta la prueba una por una)");
+  else {
   await prueba("trabajador: v_portal_perfil devuelve SU fila", async () => {
     const r = await proxy(`rest/v1/v_portal_perfil?select=*`, { headers: { "x-sesion": jwt } });
     const j = await r.json(); igual(Array.isArray(j) && j.length, 1, `filas (${JSON.stringify(j).slice(0, 120)})`);
@@ -160,6 +165,7 @@ else {
     const r = await proxy("rest/v1/rpc/portal_mi_sesion", { method: "POST", headers: { "x-sesion": jwt }, body: "{}" });
     enLista(r.status, [200, 204], `status (${(await r.text()).slice(0, 120)})`);
   });
+  }
 }
 
 console.log(fallos ? `\n${fallos} fallo(s).` : "\nTodo verde.");
