@@ -105,12 +105,16 @@ begin
   loop execute format('alter table public.%I enable row level security', r.relname); end loop;
 end $$;
 
--- 5 · lineas: solo administradores activos.
-drop policy if exists solo_admin on lineas;
-create policy solo_admin on lineas
-  for all to authenticated
-  using (public.es_admin_activo())
-  with check (public.es_admin_activo());
+-- 5 · Tablas base que el BackOffice lee/escribe directo (mapa FUENTES de
+--     src/state.jsx + Telefonía): solo administradores activos (fase 0 + 0b).
+do $$
+declare t text;
+begin
+  foreach t in array array['lineas', 'empresas', 'tardanzas', 'asistencia_config', 'plantillas'] loop
+    execute format('drop policy if exists solo_admin on public.%I', t);
+    execute format('create policy solo_admin on public.%I for all to authenticated using (public.es_admin_activo()) with check (public.es_admin_activo())', t);
+  end loop;
+end $$;
 
 -- 6 · Rastro del endpoint de correo. Solo service_role.
 create table if not exists correo_envios (

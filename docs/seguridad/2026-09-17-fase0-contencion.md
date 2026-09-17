@@ -78,3 +78,9 @@ El clasificador de esta sesión bloquea leer y escribir producción, por eso los
 ## 7. Queda para la fase 1
 
 Guarda central (`es_admin`, `es_superadmin`, `nivel_en`, `requiere_nivel`, `requiere_superadmin`), guardas en las 29 RPC (y las 17 auxiliares), `docs/funciones-y-permisos.md`, `ALTER DEFAULT PRIVILEGES` para que una función nueva nazca sin permiso, eliminar la sobrecarga huérfana de `asignar_activo`, y restituir lo que la fase 0 dejó inoperativo.
+
+## 8. Corrección 0b (2026-09-17, tras aplicar en producción)
+
+El BackOffice quedó **en blanco** al entrar con la sesión de Diego: `TypeError: Cannot read properties of undefined (reading 'corto')`. Causa: además de `lineas`, el BackOffice lee cuatro tablas base directamente por el mapa `FUENTES` de `src/state.jsx` (`empresas`, `tardanzas`, `asistencia_config`, `plantillas`), que el paso 0 no detectó porque el análisis buscaba el patrón `.from("tabla")` y no `supabase.from(FUENTES[k])`. Con RLS y sin política devolvían `[]`; `empresas` vacía rompe la interfaz.
+
+Arreglo: `supabase/migraciones/2026-09-17-fase0b-tablas-backoffice.sql` pone la política `solo_admin` (`es_admin_activo()`) en esas cuatro tablas, el mismo modelo de `lineas` y `documentos`. Un trabajador del Portal sigue viendo 0 filas. Ensayo local actualizado: 44/44. La reversión y `seguridad.sql` ya la incluyen. Lección para la fase 1: el inventario de lecturas directas debe salir de `FUENTES` y de `grep -o "\.from(\""` juntos; el Portal solo usa vistas `v_*`.

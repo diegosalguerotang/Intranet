@@ -14,7 +14,9 @@
 import { readFileSync } from "node:fs";
 import { arrancarPgLocal } from "./pg-local.mjs";
 
-const MIGRACION = readFileSync("supabase/migraciones/2026-09-17-fase0-contencion.sql", "utf8");
+// Fase 0 + su corrección 0b (tablas base que el BackOffice lee directo).
+const MIGRACION = readFileSync("supabase/migraciones/2026-09-17-fase0-contencion.sql", "utf8")
+  + "\n" + readFileSync("supabase/migraciones/2026-09-17-fase0b-tablas-backoffice.sql", "utf8");
 const REVERSION = readFileSync("supabase/respaldos/2026-09-17-fase0-reversion.sql", "utf8");
 const PRE_LOGIN = ["verificar_bloqueo", "registrar_ingreso", "portal_verificar_bloqueo", "portal_registrar_ingreso"];
 const ESPERADAS = "actualizar_ticket,alternar_ticket_subtipo,alternar_ticket_tipo,asignar_rit_sede,crear_activo,crear_rit,crear_solicitud_admin,crear_solicitud_propia,crear_ticket_admin,decidir_propuesta_perfil,editar_trabajador,eliminar_feriado,eliminar_sede,eliminar_solicitud_aviso,eliminar_ticket_aviso,emitir_memorandum,es_admin_activo,fijar_correo_persona,fijar_hora_entrada,fn_hora_entrada,fn_nivel_memorandums,fn_nivel_modulo,fn_persona_llamador,fn_solicitud_insertar,fn_ver_cuenta_bancaria,guardar_cargo_perfil,guardar_clave_equipo,guardar_feriado,guardar_solicitud_aviso,guardar_ticket_aviso,guardar_ticket_subtipo,guardar_ticket_tipo,importar_asistencia,importar_control,importar_padron,importar_planilla_unificada,mi_sesion_backoffice,portal_actualizar_datos,portal_confirmar_lectura,portal_confirmar_recepcion,portal_crear_solicitud,portal_crear_ticket,portal_dni,portal_marcar_visto,portal_mi_sesion,portal_modo,portal_primer_ingreso,portal_registrar_ingreso,portal_registrar_sesion,portal_solicitar_cambio_cuenta,portal_verificar_bloqueo,previsualizar_control,previsualizar_padron,previsualizar_planilla_unificada,publicar_rit,reenviar_solicitud,registrar_acuse_asistido,registrar_ingreso,registrar_sesion_backoffice,resolver_solicitud,ver_clave_equipo,verificar_bloqueo".split(",");
@@ -188,6 +190,17 @@ try {
   await prueba("admin: fn_nivel_modulo('personal') = 99 y es_admin_activo() = true", async () => {
     const r = await como("authenticated", claims("authenticated", ADMIN), `select fn_nivel_modulo('personal') as n, es_admin_activo() as a`);
     if (r.codigo) throw new Error(r.mensaje); igual(r.filas[0].n, 99, "nivel"); igual(r.filas[0].a, true, "es_admin_activo");
+  });
+  await prueba("admin: lee las tablas base del mapa FUENTES (empresas con filas, tardanzas, asistencia_config, plantillas)", async () => {
+    const r = await como("authenticated", claims("authenticated", ADMIN),
+      `select (select count(*) from empresas)::int as e, (select count(*) from tardanzas)::int as t,
+              (select count(*) from asistencia_config)::int as c, (select count(*) from plantillas)::int as p`);
+    if (r.codigo) throw new Error(`${r.codigo} ${r.mensaje}`);
+    if (r.filas[0].e < 1) throw new Error("empresas devolvió 0 filas: el BackOffice quedaría en blanco");
+  });
+  await prueba("trabajador: empresas sigue devolviendo 0 filas", async () => {
+    const r = await como("authenticated", claims("authenticated", TRABAJADOR), `select count(*)::int as n from empresas`);
+    if (r.codigo) throw new Error(r.mensaje); igual(r.filas[0].n, 0, "filas");
   });
   await prueba("admin: escribe en lineas por la política solo_admin (insert + update + delete)", async () => {
     const r = await como("authenticated", claims("authenticated", ADMIN),

@@ -9,6 +9,10 @@ begin;
 -- Objetos creados por la fase 0
 drop table if exists public.correo_envios;
 drop policy if exists solo_admin on public.lineas;
+drop policy if exists solo_admin on public.empresas;          -- fase 0b
+drop policy if exists solo_admin on public.tardanzas;         -- fase 0b
+drop policy if exists solo_admin on public.asistencia_config; -- fase 0b
+drop policy if exists solo_admin on public.plantillas;        -- fase 0b
 -- portal_dni / portal_modo vuelven a SECURITY INVOKER sin search_path (así estaban)
 alter function public.portal_dni() security invoker;
 alter function public.portal_dni() reset search_path;
