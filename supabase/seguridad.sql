@@ -171,3 +171,67 @@ revoke all on table correo_envios from anon, authenticated, public;
 revoke all on sequence correo_envios_id_seq from anon, authenticated, public;
 grant select, insert on table correo_envios to service_role;
 grant usage on sequence correo_envios_id_seq to service_role;
+
+-- @@FASE2-INICIO@@ (generado por scripts/fase2-generar.mjs; no editar a mano)
+-- 8 · Fase 2: 38 vistas con security_invoker (BackOffice + catálogos), políticas de
+--     lectura para administradores y catálogos, SELECT en las tablas que no lo tenían.
+--     Las 9 v_portal_* siguen como dueño hasta la fase 4.
+-- 1 · GRANT SELECT en las 12 tablas bajo vistas que no tenían privilegio alguno
+--     para authenticated. Las filas las decide RLS (política), no el grant.
+grant select on table movimientos, notificaciones_documento, perfil_propuestas, rits, solicitud_avisos, solicitud_eventos, solicitud_tipos, solicitudes, ticket_avisos, ticket_subtipos, ticket_tipos, tickets to authenticated;
+
+-- 2 · Políticas de lectura: lectura_admin (administrador activo) en 38 tablas;
+--     lectura_sesion (administrador activo o trabajador identificado) en 4 catálogos.
+do $$
+declare t text;
+begin
+  foreach t in array array['activos', 'acuses', 'asignaciones', 'asistencia_lotes', 'auditoria', 'cargo_perfiles', 'comunicado_lecturas', 'comunicados', 'contratos', 'cuentas_portal', 'descargos', 'documentos', 'epp_entregas', 'feriados', 'lotes', 'marcaciones', 'memorandums', 'movimientos', 'notificaciones_documento', 'perfil_empresas', 'perfil_permisos', 'perfil_propuestas', 'perfiles', 'personas', 'politica_acceso', 'registro_accesos', 'rit_faltas', 'rits', 'sedes', 'solicitud_avisos', 'solicitud_eventos', 'solicitudes', 'solicitudes_cambio_cuenta', 'ticket_avisos', 'tickets', 'tipos_sancion', 'usuarios_admin', 'vinculos'] loop
+    execute format('drop policy if exists lectura_admin on public.%I', t);
+    execute format('create policy lectura_admin on public.%I for select to authenticated using (public.es_admin_activo())', t);
+  end loop;
+  foreach t in array array['declaraciones', 'solicitud_tipos', 'ticket_subtipos', 'ticket_tipos'] loop
+    execute format('drop policy if exists lectura_sesion on public.%I', t);
+    execute format('create policy lectura_sesion on public.%I for select to authenticated using (public.es_admin_activo() or public.portal_dni() is not null)', t);
+  end loop;
+end $$;
+
+-- 3 · security_invoker en las 38 vistas del BackOffice y catálogos.
+alter view public.v_actividad_persona set (security_invoker = on);
+alter view public.v_activos set (security_invoker = on);
+alter view public.v_acuses set (security_invoker = on);
+alter view public.v_asistencia_lotes set (security_invoker = on);
+alter view public.v_asistencia_mensual set (security_invoker = on);
+alter view public.v_cargo_perfiles set (security_invoker = on);
+alter view public.v_comunicado_pendientes set (security_invoker = on);
+alter view public.v_comunicados set (security_invoker = on);
+alter view public.v_contratos set (security_invoker = on);
+alter view public.v_declaraciones_vigentes set (security_invoker = on);
+alter view public.v_epp_entregas set (security_invoker = on);
+alter view public.v_feriados set (security_invoker = on);
+alter view public.v_lotes set (security_invoker = on);
+alter view public.v_marcaciones set (security_invoker = on);
+alter view public.v_memorandums set (security_invoker = on);
+alter view public.v_mi_acceso set (security_invoker = on);
+alter view public.v_mis_solicitudes set (security_invoker = on);
+alter view public.v_movimientos_persona set (security_invoker = on);
+alter view public.v_perfil_propuestas set (security_invoker = on);
+alter view public.v_perfil_versiones set (security_invoker = on);
+alter view public.v_perfiles set (security_invoker = on);
+alter view public.v_personal set (security_invoker = on);
+alter view public.v_politica_acceso set (security_invoker = on);
+alter view public.v_registro_accesos set (security_invoker = on);
+alter view public.v_rit_faltas set (security_invoker = on);
+alter view public.v_rits set (security_invoker = on);
+alter view public.v_sedes set (security_invoker = on);
+alter view public.v_solicitud_avisos set (security_invoker = on);
+alter view public.v_solicitud_eventos set (security_invoker = on);
+alter view public.v_solicitud_tipos set (security_invoker = on);
+alter view public.v_solicitudes set (security_invoker = on);
+alter view public.v_ticket_avisos set (security_invoker = on);
+alter view public.v_ticket_catalogo set (security_invoker = on);
+alter view public.v_ticket_config set (security_invoker = on);
+alter view public.v_tickets set (security_invoker = on);
+alter view public.v_tipos_sancion set (security_invoker = on);
+alter view public.v_usuarios_admin set (security_invoker = on);
+alter view public.v_vinculos_persona set (security_invoker = on);
+-- @@FASE2-FIN@@

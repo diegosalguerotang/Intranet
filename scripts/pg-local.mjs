@@ -169,6 +169,9 @@ export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true,
       grant execute on function asignar_activo(text, text, text) to authenticated, service_role`);
     // Estado de permisos de la fase 0 (supabase/seguridad.sql): se carga cuando
     // producción ya la tiene aplicada (PG_LOCAL_SEGURIDAD=1 o la opción seguridad).
+    // El espejo acumula TODAS las fases (0, 0b, 1, 2…); para ensayar una fase
+    // sobre el estado anterior se carga sin su bloque (ver sinFase2 en
+    // scripts/fase2-generar.mjs y su uso en ensayar-fase2.mjs).
     if (seguridad) await sql(readFileSync(join(RAIZ, "supabase/seguridad.sql"), "utf8"));
   }
   const parar = async () => { await cliente.end().catch(() => {}); await servidor.stop().catch(() => {}); };

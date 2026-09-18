@@ -1,0 +1,1733 @@
+{
+  "deps": {
+    "v_actividad_persona": {
+      "relaciones": [
+        {
+          "rel": "public.auditoria",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_activos": {
+      "relaciones": [
+        {
+          "rel": "public.activos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.asignaciones",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_acuses": {
+      "relaciones": [
+        {
+          "rel": "public.acuses",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.documentos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.notificaciones_documento",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_asistencia_lotes": {
+      "relaciones": [
+        {
+          "rel": "public.asistencia_lotes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_asistencia_mensual": {
+      "relaciones": [
+        {
+          "rel": "public.marcaciones",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.fn_hora_entrada",
+          "definer": true
+        }
+      ]
+    },
+    "v_cargo_perfiles": {
+      "relaciones": [
+        {
+          "rel": "public.cargo_perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_comunicado_pendientes": {
+      "relaciones": [
+        {
+          "rel": "public.comunicado_lecturas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.comunicados",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_comunicados": {
+      "relaciones": [
+        {
+          "rel": "public.comunicado_lecturas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.comunicados",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_contratos": {
+      "relaciones": [
+        {
+          "rel": "public.contratos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_declaraciones_vigentes": {
+      "relaciones": [
+        {
+          "rel": "public.declaraciones",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_epp_entregas": {
+      "relaciones": [
+        {
+          "rel": "public.epp_entregas",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_feriados": {
+      "relaciones": [
+        {
+          "rel": "public.feriados",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_lotes": {
+      "relaciones": [
+        {
+          "rel": "public.acuses",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.documentos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.lotes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_marcaciones": {
+      "relaciones": [
+        {
+          "rel": "public.marcaciones",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_memorandums": {
+      "relaciones": [
+        {
+          "rel": "public.descargos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.memorandums",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.tipos_sancion",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_mi_acceso": {
+      "relaciones": [
+        {
+          "rel": "public.perfil_empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfil_permisos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.usuarios_admin",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_mis_solicitudes": {
+      "relaciones": [
+        {
+          "rel": "public.solicitud_eventos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitud_tipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitudes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.fn_persona_llamador",
+          "definer": true
+        }
+      ]
+    },
+    "v_movimientos_persona": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.movimientos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_perfil_propuestas": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfil_propuestas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.usuarios_admin",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_perfil_versiones": {
+      "relaciones": [
+        {
+          "rel": "public.perfil_empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfil_permisos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_perfiles": {
+      "relaciones": [
+        {
+          "rel": "public.perfil_empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfil_permisos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.usuarios_admin",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_personal": {
+      "relaciones": [
+        {
+          "rel": "public.cuentas_portal",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.fn_hora_entrada",
+          "definer": true
+        }
+      ]
+    },
+    "v_politica_acceso": {
+      "relaciones": [
+        {
+          "rel": "public.politica_acceso",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_portal_boletas": {
+      "relaciones": [
+        {
+          "rel": "public.acuses",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.documentos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_comunicados": {
+      "relaciones": [
+        {
+          "rel": "public.comunicado_lecturas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.comunicados",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_datos": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitudes_cambio_cuenta",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_mes": {
+      "relaciones": [
+        {
+          "rel": "public.tardanzas",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_pendientes": {
+      "relaciones": [
+        {
+          "rel": "public.acuses",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.comunicado_lecturas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.comunicados",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.documentos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_perfil": {
+      "relaciones": [
+        {
+          "rel": "public.cuentas_portal",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        },
+        {
+          "fn": "public.portal_modo",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_rit": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.rits",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_solicitudes": {
+      "relaciones": [
+        {
+          "rel": "public.solicitud_eventos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitud_tipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitudes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_portal_tickets": {
+      "relaciones": [
+        {
+          "rel": "public.ticket_subtipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.ticket_tipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.tickets",
+          "tipo": "r"
+        }
+      ],
+      "funciones": [
+        {
+          "fn": "public.portal_dni",
+          "definer": true
+        }
+      ]
+    },
+    "v_registro_accesos": {
+      "relaciones": [
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.registro_accesos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.usuarios_admin",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_rit_faltas": {
+      "relaciones": [
+        {
+          "rel": "public.rit_faltas",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_rits": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.rits",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_sedes": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.rits",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_solicitud_avisos": {
+      "relaciones": [
+        {
+          "rel": "public.solicitud_avisos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitud_tipos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_solicitud_eventos": {
+      "relaciones": [
+        {
+          "rel": "public.solicitud_eventos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_solicitud_tipos": {
+      "relaciones": [
+        {
+          "rel": "public.solicitud_tipos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_solicitudes": {
+      "relaciones": [
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitud_tipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.solicitudes",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_ticket_avisos": {
+      "relaciones": [
+        {
+          "rel": "public.ticket_avisos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_ticket_catalogo": {
+      "relaciones": [
+        {
+          "rel": "public.ticket_subtipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.ticket_tipos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_ticket_config": {
+      "relaciones": [
+        {
+          "rel": "public.ticket_subtipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.ticket_tipos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_tickets": {
+      "relaciones": [
+        {
+          "rel": "public.ticket_subtipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.ticket_tipos",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.tickets",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_tipos_sancion": {
+      "relaciones": [
+        {
+          "rel": "public.tipos_sancion",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_usuarios_admin": {
+      "relaciones": [
+        {
+          "rel": "public.perfil_empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.perfiles",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.personas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.usuarios_admin",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    },
+    "v_vinculos_persona": {
+      "relaciones": [
+        {
+          "rel": "public.empresas",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.sedes",
+          "tipo": "r"
+        },
+        {
+          "rel": "public.vinculos",
+          "tipo": "r"
+        }
+      ],
+      "funciones": []
+    }
+  },
+  "estadoA": {
+    "v_actividad_persona": {
+      "postgres": 5,
+      "admin": 5,
+      "superadmin": 5,
+      "trabajador": 5
+    },
+    "v_activos": {
+      "postgres": 7,
+      "admin": 7,
+      "superadmin": 7,
+      "trabajador": 7
+    },
+    "v_acuses": {
+      "postgres": 11,
+      "admin": 11,
+      "superadmin": 11,
+      "trabajador": 11
+    },
+    "v_asistencia_lotes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_asistencia_mensual": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_cargo_perfiles": {
+      "postgres": 34,
+      "admin": 34,
+      "superadmin": 34,
+      "trabajador": 34
+    },
+    "v_comunicado_pendientes": {
+      "postgres": 48,
+      "admin": 48,
+      "superadmin": 48,
+      "trabajador": 48
+    },
+    "v_comunicados": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_contratos": {
+      "postgres": 4,
+      "admin": 4,
+      "superadmin": 4,
+      "trabajador": 4
+    },
+    "v_declaraciones_vigentes": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_epp_entregas": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_feriados": {
+      "postgres": 16,
+      "admin": 16,
+      "superadmin": 16,
+      "trabajador": 16
+    },
+    "v_lotes": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 1
+    },
+    "v_marcaciones": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_memorandums": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_mi_acceso": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_mis_solicitudes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_movimientos_persona": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_perfil_propuestas": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_perfil_versiones": {
+      "postgres": 18,
+      "admin": 18,
+      "superadmin": 18,
+      "trabajador": 18
+    },
+    "v_perfiles": {
+      "postgres": 18,
+      "admin": 18,
+      "superadmin": 18,
+      "trabajador": 18
+    },
+    "v_personal": {
+      "postgres": 17,
+      "admin": 17,
+      "superadmin": 17,
+      "trabajador": 17
+    },
+    "v_politica_acceso": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 1
+    },
+    "v_portal_boletas": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 1
+    },
+    "v_portal_comunicados": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 3
+    },
+    "v_portal_datos": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 1
+    },
+    "v_portal_mes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_pendientes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_perfil": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 1
+    },
+    "v_portal_rit": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 1
+    },
+    "v_portal_solicitudes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_tickets": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_registro_accesos": {
+      "postgres": 7,
+      "admin": 7,
+      "superadmin": 7,
+      "trabajador": 7
+    },
+    "v_rit_faltas": {
+      "postgres": 50,
+      "admin": 50,
+      "superadmin": 50,
+      "trabajador": 50
+    },
+    "v_rits": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 1
+    },
+    "v_sedes": {
+      "postgres": 6,
+      "admin": 6,
+      "superadmin": 6,
+      "trabajador": 6
+    },
+    "v_solicitud_avisos": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 1
+    },
+    "v_solicitud_eventos": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_solicitud_tipos": {
+      "postgres": 2,
+      "admin": 2,
+      "superadmin": 2,
+      "trabajador": 2
+    },
+    "v_solicitudes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_ticket_avisos": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 1
+    },
+    "v_ticket_catalogo": {
+      "postgres": 18,
+      "admin": 18,
+      "superadmin": 18,
+      "trabajador": 18
+    },
+    "v_ticket_config": {
+      "postgres": 26,
+      "admin": 26,
+      "superadmin": 26,
+      "trabajador": 26
+    },
+    "v_tickets": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_tipos_sancion": {
+      "postgres": 6,
+      "admin": 6,
+      "superadmin": 6,
+      "trabajador": 6
+    },
+    "v_usuarios_admin": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 3
+    },
+    "v_vinculos_persona": {
+      "postgres": 17,
+      "admin": 17,
+      "superadmin": 17,
+      "trabajador": 17
+    }
+  },
+  "estadoB": {
+    "v_actividad_persona": {
+      "postgres": 5,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_activos": {
+      "postgres": 7,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_acuses": {
+      "postgres": 11,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_asistencia_lotes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_asistencia_mensual": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_cargo_perfiles": {
+      "postgres": 34,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_comunicado_pendientes": {
+      "postgres": 48,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_comunicados": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_contratos": {
+      "postgres": 4,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_declaraciones_vigentes": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_epp_entregas": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_feriados": {
+      "postgres": 16,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_lotes": {
+      "postgres": 1,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_marcaciones": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_memorandums": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_mi_acceso": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_mis_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_movimientos_persona": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_perfil_propuestas": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_perfil_versiones": {
+      "postgres": 18,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_perfiles": {
+      "postgres": 18,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_personal": {
+      "postgres": 17,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_politica_acceso": {
+      "postgres": 1,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_boletas": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_comunicados": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_datos": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_mes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_pendientes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_perfil": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_rit": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_portal_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_portal_tickets": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_registro_accesos": {
+      "postgres": 7,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_rit_faltas": {
+      "postgres": 50,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_rits": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_sedes": {
+      "postgres": 6,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_avisos": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_eventos": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_tipos": {
+      "postgres": 2,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_avisos": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_catalogo": {
+      "postgres": 18,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_config": {
+      "postgres": 26,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_tickets": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_tipos_sancion": {
+      "postgres": 6,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_usuarios_admin": {
+      "postgres": 3,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_vinculos_persona": {
+      "postgres": 17,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    }
+  },
+  "estadoC": {
+    "v_actividad_persona": {
+      "postgres": 5,
+      "admin": 5,
+      "superadmin": 5,
+      "trabajador": 0
+    },
+    "v_activos": {
+      "postgres": 7,
+      "admin": 7,
+      "superadmin": 7,
+      "trabajador": 0
+    },
+    "v_acuses": {
+      "postgres": 11,
+      "admin": 11,
+      "superadmin": 11,
+      "trabajador": 0
+    },
+    "v_asistencia_lotes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_asistencia_mensual": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_cargo_perfiles": {
+      "postgres": 34,
+      "admin": 34,
+      "superadmin": 34,
+      "trabajador": 0
+    },
+    "v_comunicado_pendientes": {
+      "postgres": 48,
+      "admin": 48,
+      "superadmin": 48,
+      "trabajador": 0
+    },
+    "v_comunicados": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_contratos": {
+      "postgres": 4,
+      "admin": 4,
+      "superadmin": 4,
+      "trabajador": 0
+    },
+    "v_declaraciones_vigentes": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_epp_entregas": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_feriados": {
+      "postgres": 16,
+      "admin": 16,
+      "superadmin": 16,
+      "trabajador": 0
+    },
+    "v_lotes": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 0
+    },
+    "v_marcaciones": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_memorandums": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_mi_acceso": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_mis_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_movimientos_persona": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_perfil_propuestas": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_perfil_versiones": {
+      "postgres": 18,
+      "admin": 18,
+      "superadmin": 18,
+      "trabajador": 0
+    },
+    "v_perfiles": {
+      "postgres": 18,
+      "admin": 18,
+      "superadmin": 18,
+      "trabajador": 0
+    },
+    "v_personal": {
+      "postgres": 17,
+      "admin": 17,
+      "superadmin": 17,
+      "trabajador": 0
+    },
+    "v_politica_acceso": {
+      "postgres": 1,
+      "admin": 1,
+      "superadmin": 1,
+      "trabajador": 0
+    },
+    "v_portal_boletas": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_comunicados": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_datos": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_mes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_pendientes": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_perfil": {
+      "postgres": 0,
+      "admin": 0,
+      "superadmin": 0,
+      "trabajador": 0
+    },
+    "v_portal_rit": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_portal_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_portal_tickets": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_registro_accesos": {
+      "postgres": 7,
+      "admin": 7,
+      "superadmin": 7,
+      "trabajador": 0
+    },
+    "v_rit_faltas": {
+      "postgres": 50,
+      "admin": 50,
+      "superadmin": 50,
+      "trabajador": 0
+    },
+    "v_rits": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_sedes": {
+      "postgres": 6,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_avisos": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_eventos": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitud_tipos": {
+      "postgres": 2,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_solicitudes": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_avisos": {
+      "postgres": 1,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_catalogo": {
+      "postgres": 18,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_ticket_config": {
+      "postgres": 26,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_tickets": {
+      "postgres": 0,
+      "admin": "ERR 42501",
+      "superadmin": "ERR 42501",
+      "trabajador": "ERR 42501"
+    },
+    "v_tipos_sancion": {
+      "postgres": 6,
+      "admin": 6,
+      "superadmin": 6,
+      "trabajador": 0
+    },
+    "v_usuarios_admin": {
+      "postgres": 3,
+      "admin": 3,
+      "superadmin": 3,
+      "trabajador": 0
+    },
+    "v_vinculos_persona": {
+      "postgres": 17,
+      "admin": 17,
+      "superadmin": 17,
+      "trabajador": 0
+    }
+  },
+  "tablas": [
+    "activos",
+    "acuses",
+    "asignaciones",
+    "asistencia_lotes",
+    "auditoria",
+    "cargo_perfiles",
+    "comunicado_lecturas",
+    "comunicados",
+    "contratos",
+    "cuentas_portal",
+    "declaraciones",
+    "descargos",
+    "documentos",
+    "empresas",
+    "epp_entregas",
+    "feriados",
+    "lotes",
+    "marcaciones",
+    "memorandums",
+    "movimientos",
+    "notificaciones_documento",
+    "perfil_empresas",
+    "perfil_permisos",
+    "perfil_propuestas",
+    "perfiles",
+    "personas",
+    "politica_acceso",
+    "registro_accesos",
+    "rit_faltas",
+    "rits",
+    "sedes",
+    "solicitud_avisos",
+    "solicitud_eventos",
+    "solicitud_tipos",
+    "solicitudes",
+    "solicitudes_cambio_cuenta",
+    "tardanzas",
+    "ticket_avisos",
+    "ticket_subtipos",
+    "ticket_tipos",
+    "tickets",
+    "tipos_sancion",
+    "usuarios_admin",
+    "vinculos"
+  ]
+}
