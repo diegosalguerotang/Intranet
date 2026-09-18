@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { PackagePlus, Upload, Download, Eye, EyeOff } from "lucide-react";
+import { PackagePlus, Upload, Download } from "lucide-react";
 import { useApp } from "../../state";
 import {
   PageHeader, Card, Stat, Table, Td, Badge, Button, Input, Select, Field, Modal, Note,
@@ -16,7 +16,7 @@ const ESTADOS = {
 // ADQ-01 — Inventario de activos
 export default function Inventario() {
   const { empresaId, db, persona, asignarActivo, devolverActivo, editarActivo,
-    guardarClaveEquipo, verClaveEquipo, user } = useApp();
+    guardarClaveEquipo, user } = useApp();
   const [q, setQ] = useState("");
   const [fCat, setFCat] = useState("");
   const [fTipo, setFTipo] = useState("");
@@ -189,7 +189,7 @@ export default function Inventario() {
 
       <AltaActivo open={alta} onClose={() => setAlta(false)} />
       <EditarActivo activo={editar} onClose={() => setEditar(null)} editarActivo={editarActivo} onListo={setAviso}
-        esSuperadmin={esSuperadmin} guardarClaveEquipo={guardarClaveEquipo} verClaveEquipo={verClaveEquipo} />
+        esSuperadmin={esSuperadmin} guardarClaveEquipo={guardarClaveEquipo} />
       <ImportarInventario open={importar} onClose={() => setImportar(false)} />
       <AsignarActivo activo={asignar} onClose={() => setAsignar(null)} onAsignar={ejecutarAsignacion} />
       <DevolucionActivo activo={devolver} onClose={() => setDevolver(null)} onDevolver={ejecutarDevolucion} />
@@ -200,14 +200,15 @@ export default function Inventario() {
 // Edición manual de un activo: corregir el código (caso «falta corregir» de la
 // importación) y los datos del equipo. Renombrar el código arrastra el
 // historial de asignaciones y las líneas, y quita la marca de repetido.
-function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, guardarClaveEquipo, verClaveEquipo }) {
+// Claves de equipos (fase 3c, decisión P5): la intranet NO guarda la clave,
+// guarda la REFERENCIA en el gestor de contraseñas (nombre de la entrada).
+// Cualquier categoría con nivel de acción en Activos la mantiene.
+function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, guardarClaveEquipo }) {
   const [form, setForm] = useState(null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
-  const [clave, setClave] = useState("");       // valor nuevo escrito (solo superadmin)
-  const [claveTocada, setClaveTocada] = useState(false);
-  const [claveVisible, setClaveVisible] = useState(false);
-  const [claveActual, setClaveActual] = useState(null); // resultado de "Ver clave actual"
+  const [referencia, setReferencia] = useState("");
+  const [referenciaTocada, setReferenciaTocada] = useState(false);
   useEffect(() => {
     if (!activo) { setForm(null); setError(null); return; }
     setForm({
@@ -217,19 +218,9 @@ function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, gu
       asignadoSinConfirmar: activo.asignado_sin_confirmar ?? "",
       observaciones: activo.observaciones ?? "",
     });
-    setClave(""); setClaveTocada(false); setClaveVisible(false); setClaveActual(null);
+    setReferencia(activo.clave_gestor ?? ""); setReferenciaTocada(false);
   }, [activo]);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const verActual = async () => {
-    setError(null);
-    try {
-      const v = await verClaveEquipo(activo.codigo);
-      setClaveActual(v ?? "(sin clave registrada)");
-    } catch (err) {
-      setError(err.message);
-    }
-  };
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -238,7 +229,7 @@ function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, gu
     setOcupado(true);
     try {
       await editarActivo(activo.codigo, form);
-      if (esSuperadmin && claveTocada) await guardarClaveEquipo(form.codigo, clave);
+      if (referenciaTocada) await guardarClaveEquipo(form.codigo, referencia);
       onListo(
         form.codigo !== activo.codigo
           ? `Activo ${activo.codigo} corregido: ahora es ${form.codigo}. Su historial de asignaciones lo siguió.`
@@ -295,30 +286,10 @@ function EditarActivo({ activo, onClose, editarActivo, onListo, esSuperadmin, gu
           <Field label="Observaciones">
             <Input value={form.observaciones} onChange={set("observaciones")} />
           </Field>
-          {esSuperadmin && (
-            <div className="rounded-caja border border-borde bg-papel/60 p-3.5 space-y-3">
-              <div className="text-[13px] font-semibold text-tinta">Clave del equipo</div>
-              <div className="flex flex-wrap items-end gap-2">
-                <Field label={activo.tiene_clave ? "Reemplazar clave" : "Registrar clave"} hint="Todo acceso queda registrado en auditoría.">
-                  <div className="relative">
-                    <Input type={claveVisible ? "text" : "password"} value={clave} autoComplete="new-password"
-                      onChange={(e) => { setClave(e.target.value); setClaveTocada(true); }} style={{ paddingRight: 34 }} />
-                    <button type="button" onClick={() => setClaveVisible((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gris hover:text-tinta"
-                      title={claveVisible ? "Ocultar" : "Mostrar"}>
-                      {claveVisible ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                </Field>
-                {activo.tiene_clave && (
-                  <Button type="button" variant="secondary" size="sm" onClick={verActual}>Ver clave actual</Button>
-                )}
-              </div>
-              {claveActual !== null && (
-                <Note tone="neutral">Clave actual: <span className="font-mono font-semibold">{claveActual}</span></Note>
-              )}
-            </div>
-          )}
+          <Field label="Referencia en el gestor de contraseñas"
+            hint="Solo el nombre de la entrada (p. ej. «Bitwarden · LAP-014»). La clave nunca se guarda en la intranet. Vacío = sin referencia.">
+            <Input value={referencia} onChange={(e) => { setReferencia(e.target.value); setReferenciaTocada(true); }} maxLength={120} />
+          </Field>
           {error && <Note tone="alerta">{error}</Note>}
           <div className="flex gap-2">
             <Button type="submit" disabled={ocupado || !form.codigo.trim()}>

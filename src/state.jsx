@@ -705,7 +705,9 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("activos");
     },
-    // Clave del equipo: solo superadmin (la RPC lo impone y todo acceso se audita).
+    // Referencia al gestor de contraseñas del equipo (fase 3c, P5): la RPC
+    // exige nivel de acción en Activos y deja rastro. verClaveEquipo devuelve
+    // la misma referencia (compatibilidad; v_activos ya la trae como clave_gestor).
     guardarClaveEquipo: async (codigo, clave) => {
       if (!supabaseListo) throw new Error("Requiere conexión a Supabase.");
       const { error } = await supabase.rpc("guardar_clave_equipo", {

@@ -157,12 +157,14 @@ async function extraer() {
     from information_schema.columns c join pg_class k on k.relname = c.table_name
     join pg_namespace n on n.oid = k.relnamespace and n.nspname = c.table_schema
     where c.table_schema in ('public', 'interno') and k.relkind = 'r' order by 1, 2, 5`);
-  const tablas = [...new Set(columnas.map((c) => c.t))];
+  // Las tablas respaldo_* las crean las migraciones (definiciones para revertir),
+  // no son datos del sistema: no viajan al entorno de pruebas.
+  const tablas = [...new Set(columnas.map((c) => c.t))].filter((t) => !/^respaldo_/.test(t));
   const esquemaDe = Object.fromEntries(columnas.map((c) => [c.t, c.esquema]));
   // Tablas de fases futuras pueden no existir aún en producción: se avisa y se ignoran.
   for (const t of Object.keys(REGLAS)) if (!tablas.includes(t)) console.log(`  (REGLAS: la tabla ${t} no existe todavía en producción; se ignora)`);
   for (const [t, reglas] of Object.entries(REGLAS)) for (const col of Object.keys(reglas))
-    if (tablas.includes(t) && !columnas.some((c) => c.t === t && c.col === col)) throw new Error(`REGLAS menciona una columna inexistente: ${t}.${col}`);
+    if (tablas.includes(t) && !columnas.some((c) => c.t === t && c.col === col)) console.log(`  (REGLAS: la columna ${t}.${col} ya no existe en producción; se ignora)`);
   // Columnas con nombre de dato personal que NO tienen regla: se avisa (no se sigue a ciegas).
   const sospechosas = columnas.filter((c) => /dni|nombre|celular|correo|email|telefono|direccion|cuenta|clave|token|ip$|agente|dispositivo/.test(c.col)
     && !REGLAS[c.t]?.[c.col] && !REVISADAS_SIN_DATO_PERSONAL.includes(`${c.t}.${c.col}`) && !["empresas", "sedes", "bancos", "cargos", "rits", "rit_faltas", "tipos_sancion", "declaraciones", "feriados", "solicitud_tipos", "ticket_tipos", "ticket_subtipos", "plantillas", "centros_costo", "comunicados", "lotes", "documentos", "contratos", "perfil_permisos", "perfil_empresas", "solicitud_correlativos", "asistencia_config"].includes(c.t));
@@ -177,7 +179,8 @@ async function extraer() {
     const exprs = cols.map((c) => (reglas[c.col] ? `${SQL[reglas[c.col]](c.col)} as ${c.col}` : c.col));
     // Prueba en origen: ningún valor transformado igual al original (por columna con regla que conserva tipo text).
     for (const [col, regla] of Object.entries(reglas)) {
-      const tipo = cols.find((c) => c.col === col).tipo;
+      const tipo = cols.find((c) => c.col === col)?.tipo;
+      if (tipo === undefined) continue;  // columna retirada por una fase posterior
       if (["nulo", "jsonVacio", "jsonLista", "auditoria"].includes(regla) || tipo !== "text") continue;
       const excepto = regla === "actor" ? ` and ${col} not in (${MARCAS_SISTEMA.map((m) => `'${m}'`).join(", ")})` : "";
       const [{ n }] = await consultaProd(`select count(*)::int as n from ${esquemaDe[t]}.${t} where ${col} is not null${excepto} and ${SQL[regla](col)} = ${col}`);
@@ -254,7 +257,7 @@ export function revisarTexto(texto) {
       const cols = m[1].split(", ");
       for (const fila of m[2].split("\n")) {
         const vals = [...fila.matchAll(/\$anon\$([^$]*)\$anon\$|null|true|false|(-?\d+(?:\.\d+)?)/g)];
-        for (const c of colsNulas) if (vals[cols.indexOf(c)]?.[0] !== "null") { problemas.push(`${t}.${c}: debería ir nula y trae un valor`); break; }
+        for (const c of colsNulas) { const i = cols.indexOf(c); if (i < 0) continue; if (vals[i]?.[0] !== "null") { problemas.push(`${t}.${c}: debería ir nula y trae un valor`); break; } }
       }
     }
   }

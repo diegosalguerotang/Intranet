@@ -1,17 +1,18 @@
 {
-  "generado": "2026-09-18T20:03:09.394Z",
+  "generado": "2026-09-18T20:46:26.900Z",
   "proyecto": "mzpbdkrmokfxrrsotfgs",
   "tablas": {
-    "auditoria": 3955,
+    "auditoria": 4023,
     "cargo_perfiles": 34,
     "correo_tokens": 4,
-    "perfil_empresas": 56,
-    "perfil_permisos": 96,
+    "datos_bancarios": 4,
+    "perfil_empresas": 80,
+    "perfil_permisos": 108,
     "perfil_propuestas": 45,
-    "perfiles": 16,
+    "perfiles": 22,
     "politica_acceso": 1,
     "registro_accesos": 143,
-    "usuarios_admin": 4,
+    "usuarios_admin": 9,
     "activos": 79,
     "acuses": 0,
     "asignaciones": 1,
@@ -72,6 +73,14 @@
       "token": "hashSecreto",
       "dni": "dni",
       "correo": "correo"
+    },
+    "datos_bancarios": {
+      "dni": "dni",
+      "cuenta_cifrada": "nulo",
+      "cuenta_ultimos4": "ultimos4",
+      "cci_cifrado": "nulo",
+      "cci_ultimos4": "ultimos4",
+      "actualizado_por": "actor"
     },
     "perfil_propuestas": {
       "persona_dni": "dni",
@@ -233,6 +242,6 @@
       "persona_dni": "dni"
     }
   },
-  "pruebas_en_origen": 90,
+  "pruebas_en_origen": 93,
   "revision": "sin hallazgos"
 }
