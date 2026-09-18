@@ -18,6 +18,15 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i), l.slice(i + 1).replace(/^"|"$/g, "")]; }),
 );
 const user = env.SMTP_USER ?? "", pass = env.SMTP_PASS ?? "";
+// OJO (2026-09-18): `vercel env pull` NO descarga el valor de una variable
+// marcada Sensitive: escribe el texto literal "[SENSITIVE]" (11 caracteres).
+// En ese caso este script no puede probar nada; la prueba válida es un envío
+// real desde producción (api/enviar-correo, acción recuperacion-admin) y leer
+// el resultado en la tabla correo_envios.
+if ([user, pass].includes("[SENSITIVE]")) {
+  console.error("SMTP_USER/SMTP_PASS son Sensitive en Vercel: el pull trae \"[SENSITIVE]\", no el valor. Prueba con un envío real y mira correo_envios.");
+  process.exit(2);
+}
 const oculto = user ? user.replace(/^(..).*(@.*)$/, "$1***$2") : "(vacío)";
 console.log(`SMTP_USER: ${oculto} · SMTP_PASS: ${pass ? `${pass.length} caracteres` : "(vacío)"} · RESEND_API_KEY: ${env.RESEND_API_KEY ? "sí" : "no"}`);
 if (!user || !pass) { console.error("Faltan SMTP_USER o SMTP_PASS en el entorno de producción."); process.exit(1); }

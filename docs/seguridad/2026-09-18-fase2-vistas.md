@@ -75,4 +75,4 @@ Sin cambios en el código del cliente: ni el BackOffice ni el Portal tocan nada 
 - Fase 4: políticas por trabajador y por módulo/nivel; pasar las 9 `v_portal_*` a `security_invoker`; sustituir `lectura_admin` (lectura total para cualquier administrador activo) por políticas por módulo; revisar `storage.objects`.
 - Fase 5: `personas.cci`/`cuenta` en claro y auditoría con secretos (la lectura directa interina de tablas por administradores hace más visible ese pendiente).
 - Fase 2.5 (entorno de pruebas con datos anonimizados): `scripts/pg-local.mjs` ya es la base; falta la copia anonimizada de datos y el procedimiento de regeneración.
-- Sigue pendiente de la fase 1: prueba con sesiones reales (`verificar-fase1.mjs` con claves) y rotación de la contraseña de aplicación de Gmail (`SMTP_PASS`).
+- Sigue pendiente de la fase 1: prueba con sesiones reales (`verificar-fase1.mjs` con claves). La contraseña de aplicación de Gmail (`SMTP_PASS`) se rotó el 2026-09-18 (producción y preview; envío real verificado en `correo_envios`).
