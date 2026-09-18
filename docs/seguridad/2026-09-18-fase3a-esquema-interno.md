@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 3a — Esquema privado `interno`
 
-Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **PREPARADA Y ENSAYADA en el entorno de la fase 2.5 (18/18); NO aplicada en producción. Commit local sin push: el código de la API debe desplegarse entre las dos migraciones (ver sección 5).**
+Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **APLICADA en producción el 2026-09-18 en el orden de la sección 5 (fase3a1 → deploy de la API → verificación → fase3a2 → verificación). `verificar-fase3a` todo verde en los dos momentos; las 9 vistas sobre `interno` devuelven a la sesión real del superadministrador exactamente el total (4 usuarios, 16 categorías, 143 accesos, 2 286 filas de actividad…); PostgREST sigue publicando solo `public, graphql_public`; envío real de recuperación registrado como enviado con la API nueva. Pendiente: recorrido de Accesos en el navegador por Diego (la sesión recordada de Chrome había caducado).**
 
 Requiere las fases 0, 0b, 1 y 2 aplicadas y el entorno de pruebas de la fase 2.5.
 
