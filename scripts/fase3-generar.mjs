@@ -269,7 +269,8 @@ export const ESPEJO = `-- @@FASE3-INICIO@@ (generado por scripts/fase3-generar.m
 --     funciones de servicio están en el canónico api-servicio.sql.
 ${CUERPO}-- @@FASE3-FIN@@`;
 
-export const sinFase3 = (texto) => texto.replace(/-- @@FASE3-INICIO@@[\s\S]*?-- @@FASE3-FIN@@\n?/, "");
+// Quita la fase 3a y todas las posteriores (3b, 4…): el ensayo parte del estado de la fase 2.
+export const sinFase3 = (texto) => texto.replace(/-- @@FASE(?:3[A-Z]?|[4-9][A-Z]?)-INICIO@@[\s\S]*?-- @@FASE(?:3[A-Z]?|[4-9][A-Z]?)-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {
@@ -278,7 +279,11 @@ if (esPrincipal) {
   writeFileSync(`supabase/respaldos/${FECHA}-fase3a2-reversion.sql`, REVERSION_ESQUEMA);
   writeFileSync(`supabase/respaldos/${FECHA}-fase3a1-reversion.sql`, REVERSION_SERVICIO);
   const ruta = "supabase/seguridad.sql";
-  const limpio = sinFase3(readFileSync(ruta, "utf8")).replace(/\s+$/, "");
-  writeFileSync(ruta, `${limpio}\n\n${ESPEJO}\n`);
+  // El generador solo reemplaza SU bloque; los posteriores (3b…) se conservan y
+  // quedan detrás porque cada generador re-anexa el suyo al final en orden.
+  const actual = readFileSync(ruta, "utf8");
+  const propio = /-- @@FASE3-INICIO@@[\s\S]*?-- @@FASE3-FIN@@\n?/;
+  const texto = propio.test(actual) ? actual.replace(propio, `${ESPEJO}\n`) : `${actual.replace(/\s+$/, "")}\n\n${ESPEJO}\n`;
+  writeFileSync(ruta, texto);
   console.log(`Generados: fase3a1 (${FUNCIONES_SERVICIO.length} funciones de servicio), fase3a2 (${TABLAS.length} tablas → ${ESQUEMA}), 2 reversiones y bloque de seguridad.sql.`);
 }

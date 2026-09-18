@@ -182,7 +182,7 @@ export default function Legajo() {
               ["Correo", p.correo ? `${p.correo}${p.correoVerificado ? " ✓ verificado" : " (sin verificar)"}` : "Sin registrar"],
               ["Banco de haberes", p.banco ?? "Sin registrar"],
               ["N° de cuenta", cuentaCompleta?.cuenta ?? p.cuenta ?? "Sin registrar"],
-              ["CCI", p.cci ?? "Sin registrar"],
+              ["CCI", cuentaCompleta?.cci ?? p.cci ?? "Sin registrar"],
               ["Estado del portal", { activo: "Activo", nunca_ingreso: "Nunca ingresó", sin_celular: "Sin celular" }[p.portal]],
               ["Sexo", p.sexo === "M" ? "Masculino" : p.sexo === "F" ? "Femenino" : "Sin registrar"],
               ["Centro de costo", p.centroCosto ?? "Sin asignar"],
@@ -194,11 +194,11 @@ export default function Legajo() {
               </div>
             ))}
           </div>
-          {(puedeEditar || (p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta)) && (
+          {(puedeEditar || ((p.cuenta || p.cci) && puedeVerCuenta && !cuentaCompleta?.cuenta && !cuentaCompleta?.cci)) && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {p.cuenta && puedeVerCuenta && !cuentaCompleta?.cuenta && (
+              {(p.cuenta || p.cci) && puedeVerCuenta && !cuentaCompleta?.cuenta && !cuentaCompleta?.cci && (
                 <Button variant="secondary" size="sm" onClick={async () => setCuentaCompleta(await verCuentaBancaria(p.dni))}>
-                  Ver cuenta completa
+                  Ver cuenta y CCI completos
                 </Button>
               )}
               {puedeEditar && (
@@ -211,7 +211,7 @@ export default function Legajo() {
           {cuentaCompleta?.error && <div className="mt-3"><Note tone="alerta">{cuentaCompleta.error}</Note></div>}
           {cuentaCompleta?.sinPermiso && <div className="mt-3"><Note tone="alerta">Tu categoría no permite ver la cuenta completa.</Note></div>}
           <Note tone="neutral">
-            La cuenta de haberes vive cifrada y sale enmascarada; verla completa queda registrado en auditoría (Ley 29733).
+            La cuenta de haberes y el CCI viven cifrados y salen enmascarados; verlos completos queda registrado en auditoría (Ley 29733).
           </Note>
         </Card>
       )}
@@ -457,9 +457,9 @@ function EditarHoraEntrada({ persona: p, onClose, fijarHoraEntrada, onListo }) {
 function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
   const [form, setForm] = useState({
     nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
-    // La cuenta llega ENMASCARADA (vive cifrada): el campo arranca vacío y
-    // vacío significa «conservar la actual» (el RPC lo maneja así).
-    banco: p.banco ?? "", cuenta: "", cci: p.cci ?? "",
+    // Cuenta y CCI llegan ENMASCARADOS (viven cifrados, fase 3b): los campos
+    // arrancan vacíos y vacío significa «conservar el actual»; «-» borra.
+    banco: p.banco ?? "", cuenta: "", cci: "",
     tipoDocumento: p.tipo_documento ?? "DNI",
   });
   const [ocupado, setOcupado] = useState(false);
@@ -515,8 +515,8 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
             <Input value={form.cuenta} onChange={set("cuenta")} placeholder={p.cuenta ? `Actual: ${p.cuenta}` : "Sin cuenta registrada"} />
           </Field>
         </div>
-        <Field label="CCI" hint="Código interbancario (20 dígitos). Mismo tratamiento sensible que la cuenta.">
-          <Input value={form.cci} onChange={set("cci")} />
+        <Field label="CCI" hint="Código interbancario (20 dígitos). Vacío conserva el actual; escribe «-» para borrarlo. Se guarda cifrado.">
+          <Input value={form.cci} onChange={set("cci")} placeholder={p.cci ? `Actual: ${p.cci}` : "Sin CCI registrado"} />
         </Field>
         {error && <Note tone="alerta">{error}</Note>}
         <div className="flex gap-2">
