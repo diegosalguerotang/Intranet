@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 3b — Datos bancarios en `interno.datos_bancarios`
 
-Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **PREPARADA Y ENSAYADA en el entorno de la fase 2.5 (16/16); NO aplicada en producción. Commit local; el push del BackOffice (Legajo) acompaña a la migración.**
+Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **APLICADA en producción el 2026-09-18 (Diego: «go»). `verificar-fase3b` todo verde: personas sin columnas bancarias, filas copiadas = conteo respaldado, todos los CCI cifrados, v_personal enmascarada para la sesión real del superadministrador, sesión sin identidad en 0 y auditoría sin valores.**
 
 Requiere la fase 3a aplicada.
 
