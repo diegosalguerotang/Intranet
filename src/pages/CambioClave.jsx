@@ -3,6 +3,7 @@ import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
 import { supabase } from "../lib/supabase";
 import { validarClave } from "../lib/campos";
+import { marcarClaveCambiada } from "../lib/clave";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 
 // Campo de clave con ojito de mostrar/ocultar (mismo patrón del login).
@@ -52,10 +53,10 @@ export default function CambioClave() {
     // La clave nueva se comprueba entrando de verdad (Diego, 2026-08-27): se
     // marca el cambio en BD con la sesión aún viva y se regresa al login en
     // vez de pasar directo al home.
-    if (user?.correo) {
-      await supabase.rpc("marcar_clave_cambiada", { p_correo: user.correo }).catch?.(() => {});
-    }
-    await salir("Tu clave se guardó. Ingresa de nuevo con tu clave nueva para comprobarla.");
+    const marca = await marcarClaveCambiada(supabase, user?.correo);
+    await salir(marca.error
+      ? `Tu clave se guardó, pero no se pudo registrar el reemplazo (${marca.error}). Si al ingresar te vuelve a pedir reemplazarla, avisa al administrador.`
+      : "Tu clave se guardó. Ingresa de nuevo con tu clave nueva para comprobarla.");
   };
 
   return (

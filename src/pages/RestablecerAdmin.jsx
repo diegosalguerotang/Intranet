@@ -4,6 +4,7 @@ import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 import { supabase } from "../lib/supabase";
 import { validarClave } from "../lib/campos";
+import { marcarClaveCambiada } from "../lib/clave";
 
 // Aterrizaje de los enlaces de acceso del BackOffice. Dos modos:
 //  · Correo NATIVO de Supabase (invitación al crear el usuario, o
@@ -34,6 +35,7 @@ export default function RestablecerAdmin() {
   const [ver2, setVer2] = useState(false);
   const [error, setError] = useState(null);
   const [listo, setListo] = useState(false);
+  const [avisoMarca, setAvisoMarca] = useState(null);
   const [cargando, setCargando] = useState(false);
 
   // Los enlaces nativos de Supabase llegan con la sesión en el hash; el
@@ -72,10 +74,8 @@ export default function RestablecerAdmin() {
               : `No se pudo guardar la clave: ${err.message}`);
           return;
         }
-        const correoSesion = sesionSupabase.user?.email;
-        if (correoSesion) {
-          await supabase.rpc("marcar_clave_cambiada", { p_correo: correoSesion }).catch?.(() => {});
-        }
+        const marca = await marcarClaveCambiada(supabase, sesionSupabase.user?.email);
+        if (marca.error) setAvisoMarca(marca.error);
         setListo(true);
         // La sesión temporal del enlace se cierra (Diego, 2026-08-27): la
         // clave nueva se comprueba entrando por el login, no de frente.
@@ -110,6 +110,9 @@ export default function RestablecerAdmin() {
         {listo ? (
           <div className="space-y-4 text-center">
             <Note tone="conf">Ya puedes ingresar al BackOffice con tu correo y tu clave nueva.</Note>
+            {avisoMarca && (
+              <Note tone="alerta">No se pudo registrar el reemplazo de la clave provisional ({avisoMarca}). Si al ingresar te vuelve a pedir reemplazarla, avisa al administrador.</Note>
+            )}
             <Link to="/admin/login">
               <Button className="w-full">Ir a ingresar</Button>
             </Link>
