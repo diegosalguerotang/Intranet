@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 5 — Datos sensibles
 
-Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **5a APLICADA en producción y verificada; 5b (redacción del histórico) PRESENTADA PARA APROBACIÓN, NO ejecutada; criterio de notificación (P16) documentado en `criterio-notificacion-brecha.md`.**
+Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **FASE 5 COMPLETA. 5a aplicada y verificada; 5b (redacción del histórico) APROBADA por Diego («aprobado», 2026-09-18) y EJECUTADA el 2026-09-18 21:55 UTC: 377 filas redactadas (cci 5, cuenta 40, cuenta_cifrada 282, clave_provisional 7, clave_equipo 1, sesion_actual 47), rastro `REDACCION_HISTORICO` con aprobador y conteos, inmutabilidad activa, 0 secretos restantes (`verificar-fase5` todo verde). Criterio de notificación (P16) en `criterio-notificacion-brecha.md`.**
 
 ## 1. Qué pedía el prompt y dónde quedó cada punto
 
@@ -20,7 +20,7 @@ Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: *
 - Verificado en producción: catálogo y una prueba de comportamiento en transacción revertida (un cambio de marcador de sesión queda como `[sensible: cambiado]`, nunca el valor).
 - Reversión: `supabase/respaldos/2026-09-18-fase5a-reversion.sql` (restaura el `fn_auditar` original desde `interno.respaldo_fase5`).
 
-## 3. Fase 5b · Redacción del histórico (PARA APROBACIÓN)
+## 3. Fase 5b · Redacción del histórico (aprobada y ejecutada el 2026-09-18)
 
 Migración `supabase/migraciones/2026-09-18-fase5b-redaccion-historico.sql`, una transacción. Es la **única excepción legítima a la inmutabilidad** de la auditoría (P6): desactiva el disparador de inmutabilidad solo dentro de la transacción, redacta y lo reactiva; deja rastro `REDACCION_HISTORICO` con aprobador, fecha y conteo por clave. **No tiene reversión por diseño**: los valores no se guardan en ningún sitio. Ensayada en local (9/9): niega sin aprobación, redacta con ella, no se re-aplica, la inmutabilidad vuelve.
 
