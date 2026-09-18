@@ -75,6 +75,7 @@ function SQL_correoInline(col) {
 export const REGLAS = {
   personas: { dni: "dni", nombre: "nombre", celular: "celular", direccion: "direccion", cuenta: "nulo", correo: "correo", cci: "nulo", cuenta_cifrada: "nulo", cuenta_ultimos4: "ultimos4" },
   vinculos: { persona_dni: "dni" },
+  datos_bancarios: { dni: "dni", cuenta_cifrada: "nulo", cuenta_ultimos4: "ultimos4", cci_cifrado: "nulo", cci_ultimos4: "ultimos4", actualizado_por: "actor" },
   cuentas_portal: { dni: "dni", celular_declarado: "celular", creado_por: "actor", sesion_actual: "nulo" },
   usuarios_admin: { persona_dni: "dni", correo: "correo", celular: "celular", clave_provisional: "nulo", creado_por: "actor", sesion_actual: "nulo" },
   registro_accesos: { dni: "dni", ip: "ip", dispositivo: "agente", correo: "correo" },
@@ -149,15 +150,19 @@ const literal = (v, tipo) => {
 
 // --- extraer --------------------------------------------------------------------
 async function extraer() {
-  const columnas = await consultaProd(`select c.table_name as t, c.column_name as col, c.data_type as tipo, c.ordinal_position as pos,
+  // Desde la fase 3a hay tablas en el esquema `interno` (no publicado por la API):
+  // se extraen igual; el archivo lleva el esquema real de cada tabla.
+  const columnas = await consultaProd(`select c.table_schema as esquema, c.table_name as t, c.column_name as col, c.data_type as tipo, c.ordinal_position as pos,
       (c.is_identity = 'YES' or c.column_default like 'nextval(%') as secuencial
     from information_schema.columns c join pg_class k on k.relname = c.table_name
     join pg_namespace n on n.oid = k.relnamespace and n.nspname = c.table_schema
-    where c.table_schema = 'public' and k.relkind = 'r' order by 1, 4`);
+    where c.table_schema in ('public', 'interno') and k.relkind = 'r' order by 1, 2, 5`);
   const tablas = [...new Set(columnas.map((c) => c.t))];
-  for (const t of Object.keys(REGLAS)) if (!tablas.includes(t)) throw new Error(`REGLAS menciona una tabla inexistente: ${t}`);
+  const esquemaDe = Object.fromEntries(columnas.map((c) => [c.t, c.esquema]));
+  // Tablas de fases futuras pueden no existir aún en producción: se avisa y se ignoran.
+  for (const t of Object.keys(REGLAS)) if (!tablas.includes(t)) console.log(`  (REGLAS: la tabla ${t} no existe todavía en producción; se ignora)`);
   for (const [t, reglas] of Object.entries(REGLAS)) for (const col of Object.keys(reglas))
-    if (!columnas.some((c) => c.t === t && c.col === col)) throw new Error(`REGLAS menciona una columna inexistente: ${t}.${col}`);
+    if (tablas.includes(t) && !columnas.some((c) => c.t === t && c.col === col)) throw new Error(`REGLAS menciona una columna inexistente: ${t}.${col}`);
   // Columnas con nombre de dato personal que NO tienen regla: se avisa (no se sigue a ciegas).
   const sospechosas = columnas.filter((c) => /dni|nombre|celular|correo|email|telefono|direccion|cuenta|clave|token|ip$|agente|dispositivo/.test(c.col)
     && !REGLAS[c.t]?.[c.col] && !REVISADAS_SIN_DATO_PERSONAL.includes(`${c.t}.${c.col}`) && !["empresas", "sedes", "bancos", "cargos", "rits", "rit_faltas", "tipos_sancion", "declaraciones", "feriados", "solicitud_tipos", "ticket_tipos", "ticket_subtipos", "plantillas", "centros_costo", "comunicados", "lotes", "documentos", "contratos", "perfil_permisos", "perfil_empresas", "solicitud_correlativos", "asistencia_config"].includes(c.t));
@@ -175,14 +180,14 @@ async function extraer() {
       const tipo = cols.find((c) => c.col === col).tipo;
       if (["nulo", "jsonVacio", "jsonLista", "auditoria"].includes(regla) || tipo !== "text") continue;
       const excepto = regla === "actor" ? ` and ${col} not in (${MARCAS_SISTEMA.map((m) => `'${m}'`).join(", ")})` : "";
-      const [{ n }] = await consultaProd(`select count(*)::int as n from public.${t} where ${col} is not null${excepto} and ${SQL[regla](col)} = ${col}`);
+      const [{ n }] = await consultaProd(`select count(*)::int as n from ${esquemaDe[t]}.${t} where ${col} is not null${excepto} and ${SQL[regla](col)} = ${col}`);
       if (n > 0) throw new Error(`${t}.${col}: ${n} valores quedarían iguales al original`);
       resumen.pruebas_en_origen++;
     }
     const orden = cols.some((c) => c.col === "id") ? "id" : cols[0].col;
     let filas = [], desde = 0;
     for (;;) {
-      const lote = await consultaProd(`select ${exprs.join(", ")} from public.${t} order by ${orden} limit 1000 offset ${desde}`);
+      const lote = await consultaProd(`select ${exprs.join(", ")} from ${esquemaDe[t]}.${t} order by ${orden} limit 1000 offset ${desde}`);
       filas = filas.concat(lote); if (lote.length < 1000) break; desde += 1000;
     }
     resumen.tablas[t] = filas.length;
@@ -191,7 +196,7 @@ async function extraer() {
     salida.push(`-- ${t}: ${filas.length} filas`);
     for (let i = 0; i < filas.length; i += 200) {
       const trozo = filas.slice(i, i + 200);
-      salida.push(`insert into public.${t} (${cols.map((c) => c.col).join(", ")}) overriding system value values`);
+      salida.push(`insert into ${esquemaDe[t]}.${t} (${cols.map((c) => c.col).join(", ")}) overriding system value values`);
       salida.push(trozo.map((f) => `  (${cols.map((c) => literal(f[c.col], c.tipo)).join(", ")})`).join(",\n") + ";");
     }
     salida.push("");
@@ -271,6 +276,8 @@ async function probar() {
   const { arrancarPgLocal } = await import("./pg-local.mjs");
   const bd = await arrancarPgLocal({ seguridad: true, datos: true });
   const { sql, cliente } = bd;
+  // Desde la fase 3a varias tablas viven en interno: las comprobaciones nombran tablas sin esquema.
+  await sql("set search_path = public, interno, extensions");
   let fallos = 0;
   const prueba = async (nombre, fn) => { try { await fn(); console.log(`✓ ${nombre}`); } catch (e) { fallos++; console.error(`✗ ${nombre}: ${e.message}`); } };
   const resumen = JSON.parse(readFileSync(ARCHIVO_RESUMEN, "utf8"));
@@ -278,7 +285,7 @@ async function probar() {
     await prueba("los conteos por tabla coinciden con el resumen de la extracción", async () => {
       const mal = [];
       for (const [t, n] of Object.entries(resumen.tablas)) {
-        const [{ c }] = await sql(`select count(*)::int as c from ${t.includes(".") ? t : "public." + t}`);
+        const [{ c }] = await sql(`select count(*)::int as c from ${t.includes(".") ? t : t}`);
         if (c !== n) mal.push(`${t}: ${c} ≠ ${n}`);
       }
       if (mal.length) throw new Error(mal.join("; "));

@@ -1,23 +1,30 @@
 {
-  "generado": "2026-09-18T16:39:17.378Z",
+  "generado": "2026-09-18T20:03:09.394Z",
   "proyecto": "mzpbdkrmokfxrrsotfgs",
   "tablas": {
+    "auditoria": 3955,
+    "cargo_perfiles": 34,
+    "correo_tokens": 4,
+    "perfil_empresas": 56,
+    "perfil_permisos": 96,
+    "perfil_propuestas": 45,
+    "perfiles": 16,
+    "politica_acceso": 1,
+    "registro_accesos": 143,
+    "usuarios_admin": 4,
     "activos": 79,
     "acuses": 0,
     "asignaciones": 1,
     "asistencia_config": 1,
     "asistencia_lotes": 0,
-    "auditoria": 3955,
     "bancos": 7,
-    "cargo_perfiles": 34,
     "cargos": 41,
     "centros_costo": 8,
     "comunicado_lecturas": 0,
     "comunicados": 0,
     "consentimientos": 0,
     "contratos": 0,
-    "correo_envios": 4,
-    "correo_tokens": 2,
+    "correo_envios": 6,
     "cuentas_portal": 0,
     "declaraciones": 5,
     "descargos": 0,
@@ -32,14 +39,8 @@
     "memorandums": 0,
     "movimientos": 77,
     "notificaciones_documento": 0,
-    "perfil_empresas": 56,
-    "perfil_permisos": 96,
-    "perfil_propuestas": 45,
-    "perfiles": 16,
     "personas": 81,
     "plantillas": 5,
-    "politica_acceso": 1,
-    "registro_accesos": 143,
     "rit_faltas": 50,
     "rits": 1,
     "sedes": 12,
@@ -55,11 +56,47 @@
     "ticket_tipos": 7,
     "tickets": 0,
     "tipos_sancion": 6,
-    "usuarios_admin": 4,
     "vinculos": 79,
     "auth.users": 4
   },
   "columnas_anonimizadas": {
+    "auditoria": {
+      "usuario": "actor",
+      "datos_antes": "auditoria",
+      "datos_despues": "auditoria"
+    },
+    "cargo_perfiles": {
+      "actualizado_por": "actor"
+    },
+    "correo_tokens": {
+      "token": "hashSecreto",
+      "dni": "dni",
+      "correo": "correo"
+    },
+    "perfil_propuestas": {
+      "persona_dni": "dni",
+      "decidido_por": "actor"
+    },
+    "perfiles": {
+      "creado_por": "actor"
+    },
+    "politica_acceso": {
+      "actualizado_por": "actor"
+    },
+    "registro_accesos": {
+      "dni": "dni",
+      "ip": "ip",
+      "dispositivo": "agente",
+      "correo": "correo"
+    },
+    "usuarios_admin": {
+      "persona_dni": "dni",
+      "correo": "correo",
+      "celular": "celular",
+      "clave_provisional": "nulo",
+      "creado_por": "actor",
+      "sesion_actual": "nulo"
+    },
     "activos": {
       "usuario_anterior": "nombre",
       "asignado_sin_confirmar": "nombre",
@@ -82,14 +119,6 @@
     "asistencia_lotes": {
       "creado_por": "actor"
     },
-    "auditoria": {
-      "usuario": "actor",
-      "datos_antes": "auditoria",
-      "datos_despues": "auditoria"
-    },
-    "cargo_perfiles": {
-      "actualizado_por": "actor"
-    },
     "comunicado_lecturas": {
       "dni": "dni",
       "dispositivo": "agente",
@@ -106,11 +135,6 @@
       "sujeto": "sujeto",
       "destinatario": "correo",
       "detalle": "texto"
-    },
-    "correo_tokens": {
-      "token": "hashSecreto",
-      "dni": "dni",
-      "correo": "correo"
     },
     "cuentas_portal": {
       "dni": "dni",
@@ -155,13 +179,6 @@
       "destinatario": "correo",
       "enviado_por": "actor"
     },
-    "perfil_propuestas": {
-      "persona_dni": "dni",
-      "decidido_por": "actor"
-    },
-    "perfiles": {
-      "creado_por": "actor"
-    },
     "personas": {
       "dni": "dni",
       "nombre": "nombre",
@@ -172,15 +189,6 @@
       "cci": "nulo",
       "cuenta_cifrada": "nulo",
       "cuenta_ultimos4": "ultimos4"
-    },
-    "politica_acceso": {
-      "actualizado_por": "actor"
-    },
-    "registro_accesos": {
-      "dni": "dni",
-      "ip": "ip",
-      "dispositivo": "agente",
-      "correo": "correo"
     },
     "sedes": {
       "supervisor_dni": "dni"
@@ -220,14 +228,6 @@
       "atendido_por": "actor",
       "nota_interna": "texto",
       "actualizado_por": "actor"
-    },
-    "usuarios_admin": {
-      "persona_dni": "dni",
-      "correo": "correo",
-      "celular": "celular",
-      "clave_provisional": "nulo",
-      "creado_por": "actor",
-      "sesion_actual": "nulo"
     },
     "vinculos": {
       "persona_dni": "dni"

@@ -188,19 +188,24 @@ export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true,
 export const ARCHIVO_DATOS_ANONIMIZADOS = join(RAIZ, "supabase", "pruebas", "datos-anonimizados.sql");
 export async function cargarDatosAnonimizados(sql) {
   if (!existsSync(ARCHIVO_DATOS_ANONIMIZADOS)) throw new Error(`No existe ${ARCHIVO_DATOS_ANONIMIZADOS}: genera el volcado con 'node scripts/entorno-pruebas.mjs extraer'.`);
-  const texto = readFileSync(ARCHIVO_DATOS_ANONIMIZADOS, "utf8");
+  let texto = readFileSync(ARCHIVO_DATOS_ANONIMIZADOS, "utf8");
+  // El volcado trae el esquema que cada tabla tenía en producción al extraer;
+  // el estado local puede ir por delante o por detrás (ensayos de fases que
+  // mueven tablas): cada insert se redirige al esquema donde la tabla vive AQUÍ.
+  const ubicacion = new Map((await sql(`select relname, nspname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'interno') and c.relkind = 'r'`)).map((r) => [r.relname, r.nspname]));
+  texto = texto.replace(/insert into (public|interno)\.([a-z_0-9]+) \(/g, (m, esq, t) => ubicacion.has(t) ? `insert into ${ubicacion.get(t)}.${t} (` : m);
   await sql(`set session_replication_role = replica`);
   await sql(`do $$ declare r record; begin
-    for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
-    loop execute format('truncate table public.%I cascade', r.relname); end loop; end $$`);
+    for r in select n.nspname as s, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'interno') and c.relkind = 'r'
+    loop execute format('truncate table %I.%I cascade', r.s, r.relname); end loop; end $$`);
   await sql(`delete from auth.users`);
   await sql(texto);
   await sql(`set session_replication_role = default`);
   // Secuencias al máximo de su columna, para que las altas nuevas no choquen.
   await sql(`do $$ declare r record; m bigint; begin
-    for r in select c.table_name as t, c.column_name as col, pg_get_serial_sequence('public.' || c.table_name, c.column_name) as seq
-             from information_schema.columns c where c.table_schema = 'public' and pg_get_serial_sequence('public.' || c.table_name, c.column_name) is not null
-    loop execute format('select coalesce(max(%I), 0) from public.%I', r.col, r.t) into m;
+    for r in select c.table_schema as s, c.table_name as t, c.column_name as col, pg_get_serial_sequence(c.table_schema || '.' || c.table_name, c.column_name) as seq
+             from information_schema.columns c where c.table_schema in ('public', 'interno') and pg_get_serial_sequence(c.table_schema || '.' || c.table_name, c.column_name) is not null
+    loop execute format('select coalesce(max(%I), 0) from %I.%I', r.col, r.s, r.t) into m;
          if m > 0 then perform setval(r.seq, m); end if; end loop; end $$`);
   // Clave conocida SOLO para el entorno local (las cuentas reales no viajan).
   await sql(`update auth.users set encrypted_password = 'local:Prueba2026#'`);
