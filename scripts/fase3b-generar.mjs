@@ -162,14 +162,17 @@ export const ESPEJO = `-- @@FASE3B-INICIO@@ (generado por scripts/fase3b-generar
 ${BANCARIO}
 -- @@FASE3B-FIN@@`;
 
-export const sinFase3b = (texto) => texto.replace(/-- @@FASE3B-INICIO@@[\s\S]*?-- @@FASE3B-FIN@@\n?/, "");
+// Quita la fase 3b y todas las posteriores (3c, 4…): el ensayo parte del estado de la 3a.
+export const sinFase3b = (texto) => texto.replace(/-- @@FASE(?:3[B-Z]|[4-9][A-Z]?)-INICIO@@[\s\S]*?-- @@FASE(?:3[B-Z]|[4-9][A-Z]?)-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {
   writeFileSync(`supabase/migraciones/${FECHA}-fase3b-datos-bancarios.sql`, MIGRACION);
   writeFileSync(`supabase/respaldos/${FECHA}-fase3b-reversion.sql`, REVERSION);
   const ruta = "supabase/seguridad.sql";
-  const limpio = sinFase3b(readFileSync(ruta, "utf8")).replace(/\s+$/, "");
-  writeFileSync(ruta, `${limpio}\n\n${ESPEJO}\n`);
+  // El generador solo reemplaza SU bloque; los posteriores se conservan.
+  const actual = readFileSync(ruta, "utf8");
+  const propio = /-- @@FASE3B-INICIO@@[\s\S]*?-- @@FASE3B-FIN@@\n?/;
+  writeFileSync(ruta, propio.test(actual) ? actual.replace(propio, () => `${ESPEJO}\n`) : `${actual.replace(/\s+$/, "")}\n\n${ESPEJO}\n`);
   console.log("Generados: migración fase3b, reversión y bloque @@FASE3B@@ de seguridad.sql.");
 }

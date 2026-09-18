@@ -194,6 +194,36 @@ export async function cargarDatosAnonimizados(sql) {
   // mueven tablas): cada insert se redirige al esquema donde la tabla vive AQUÍ.
   const ubicacion = new Map((await sql(`select relname, nspname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'interno') and c.relkind = 'r'`)).map((r) => [r.relname, r.nspname]));
   texto = texto.replace(/insert into (public|interno)\.([a-z_0-9]+) \(/g, (m, esq, t) => ubicacion.has(t) ? `insert into ${ubicacion.get(t)}.${t} (` : m);
+  // Y el volcado puede traer tablas o columnas que el estado local todavía no
+  // tiene (ensayo de una fase anterior con un volcado posterior): esos inserts
+  // se omiten y esas columnas se descartan, fila a fila.
+  const columnas = new Map();
+  for (const r of await sql(`select table_schema || '.' || table_name as t, column_name as c from information_schema.columns where table_schema in ('public', 'interno')`)) {
+    if (!columnas.has(r.t)) columnas.set(r.t, new Set()); columnas.get(r.t).add(r.c);
+  }
+  const partirValores = (fila) => { // separa una fila "(v1, v2, …)" por comas de primer nivel
+    const s = fila.trim().replace(/^\(/, "").replace(/\)$/, ""); const out = []; let i = 0, ini = 0, prof = 0;
+    while (i < s.length) {
+      if (s.startsWith("$anon$", i)) { const j = s.indexOf("$anon$", i + 6); i = j + 6; continue; }
+      const ch = s[i];
+      if (ch === "[" || ch === "(") prof++; else if (ch === "]" || ch === ")") prof--;
+      else if (ch === "," && prof === 0) { out.push(s.slice(ini, i).trim()); ini = i + 1; }
+      i++;
+    }
+    out.push(s.slice(ini).trim()); return out;
+  };
+  texto = texto.replace(/insert into ((?:public|interno)\.[a-z_0-9]+) \(([^)]+)\) overriding system value values\n([\s\S]*?);\n/g, (m, tabla, cols, filas) => {
+    const propias = columnas.get(tabla);
+    if (!propias) return `-- (omitido: ${tabla} no existe en este estado)\n`;
+    const lista = cols.split(", "); const quedan = lista.map((c) => propias.has(c));
+    if (quedan.every(Boolean)) return m;
+    const nuevas = lista.filter((_, i) => quedan[i]);
+    const cuerpo = filas.split(",\n  (").map((f, i) => (i === 0 ? f.replace(/^\s*\(/, "") : f)).map((f) => {
+      const v = partirValores("(" + f.replace(/\)$/, "") + ")");
+      return "  (" + v.filter((_, i) => quedan[i]).join(", ") + ")";
+    }).join(",\n");
+    return `insert into ${tabla} (${nuevas.join(", ")}) overriding system value values\n${cuerpo};\n`;
+  });
   await sql(`set session_replication_role = replica`);
   await sql(`do $$ declare r record; begin
     for r in select n.nspname as s, c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname in ('public', 'interno') and c.relkind = 'r'

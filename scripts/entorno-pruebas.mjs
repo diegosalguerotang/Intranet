@@ -82,7 +82,7 @@ export const REGLAS = {
   auditoria: { usuario: "actor", datos_antes: "auditoria", datos_despues: "auditoria" },
   acuses: { dni_check: "dni", ip: "ip", dispositivo: "agente", registrado_por: "actor", supervisor_dni: "dni", agente: "agente" },
   asignaciones: { persona_dni: "dni", comentario: "texto" },
-  activos: { usuario_anterior: "nombre", asignado_sin_confirmar: "nombre", observaciones: "texto", ip: "ip", clave_equipo: "nulo" },
+  activos: { usuario_anterior: "nombre", asignado_sin_confirmar: "nombre", observaciones: "texto", ip: "ip", clave_equipo: "nulo", clave_gestor: "texto" },
   asistencia_lotes: { creado_por: "actor" },
   cargo_perfiles: { actualizado_por: "actor" },
   comunicado_lecturas: { dni: "dni", dispositivo: "agente", ip: "ip", agente: "agente" },

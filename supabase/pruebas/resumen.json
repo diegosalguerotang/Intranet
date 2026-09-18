@@ -1,5 +1,5 @@
 {
-  "generado": "2026-09-18T20:46:26.900Z",
+  "generado": "2026-09-18T21:08:19.941Z",
   "proyecto": "mzpbdkrmokfxrrsotfgs",
   "tablas": {
     "auditoria": 4023,
@@ -111,7 +111,8 @@
       "asignado_sin_confirmar": "nombre",
       "observaciones": "texto",
       "ip": "ip",
-      "clave_equipo": "nulo"
+      "clave_equipo": "nulo",
+      "clave_gestor": "texto"
     },
     "acuses": {
       "dni_check": "dni",
@@ -242,6 +243,6 @@
       "persona_dni": "dni"
     }
   },
-  "pruebas_en_origen": 93,
+  "pruebas_en_origen": 94,
   "revision": "sin hallazgos"
 }
