@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 2 — Vistas con `security_invoker`
 
-Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **PREPARADA Y ENSAYADA en local (23/23); NO aplicada en producción. Requiere decisión de Diego por el desvío de la sección 2.**
+Fecha: 2026-09-18 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **APLICADA en producción el 2026-09-18 (Diego aprobó el desvío de la sección 2 y la aplicó vía `!`). Verificación de catálogo 4/4 en producción; comportamiento comprobado: las 38 vistas devuelven a la sesión real del superadministrador exactamente las mismas filas que el total (79 en `v_personal`, 141 en `v_registro_accesos`, etc.); una sesión sin identidad recibe 0 filas; BackOffice recorrido en Chrome sin errores de consola (Tablero, Planilla, Sedes, Acuses, Comunicados, Memorándums). En producción aún no existe ninguna cuenta de Portal, así que el lado del trabajador queda cubierto por el ensayo local (23/23).**
 
 Requiere las fases 0, 0b y 1 aplicadas (`2026-09-17-fase0-contencion.md`, `2026-09-17-fase1-cimiento.md`).
 
@@ -14,9 +14,9 @@ Requiere las fases 0, 0b y 1 aplicadas (`2026-09-17-fase0-contencion.md`, `2026-
 | Reversión completa (generada) | `supabase/respaldos/2026-09-18-fase2-reversion.sql` | ensayada: foto de permisos idéntica a la fase 1 |
 | Espejo para el Postgres local | bloque `@@FASE2-INICIO@@…@@FASE2-FIN@@` de `supabase/seguridad.sql` | listo |
 | Ensayo local | `scripts/ensayar-fase2.mjs` | 23 casos verdes |
-| Verificación en producción | `scripts/verificar-fase2.mjs` (catálogo + sesiones reales, solo lecturas) | listo, pendiente de correr |
+| Verificación en producción | `scripts/verificar-fase2.mjs` (catálogo + sesiones reales, solo lecturas) | catálogo 4/4 verde el 2026-09-18 |
 
-## 2. Desvío respecto del prompt (decisión pendiente)
+## 2. Desvío respecto del prompt (aprobado por Diego el 2026-09-18)
 
 El prompt pide `ALTER VIEW … SET (security_invoker = on)` en las 46 (son 47) vistas y dice: «con las políticas todavía permisivas, cualquier pantalla que se vacíe señala una vista que dependía de saltarse los permisos». Esa premisa ya no se cumple: la **fase 0 eliminó `acceso_demo` y activó RLS en las 54 tablas** (fallan cerrado), como el propio prompt exigía. El inventario del 2026-09-18 lo mide en local con sesiones simuladas como PostgREST:
 
