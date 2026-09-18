@@ -1,0 +1,238 @@
+{
+  "generado": "2026-09-18T16:39:17.378Z",
+  "proyecto": "mzpbdkrmokfxrrsotfgs",
+  "tablas": {
+    "activos": 79,
+    "acuses": 0,
+    "asignaciones": 1,
+    "asistencia_config": 1,
+    "asistencia_lotes": 0,
+    "auditoria": 3955,
+    "bancos": 7,
+    "cargo_perfiles": 34,
+    "cargos": 41,
+    "centros_costo": 8,
+    "comunicado_lecturas": 0,
+    "comunicados": 0,
+    "consentimientos": 0,
+    "contratos": 0,
+    "correo_envios": 4,
+    "correo_tokens": 2,
+    "cuentas_portal": 0,
+    "declaraciones": 5,
+    "descargos": 0,
+    "documentos": 0,
+    "empresas": 5,
+    "epp_entregas": 0,
+    "feriados": 16,
+    "horarios_entrada": 0,
+    "lineas": 207,
+    "lotes": 0,
+    "marcaciones": 0,
+    "memorandums": 0,
+    "movimientos": 77,
+    "notificaciones_documento": 0,
+    "perfil_empresas": 56,
+    "perfil_permisos": 96,
+    "perfil_propuestas": 45,
+    "perfiles": 16,
+    "personas": 81,
+    "plantillas": 5,
+    "politica_acceso": 1,
+    "registro_accesos": 143,
+    "rit_faltas": 50,
+    "rits": 1,
+    "sedes": 12,
+    "solicitud_avisos": 2,
+    "solicitud_correlativos": 3,
+    "solicitud_eventos": 0,
+    "solicitud_tipos": 2,
+    "solicitudes": 0,
+    "solicitudes_cambio_cuenta": 0,
+    "tardanzas": 0,
+    "ticket_avisos": 1,
+    "ticket_subtipos": 26,
+    "ticket_tipos": 7,
+    "tickets": 0,
+    "tipos_sancion": 6,
+    "usuarios_admin": 4,
+    "vinculos": 79,
+    "auth.users": 4
+  },
+  "columnas_anonimizadas": {
+    "activos": {
+      "usuario_anterior": "nombre",
+      "asignado_sin_confirmar": "nombre",
+      "observaciones": "texto",
+      "ip": "ip",
+      "clave_equipo": "nulo"
+    },
+    "acuses": {
+      "dni_check": "dni",
+      "ip": "ip",
+      "dispositivo": "agente",
+      "registrado_por": "actor",
+      "supervisor_dni": "dni",
+      "agente": "agente"
+    },
+    "asignaciones": {
+      "persona_dni": "dni",
+      "comentario": "texto"
+    },
+    "asistencia_lotes": {
+      "creado_por": "actor"
+    },
+    "auditoria": {
+      "usuario": "actor",
+      "datos_antes": "auditoria",
+      "datos_despues": "auditoria"
+    },
+    "cargo_perfiles": {
+      "actualizado_por": "actor"
+    },
+    "comunicado_lecturas": {
+      "dni": "dni",
+      "dispositivo": "agente",
+      "ip": "ip",
+      "agente": "agente"
+    },
+    "consentimientos": {
+      "dni": "dni",
+      "ip": "ip",
+      "agente": "agente"
+    },
+    "correo_envios": {
+      "ip": "ip",
+      "sujeto": "sujeto",
+      "destinatario": "correo",
+      "detalle": "texto"
+    },
+    "correo_tokens": {
+      "token": "hashSecreto",
+      "dni": "dni",
+      "correo": "correo"
+    },
+    "cuentas_portal": {
+      "dni": "dni",
+      "celular_declarado": "celular",
+      "creado_por": "actor",
+      "sesion_actual": "nulo"
+    },
+    "descargos": {
+      "texto": "texto"
+    },
+    "epp_entregas": {
+      "dni": "dni"
+    },
+    "horarios_entrada": {
+      "persona_dni": "dni",
+      "creado_por": "actor"
+    },
+    "lineas": {
+      "numero": "celular",
+      "usa": "nombre"
+    },
+    "lotes": {
+      "publicado_por": "actor"
+    },
+    "marcaciones": {
+      "documento": "dni",
+      "observacion": "texto",
+      "motivo_edicion": "texto"
+    },
+    "memorandums": {
+      "motivo": "texto",
+      "falta_texto": "texto",
+      "resolucion": "texto",
+      "antecedentes": "jsonLista"
+    },
+    "movimientos": {
+      "persona_dni": "dni",
+      "detalle": "texto",
+      "creado_por": "actor"
+    },
+    "notificaciones_documento": {
+      "destinatario": "correo",
+      "enviado_por": "actor"
+    },
+    "perfil_propuestas": {
+      "persona_dni": "dni",
+      "decidido_por": "actor"
+    },
+    "perfiles": {
+      "creado_por": "actor"
+    },
+    "personas": {
+      "dni": "dni",
+      "nombre": "nombre",
+      "celular": "celular",
+      "direccion": "direccion",
+      "cuenta": "nulo",
+      "correo": "correo",
+      "cci": "nulo",
+      "cuenta_cifrada": "nulo",
+      "cuenta_ultimos4": "ultimos4"
+    },
+    "politica_acceso": {
+      "actualizado_por": "actor"
+    },
+    "registro_accesos": {
+      "dni": "dni",
+      "ip": "ip",
+      "dispositivo": "agente",
+      "correo": "correo"
+    },
+    "sedes": {
+      "supervisor_dni": "dni"
+    },
+    "solicitud_avisos": {
+      "correo": "correo"
+    },
+    "solicitud_eventos": {
+      "comentario": "texto",
+      "datos_previos": "jsonVacio",
+      "por": "actor",
+      "persona_dni": "dni"
+    },
+    "solicitudes": {
+      "solicitante_dni": "dni",
+      "solicitante_nombre": "nombre",
+      "supervisor_dni": "dni",
+      "supervisor_nombre": "nombre",
+      "datos": "jsonVacio",
+      "creado_por": "actor"
+    },
+    "solicitudes_cambio_cuenta": {
+      "dni": "dni",
+      "motivo": "texto"
+    },
+    "tardanzas": {
+      "dni": "dni"
+    },
+    "ticket_avisos": {
+      "correo": "correo"
+    },
+    "tickets": {
+      "solicitante_dni": "dni",
+      "solicitante_nombre": "nombre",
+      "solicitante_correo": "correo",
+      "comentario": "texto",
+      "atendido_por": "actor",
+      "nota_interna": "texto",
+      "actualizado_por": "actor"
+    },
+    "usuarios_admin": {
+      "persona_dni": "dni",
+      "correo": "correo",
+      "celular": "celular",
+      "clave_provisional": "nulo",
+      "creado_por": "actor",
+      "sesion_actual": "nulo"
+    },
+    "vinculos": {
+      "persona_dni": "dni"
+    }
+  },
+  "pruebas_en_origen": 90,
+  "revision": "sin hallazgos"
+}

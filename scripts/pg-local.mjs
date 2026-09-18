@@ -115,7 +115,7 @@ alter default privileges for role postgres in schema public grant all on sequenc
 alter default privileges for role postgres in schema public grant all on functions to anon, authenticated, service_role;
 `;
 
-export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true, seguridad = process.env.PG_LOCAL_SEGURIDAD === "1" } = {}) {
+export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true, seguridad = process.env.PG_LOCAL_SEGURIDAD === "1", datos = process.env.PG_LOCAL_DATOS === "1" } = {}) {
   if (existsSync(DIR_DATOS)) rmSync(DIR_DATOS, { recursive: true, force: true });
   const servidor = new EmbeddedPostgres({
     databaseDir: DIR_DATOS, user: "postgres", password: "postgres", port: PUERTO, persistent: false,
@@ -173,9 +173,39 @@ export async function arrancarPgLocal({ silencio = true, cargarCanonicos = true,
     // sobre el estado anterior se carga sin su bloque (ver sinFase2 en
     // scripts/fase2-generar.mjs y su uso en ensayar-fase2.mjs).
     if (seguridad) await sql(readFileSync(join(RAIZ, "supabase/seguridad.sql"), "utf8"));
+    // Fase 2.5: datos de producción ANONIMIZADOS en lugar de los seeds
+    // (PG_LOCAL_DATOS=1 o la opción datos; volcado de scripts/entorno-pruebas.mjs).
+    if (datos) await cargarDatosAnonimizados(sql);
   }
   const parar = async () => { await cliente.end().catch(() => {}); await servidor.stop().catch(() => {}); };
   return { sql, cliente, parar, puerto: PUERTO };
+}
+
+// Fase 2.5 · Carga del volcado anonimizado (generado por scripts/entorno-pruebas.mjs
+// extraer). Vive aquí y no en entorno-pruebas.mjs para evitar la importación
+// circular (entorno-pruebas → pg-local → entorno-pruebas) que, con await de
+// nivel superior, deja al proceso esperándose a sí mismo.
+export const ARCHIVO_DATOS_ANONIMIZADOS = join(RAIZ, "supabase", "pruebas", "datos-anonimizados.sql");
+export async function cargarDatosAnonimizados(sql) {
+  if (!existsSync(ARCHIVO_DATOS_ANONIMIZADOS)) throw new Error(`No existe ${ARCHIVO_DATOS_ANONIMIZADOS}: genera el volcado con 'node scripts/entorno-pruebas.mjs extraer'.`);
+  const texto = readFileSync(ARCHIVO_DATOS_ANONIMIZADOS, "utf8");
+  await sql(`set session_replication_role = replica`);
+  await sql(`do $$ declare r record; begin
+    for r in select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
+    loop execute format('truncate table public.%I cascade', r.relname); end loop; end $$`);
+  await sql(`delete from auth.users`);
+  await sql(texto);
+  await sql(`set session_replication_role = default`);
+  // Secuencias al máximo de su columna, para que las altas nuevas no choquen.
+  await sql(`do $$ declare r record; m bigint; begin
+    for r in select c.table_name as t, c.column_name as col, pg_get_serial_sequence('public.' || c.table_name, c.column_name) as seq
+             from information_schema.columns c where c.table_schema = 'public' and pg_get_serial_sequence('public.' || c.table_name, c.column_name) is not null
+    loop execute format('select coalesce(max(%I), 0) from public.%I', r.col, r.t) into m;
+         if m > 0 then perform setval(r.seq, m); end if; end loop; end $$`);
+  // Clave conocida SOLO para el entorno local (las cuentas reales no viajan).
+  await sql(`update auth.users set encrypted_password = 'local:Prueba2026#'`);
+  const [{ n }] = await sql(`select count(*)::int as n from personas`);
+  return n;
 }
 
 // Inventario comparable con la foto del paso 0 (mismos criterios).

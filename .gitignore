@@ -16,3 +16,6 @@ tests/fixtures/OFICINA_JUL_2026_UNIFICADO.xlsx
 
 # Postgres local embebido para ensayar migraciones (scripts/pg-local.mjs)
 .pg-local
+
+# Fase 2.5: volcado de produccion anonimizado (se regenera con scripts/entorno-pruebas.mjs extraer)
+supabase/pruebas/datos-anonimizados.sql
