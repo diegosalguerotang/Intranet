@@ -24,7 +24,7 @@ async function sql(q) {
 }
 // Consulta como una cuenta real (por correo) o sin identidad.
 const como = (correo, consulta) => sql(`${correo
-  ? `select set_config('request.jwt.claims', json_build_object('role','authenticated','email',u.email,'sub',u.id)::text, true) from auth.users u where u.email = '${correo}';`
+  ? `select set_config('request.jwt.claims', json_build_object('role','authenticated','email','${correo}','sub',coalesce((select u.id::text from auth.users u where u.email = '${correo}'), '00000000-0000-0000-0000-00000000dead'))::text, true);`
   : `select set_config('request.jwt.claims', '{"role":"authenticated","email":"nadie@ejemplo.invalido","sub":"00000000-0000-0000-0000-000000000000"}', true);`}
   set local role authenticated; ${consulta}`);
 const lista = (arr) => arr.map((x) => `'${x}'`).join(", ");
@@ -52,9 +52,14 @@ await prueba("superadministrador: ve todo el padrón, todos los activos y todos 
   const [r] = await como("diegosalguerotang@gmail.com", `select (select count(*) from public.v_personal)::int as p, (select count(*) from public.v_activos)::int as a, (select count(*) from public.v_usuarios_admin)::int as u, (select count(*) from public.v_mi_acceso)::int as m;`);
   igual(`${r.p}/${r.a}/${r.u}`, `${totales.personal}/${totales.activos}/${totales.usuarios}`, "totales"); if (r.m < 1) throw new Error("v_mi_acceso vacío");
 });
-await prueba("Karen (TI inventario, activos 2, todas las empresas): activos completos, padrón visible, acuses 0, solo SU usuario y SU categoría", async () => {
+await prueba("Karen (TI inventario, activos 2): activos y padrón de SUS razones sociales, acuses 0, solo SU usuario y SU categoría", async () => {
   const [r] = await como("karen.gusman@promant.pe", `select (select count(*) from public.v_activos)::int as a, (select count(*) from public.v_personal)::int as p, (select count(*) from public.v_acuses)::int as ac, (select count(*) from public.v_usuarios_admin)::int as u, (select count(*) from public.v_perfiles)::int as pf, (select count(*) from public.v_mi_acceso)::int as m;`);
-  igual(r.a, totales.activos, "activos"); igual(r.p, totales.personal, "padrón"); igual(r.ac, 0, "acuses"); igual(`${r.u}/${r.pf}/${r.m}`, "1/1/1", "propio");
+  // Su categoría lista razones sociales concretas (no necesariamente todas): el alcance recorta.
+  const [{ n: activosAlcance }] = await sql(`select count(*)::int as n from public.activos a where a.empresa_id is null or a.empresa_id in (
+    select pe.empresa_id from interno.usuarios_admin u join interno.perfil_empresas pe on pe.perfil_id = u.perfil_id and pe.version = u.perfil_version where lower(u.correo) = 'karen.gusman@promant.pe')`);
+  const [{ n: personalAlcance }] = await sql(`select count(*)::int as n from public.v_personal v where v.empresa in (
+    select pe.empresa_id from interno.usuarios_admin u join interno.perfil_empresas pe on pe.perfil_id = u.perfil_id and pe.version = u.perfil_version where lower(u.correo) = 'karen.gusman@promant.pe')`);
+  igual(r.a, activosAlcance, "activos dentro de su alcance"); igual(r.p, personalAlcance, "padrón dentro de su alcance"); igual(r.ac, 0, "acuses"); igual(`${r.u}/${r.pf}/${r.m}`, "1/1/1", "propio");
 });
 await prueba("Daira (RRHH coordinación, personal 3): padrón completo, activos 0, registro de accesos 0", async () => {
   const [r] = await como("asistente.rrhh2@promant.pe", `select (select count(*) from public.v_personal)::int as p, (select count(*) from public.v_activos)::int as a, (select count(*) from public.v_registro_accesos)::int as reg;`);
