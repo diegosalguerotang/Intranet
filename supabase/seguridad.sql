@@ -235,3 +235,55 @@ alter view public.v_tipos_sancion set (security_invoker = on);
 alter view public.v_usuarios_admin set (security_invoker = on);
 alter view public.v_vinculos_persona set (security_invoker = on);
 -- @@FASE2-FIN@@
+
+-- @@FASE3-INICIO@@ (generado por scripts/fase3-generar.mjs; no editar a mano)
+-- 9 · Fase 3a: esquema privado interno con 10 tablas; search_path de todas las
+--     funciones ampliado; cuerpos con esquema explícito re-calificados. Las
+--     funciones de servicio están en el canónico api-servicio.sql.
+-- 1 · Esquema privado: existe, no lo publica PostgREST (db_schema = public, graphql_public)
+--     y solo authenticated (vistas security_invoker) y service_role pueden resolver nombres en él.
+create schema if not exists interno;
+revoke all on schema interno from public, anon;
+grant usage on schema interno to authenticated, service_role;
+
+-- 2 · Mover las 10 tablas (datos, ACL, RLS, políticas, disparadores, índices y secuencias viajan con ellas).
+alter table public.usuarios_admin set schema interno;
+alter table public.perfiles set schema interno;
+alter table public.perfil_permisos set schema interno;
+alter table public.perfil_empresas set schema interno;
+alter table public.perfil_propuestas set schema interno;
+alter table public.cargo_perfiles set schema interno;
+alter table public.registro_accesos set schema interno;
+alter table public.politica_acceso set schema interno;
+alter table public.auditoria set schema interno;
+alter table public.correo_tokens set schema interno;
+
+-- 3 · search_path de TODAS las funciones de public: 'public, interno, …'.
+do $$
+declare r record; actual text; nuevo text;
+begin
+  for r in select p.oid::regprocedure as firma, p.proconfig as cfg
+             from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prokind = 'f'
+  loop
+    select substr(c, length('search_path=') + 1) into actual from unnest(coalesce(r.cfg, '{}')) c where c like 'search_path=%' limit 1;
+    if actual is not null and actual like '%interno%' then continue; end if;
+    nuevo := case when actual is null then 'public, interno, extensions'
+                  when actual ~ '^\s*public\s*,' then regexp_replace(actual, '^\s*public\s*,', 'public, interno,')
+                  else 'public, interno, ' || actual end;
+    execute format('alter function %s set search_path = %s', r.firma, nuevo);
+  end loop;
+end $$;
+
+-- 3b · Cuerpos que nombran las tablas con esquema explícito (public.usuarios_admin…)
+--      no resuelven por search_path: se re-crean con interno.<tabla> (permisos y dueño se conservan).
+do $$
+declare r record;
+begin
+  for r in select p.oid from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.prokind = 'f'
+              and p.prosrc ~ '\mpublic\.(usuarios_admin|perfiles|perfil_permisos|perfil_empresas|perfil_propuestas|cargo_perfiles|registro_accesos|politica_acceso|auditoria|correo_tokens)\M'
+  loop
+    execute regexp_replace(pg_get_functiondef(r.oid), '\mpublic\.(usuarios_admin|perfiles|perfil_permisos|perfil_empresas|perfil_propuestas|cargo_perfiles|registro_accesos|politica_acceso|auditoria|correo_tokens)\M', 'interno.\1', 'g');
+  end loop;
+end $$;
+-- @@FASE3-FIN@@

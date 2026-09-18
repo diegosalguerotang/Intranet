@@ -70,9 +70,7 @@ export default async function handler(req, res) {
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) {
     autorizado = dni.toLowerCase() === correo.split("@")[0];
   } else {
-    const admin = (await rest(
-      `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=id&limit=1`
-    )).json?.[0];
+    const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     autorizado = Boolean(admin);
   }
   if (!autorizado) return res.status(403).json({ error: "No tienes acceso a esta constancia." });

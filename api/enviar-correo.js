@@ -52,11 +52,10 @@ async function rest(ruta, opciones = {}) {
 async function crearToken(dni, proposito, correo, horas) {
   const token = (globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)).replace(/-/g, "") +
                 (globalThis.crypto?.randomUUID?.() ?? "").replace(/-/g, "");
-  const alta = await rest("/rest/v1/correo_tokens", {
+  const alta = await rest("/rest/v1/rpc/api_token_crear", {
     method: "POST",
-    headers: { prefer: "return=minimal" },
-    body: JSON.stringify({ token, dni, proposito, correo,
-      expira_en: new Date(Date.now() + horas * 3600_000).toISOString() }),
+    body: JSON.stringify({ p_token: token, p_dni: dni, p_proposito: proposito, p_correo: correo,
+      p_expira_en: new Date(Date.now() + horas * 3600_000).toISOString() }),
   });
   return alta.ok ? token : null;
 }
@@ -77,7 +76,7 @@ async function llamador(req) {
   const correo = (quien.json?.email ?? "").toLowerCase();
   if (!quien.ok || !correo) return null;
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) return { tipo: "portal", dni: correo.split("@")[0].toUpperCase(), correo };
-  const u = (await rest(`/rest/v1/usuarios_admin?correo=ilike.${encodeURIComponent(correo)}&estado=eq.activo&select=id,persona_dni&limit=1`)).json?.[0];
+  const u = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
   if (!u) return null;
   return { tipo: "admin", correo, dni: u.persona_dni };
 }
@@ -123,7 +122,7 @@ async function enPadron(correo) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)) return false;
   const p = await rest(`/rest/v1/personas?correo=ilike.${encodeURIComponent(c)}&select=dni&limit=1`);
   if (p.ok && p.json?.length) return true;
-  const u = await rest(`/rest/v1/usuarios_admin?correo=ilike.${encodeURIComponent(c)}&select=id&limit=1`);
+  const u = await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: c, p_solo_activo: false }) });
   return Boolean(u.ok && u.json?.length);
 }
 
@@ -210,9 +209,7 @@ export default async function handler(req, res) {
     }
     const tope = await limitar(accion, ip, correo);
     if (tope) return res.status(tope.status).json(tope.status === 429 ? { ...generica, error: tope.error } : { error: tope.error });
-    const u = (await rest(
-      `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=persona_dni,correo&limit=1`
-    )).json?.[0];
+    const u = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     if (!u) {
       await registrar({ accion, ip, sujeto: correo, resultado: "rechazado", detalle: "no es usuario activo" });
       return res.status(200).json(generica);

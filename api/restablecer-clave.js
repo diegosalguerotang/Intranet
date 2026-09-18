@@ -25,9 +25,7 @@ export default async function handler(req, res) {
   if (!token) return res.status(400).json({ error: "Falta el token del enlace." });
   if (clave.length < 6) return res.status(400).json({ error: "La clave debe tener al menos 6 caracteres." });
 
-  const t = (await rest(
-    `/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}&proposito=in.(recuperacion,recuperacion-admin)&select=dni,correo,proposito,expira_en,usado_en&limit=1`
-  )).json?.[0];
+  const t = (await rest("/rest/v1/rpc/api_token_leer", { method: "POST", body: JSON.stringify({ p_token: token, p_propositos: ["recuperacion", "recuperacion-admin"] }) })).json?.[0];
   if (!t) return res.status(404).json({ error: "El enlace no es válido. Pide uno nuevo desde «Olvidé mi clave»." });
   if (t.usado_en) return res.status(410).json({ error: "Este enlace ya se usó. Pide uno nuevo si aún lo necesitas." });
   if (new Date(t.expira_en) < new Date()) {
@@ -52,15 +50,9 @@ export default async function handler(req, res) {
 
   if (esAdmin) {
     // La eligió la propia persona: no hay cambio obligatorio pendiente.
-    await rest(`/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(emailCuenta)}`, {
-      method: "PATCH", headers: { prefer: "return=minimal" },
-      body: JSON.stringify({ requiere_cambio_clave: false }),
-    });
+    await rest("/rest/v1/rpc/api_admin_marcar_clave", { method: "POST", body: JSON.stringify({ p_id: null, p_correo: emailCuenta, p_requiere_cambio: false }) });
   }
 
-  await rest(`/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}`, {
-    method: "PATCH", headers: { prefer: "return=minimal" },
-    body: JSON.stringify({ usado_en: new Date().toISOString() }),
-  });
+  await rest("/rest/v1/rpc/api_token_usar", { method: "POST", body: JSON.stringify({ p_token: token }) });
   return res.status(200).json({ listo: true, backoffice: esAdmin });
 }

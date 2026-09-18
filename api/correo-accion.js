@@ -31,9 +31,7 @@ export default async function handler(req, res) {
   if (!token || !SERVICE) {
     return res.status(400).send(pagina("Enlace incompleto", "Vuelve a abrir el enlace desde tu correo.", false));
   }
-  const t = (await rest(
-    `/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}&proposito=eq.verificacion&select=dni,correo,expira_en,usado_en&limit=1`
-  )).json?.[0];
+  const t = (await rest("/rest/v1/rpc/api_token_leer", { method: "POST", body: JSON.stringify({ p_token: token, p_propositos: ["verificacion"] }) })).json?.[0];
   if (!t) return res.status(404).send(pagina("Enlace no válido", "El enlace no existe o no es de verificación.", false));
   if (t.usado_en) return res.status(200).send(pagina("Correo ya confirmado", "Este enlace ya se usó: tu correo quedó verificado.", true));
   if (new Date(t.expira_en) < new Date()) {
@@ -45,10 +43,7 @@ export default async function handler(req, res) {
     method: "PATCH", headers: { prefer: "return=minimal" },
     body: JSON.stringify({ correo_verificado: true }),
   });
-  await rest(`/rest/v1/correo_tokens?token=eq.${encodeURIComponent(token)}`, {
-    method: "PATCH", headers: { prefer: "return=minimal" },
-    body: JSON.stringify({ usado_en: new Date().toISOString() }),
-  });
+  await rest("/rest/v1/rpc/api_token_usar", { method: "POST", body: JSON.stringify({ p_token: token }) });
   return res.status(200).send(pagina("¡Correo confirmado!",
     "Ya puedes recuperar tu clave del portal con este correo si algún día la olvidas. Puedes cerrar esta ventana.", true));
 }

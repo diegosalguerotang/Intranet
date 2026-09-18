@@ -227,7 +227,9 @@ ${CUERPO}-- @@FASE2-FIN@@`;
 
 // Quita el bloque de la fase 2 del espejo (para ensayar la migración sobre el
 // estado de la fase 1).
-export const sinFase2 = (texto) => texto.replace(/-- @@FASE2-INICIO@@[\s\S]*?-- @@FASE2-FIN@@\n?/, "");
+// Quita la fase 2 y TODAS las posteriores (3, 4…): el ensayo de una fase corre
+// sobre el estado exacto de la anterior.
+export const sinFase2 = (texto) => texto.replace(/-- @@FASE[2-9]-INICIO@@[\s\S]*?-- @@FASE[2-9]-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

@@ -45,9 +45,7 @@ export default async function handler(req, res) {
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) {
     return res.status(403).json({ error: "Solo el BackOffice genera estos formatos." });
   }
-  const admin = (await rest(
-    `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=id&limit=1`
-  )).json?.[0];
+  const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
   if (!admin) return res.status(403).json({ error: "Necesitas una cuenta admin activa." });
 
   // Política vigente: el papel firma EXACTAMENTE el texto que acepta el portal.

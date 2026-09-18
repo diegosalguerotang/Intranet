@@ -31,7 +31,7 @@ import { dirname, join } from "node:path";
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIR_DATOS = join(RAIZ, ".pg-local", "datos");
 const PUERTO = Number(process.env.PG_LOCAL_PUERTO ?? 54329);
-const CANONICOS = ["schema.sql", "accesos.sql", "portal.sql", "solicitudes.sql", "soporte.sql"];
+const CANONICOS = ["schema.sql", "accesos.sql", "portal.sql", "solicitudes.sql", "soporte.sql", "api-servicio.sql"];
 const COMPLEMENTARIAS = [
   "2026-08-22-importar-planilla-unificada.sql",
   "2026-08-24-movimientos-planilla.sql",

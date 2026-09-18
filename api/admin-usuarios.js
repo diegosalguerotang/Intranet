@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   if (!usuario_id) return res.status(400).json({ error: "Falta usuario_id." });
 
   // Usuario objetivo, desde la tabla (con service key).
-  const objetivoRes = await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}&select=id,correo,persona_dni&limit=1`, { method: "GET" });
+  const objetivoRes = await rest("/rest/v1/rpc/api_admin_por_id", { method: "POST", body: JSON.stringify({ p_id: usuario_id }) });
   const objetivo = objetivoRes.json?.[0];
   if (!objetivo) return res.status(404).json({ error: "El usuario no existe." });
 
@@ -91,13 +91,10 @@ export default async function handler(req, res) {
       body: JSON.stringify({ email: objetivo.correo }),
     });
     if (invite.ok) {
-      await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}`, {
-        method: "PATCH",
-        headers: { prefer: "return=minimal" },
+      await rest("/rest/v1/rpc/api_admin_marcar_clave", {
         // La clave la elegirá la propia persona desde el enlace: no hay
         // cambio obligatorio pendiente ni provisional que guardar.
-        body: JSON.stringify({ requiere_cambio_clave: false, clave_provisional: null }),
-      });
+     method: "POST", body: JSON.stringify({ p_id: usuario_id, p_correo: null, p_requiere_cambio: false }) });
       return res.status(200).json({ invitado: objetivo.correo });
     }
 
@@ -114,11 +111,7 @@ export default async function handler(req, res) {
       });
     }
     // Cambio obligatorio al primer ingreso; la clave NO se guarda en texto plano.
-    await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}`, {
-      method: "PATCH",
-      headers: { prefer: "return=minimal" },
-      body: JSON.stringify({ requiere_cambio_clave: true, clave_provisional: null }),
-    });
+    await rest("/rest/v1/rpc/api_admin_marcar_clave", { method: "POST", body: JSON.stringify({ p_id: usuario_id, p_correo: null, p_requiere_cambio: true }) });
     return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
   }
 
@@ -148,11 +141,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({ password: clave }),
     });
     if (!cambio.ok) return res.status(cambio.status).json({ error: "No se pudo restablecer la clave." });
-    await rest(`/rest/v1/usuarios_admin?id=eq.${encodeURIComponent(usuario_id)}`, {
-      method: "PATCH",
-      headers: { prefer: "return=minimal" },
-      body: JSON.stringify({ requiere_cambio_clave: true, clave_provisional: null }),
-    });
+    await rest("/rest/v1/rpc/api_admin_marcar_clave", { method: "POST", body: JSON.stringify({ p_id: usuario_id, p_correo: null, p_requiere_cambio: true }) });
     return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
   }
 

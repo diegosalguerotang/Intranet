@@ -52,9 +52,7 @@ export default async function handler(req, res) {
     }
     if (ritId) rit = (await rest(`/rest/v1/rits?id=eq.${encodeURIComponent(ritId)}&select=nombre,archivo_url&limit=1`)).json?.[0];
   } else {
-    const admin = (await rest(
-      `/rest/v1/usuarios_admin?correo=eq.${encodeURIComponent(correo)}&estado=eq.activo&select=id&limit=1`
-    )).json?.[0];
+    const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     if (!admin) return res.status(403).json({ error: "Sesión sin acceso." });
     const ritId = String(req.query.rit ?? "general-2025").replace(/[^a-z0-9-]/g, "");
     rit = (await rest(`/rest/v1/rits?id=eq.${encodeURIComponent(ritId)}&select=nombre,archivo_url&limit=1`)).json?.[0];

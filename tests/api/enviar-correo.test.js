@@ -50,9 +50,12 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
     const n = estado.conteos[clave] ?? 0;
     return json([], 200, { "content-range": `0-0/${n}` });
   }
-  if (u.includes("/rest/v1/usuarios_admin")) {
-    const correo = valorEq(p.correo).toLowerCase();
-    return json(estado.admins.filter((a) => a.correo === correo && (!p.estado || a.estado === valorEq(p.estado))));
+  // Fase 3a: usuarios_admin vive en el esquema interno; la API lo consulta por
+  // la función de servicio api_admin_por_correo (POST /rest/v1/rpc/…).
+  if (u.includes("/rest/v1/rpc/api_admin_por_correo")) {
+    const { p_correo, p_solo_activo } = JSON.parse(init.body);
+    const correo = String(p_correo ?? "").toLowerCase();
+    return json(estado.admins.filter((a) => a.correo === correo && (!p_solo_activo || a.estado === "activo")).slice(0, 1));
   }
   if (u.includes("/rest/v1/personas")) {
     if (p.correo) return json(estado.personas.filter((x) => x.correo.toLowerCase() === valorEq(p.correo).toLowerCase()));
@@ -61,7 +64,7 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
   if (u.includes("/rest/v1/cuentas_portal")) return json(estado.cuentas.includes(valorEq(p.dni)) ? [{ dni: valorEq(p.dni) }] : []);
   if (u.includes("/rest/v1/v_tickets")) return json(estado.tickets.filter((t) => t.numero === valorEq(p.numero)));
   if (u.includes("/rest/v1/ticket_avisos")) return json(estado.ticketAvisos.map((correo) => ({ correo })));
-  if (u.includes("/rest/v1/correo_tokens")) return json(null, 201);
+  if (u.includes("/rest/v1/rpc/api_token_crear")) return json(null, 200);
   throw new Error(`ruta no simulada: ${u}`);
 });
 

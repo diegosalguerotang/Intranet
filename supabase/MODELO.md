@@ -6,10 +6,14 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > **Orden de aplicación en un reset:** primero `schema.sql` (esquema base) y
 > después `accesos.sql` (módulo de Accesos y Roles). El segundo depende de
 > `personas`, `empresas`, `sedes`, `vinculos`, `fn_bloquear_cambios` y
-> `fn_auditar`. Siguen `portal.sql`, `solicitudes.sql`, `soporte.sql`, las
+> `fn_auditar`. Siguen `portal.sql`, `solicitudes.sql`, `soporte.sql`,
+> `api-servicio.sql` (funciones de servicio para la API, fase 3a), las
 > migraciones cuyo canónico es la propia migración (lista en
-> `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (permisos de la fase 0
-> de la corrección de seguridad, 2026-09-17). `node scripts/pg-local.mjs`
+> `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (espejo acumulado de las
+> fases de la corrección de seguridad: 0, 0b, 1, 2 y 3a; desde la 3a las tablas
+> `usuarios_admin`, `perfiles`, `perfil_*`, `cargo_perfiles`, `registro_accesos`,
+> `politica_acceso`, `auditoria` y `correo_tokens` viven en el esquema
+> `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`
 > reproduce ese orden en un Postgres local y lo compara con la foto de
 > producción; `scripts/ensayar-fase0.mjs` ensaya la migración y su reversión.
 
