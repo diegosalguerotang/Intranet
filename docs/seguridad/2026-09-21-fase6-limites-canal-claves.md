@@ -47,6 +47,7 @@ Luego: entrar al BackOffice (superadmin) y al Portal; en ACC-05 comprobar que la
 - **Límites por IP de Auth compartidos**: como Supabase ve solo las IP de Vercel, un ataque masivo que nuestra compuerta no frene a tiempo (30 fallos por IP atacante; con muchas IP) puede agotar el cubo de Auth para todos. La compuerta reduce mucho la superficie (cada IP atacante se cierra en 30 intentos y las cuentas en 10) pero no lo elimina. Señal: 429 en los logins de usuarios legítimos; respuesta: revisar `registro_accesos` (fuente `proxy`) y el Vercel Firewall. Supabase no permite fijar la cabecera de IP real desde un proxy propio (solo su `Sb-Forwarded-For` interno).
 - Un «fallido» anotado por el navegador ya no bloquea: el bloqueo depende de que el login pase por el proxy, que es el único canal en producción (P10).
 
-## 7. Pendiente
+## 7. Fases 7 y 8 (2026-09-21)
 
-- Fase 7: verificadores en CI (`verificar-fase*.mjs` + ensayos como regresión). Fase 8: documentación (sección 16 del funcional, `funciones-y-permisos.md`, `MODELO.md`).
+- Fase 7: `.github/workflows/seguridad.yml` (pruebas, compilación, `comprobar-paquete.mjs`, `ensayar-canon.mjs` en cada push; `verificar-despliegue.mjs` en cada despliegue de producción; verificadores 4–6 si existe el secreto del token).
+- Fase 8: `docs/seguridad/README.md` (arquitectura resultante e índice; el documento funcional v1.0 no tiene sección de seguridad, este la sustituye), `docs/funciones-y-permisos.md` regenerado desde producción (`scripts/funciones-y-permisos.mjs`: 152 funciones, 0 sin guarda), sección de seguridad de `supabase/MODELO.md` y `README.md`.

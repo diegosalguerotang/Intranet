@@ -82,31 +82,48 @@ personas ──< tardanzas (importación idempotente por dni+periodo)
 - `v_activos.estado`: `baja` / `mantenimiento` (físico) → si no, `asignado`
   cuando existe asignación abierta → si no, `disponible`.
 
-## Seguridad — estado actual y siguiente paso
+## Seguridad — estado tras la corrección (fases 0–7, 2026-09-17 → 2026-09-21)
 
-**Fase 1 (2026-09-14, aplicada): el rol `anon` está cerrado.** Sin JWT no se
-lee ninguna tabla ni vista de `public`, no se ejecuta ninguna función salvo
-las 4 RPCs de login (`verificar_bloqueo`, `registrar_ingreso`,
-`portal_verificar_bloqueo`, `portal_registrar_ingreso`), y los privilegios por
-defecto del esquema ya no incluyen a `anon`, así que lo nuevo nace cerrado.
-`fn_nivel_modulo` devuelve 0 sin JWT, salvo cuando el rol de sesión es
-`postgres` o `service_role` (Management API, funciones serverless), donde
-sigue siendo 99. El BackOffice carga datos solo tras resolver el usuario y en
-producción nunca muestra datos de demostración. Suite:
-`scripts/verificar-cierre-anon.mjs`; radiografía: `scripts/diagnostico-permisos.mjs`.
+Referencia completa: `docs/seguridad/README.md` (arquitectura resultante e índice de
+informes por fase) y `docs/funciones-y-permisos.md` (generado desde producción).
+Lo que el modelo de datos garantiza hoy:
 
-RLS está habilitado en las tablas con la política permisiva `acceso_demo`,
-ahora **solo para `authenticated`**. Siguiente paso (fase 2):
+1. **Identidad por petición, en la base.** Correo del JWT → `interno.usuarios_admin`
+   activo → categoría vigente. Guardas `requiere_nivel(modulo, nivel[, alternativo])`,
+   `requiere_superadmin()`, `requiere_correo_propio()`; ayudantes `es_admin()`,
+   `es_superadmin()`, `nivel_en()`. Sin JWT, un rol activo `authenticated`/`anon`
+   vale 0 (fase 6); 99 solo para `postgres`, `supabase_admin` y `service_role`.
+   El trabajador del Portal se identifica por `portal_dni()` / `fn_persona_llamador()`.
+2. **`anon` cerrado**: exactamente 4 RPC (`verificar_bloqueo`, `registrar_ingreso`,
+   `portal_verificar_bloqueo`, `portal_registrar_ingreso`). Toda función nueva nace sin
+   EXECUTE para la API (`ALTER DEFAULT PRIVILEGES`); el grant es explícito en `seguridad.sql`.
+3. **Esquema `interno`** (no publicado por PostgREST) para `usuarios_admin`, `perfiles`,
+   `perfil_*`, `cargo_perfiles`, `registro_accesos`, `politica_acceso`, `auditoria`,
+   `correo_tokens`, `datos_bancarios`, `columnas_sensibles`. Las funciones serverless
+   lo tocan solo por `api_*` (EXECUTE únicamente para `service_role`).
+4. **RLS por rol** en las 53 tablas de datos (`rls.sql`, generado desde la matriz de
+   `scripts/fase4-generar.mjs`): `adm_lectura` (nivel por módulo + alcance por razón
+   social `fn_alcance_*`), `propio` (trabajador), `sesion` (catálogos),
+   `adm_escritura` (solo tablas que el BackOffice escribe directo). Ninguna política con
+   condición `true`. Las 9 `v_portal_*` son `security_invoker`. Bucket `documentos`
+   con políticas por prefijo de ruta.
+5. **Datos sensibles**: cuenta y CCI cifrados con pgcrypto + Vault en
+   `interno.datos_bancarios` (máscaras `*_ultimos4`; descifrado solo por
+   `fn_ver_cuenta_bancaria` con permiso `ver_bancarios`); `personas` ya no tiene columnas
+   bancarias; `activos.clave_gestor` sustituye a la clave en claro. La auditoría es
+   inmutable y no registra valores de `interno.columnas_sensibles`.
+6. **Bitácora de login** (`interno.registro_accesos`): inmutable, con IP real
+   (`x-ip-real` del proxy) y `fuente` (`cliente` | `proxy`). Solo los fallos anotados por
+   el proxy cuentan para el bloqueo; un «exitoso» exige la sesión propia.
+   `api_login_permitido` / `api_login_registrar` son la compuerta que aplica el proxy.
+7. **Política de acceso** (`interno.politica_acceso`): clave del BackOffice ≥ 10 con letras
+   y números (constraint y `guardar_politica`); Portal ≥ 6.
 
-1. Reemplazar `acceso_demo` por políticas por rol (Trabajador: solo sus filas
-   vía `persona_dni = auth.jwt() ->> 'dni'`; Analista: empresas asignadas;
-   Auditor: solo lectura) y vistas `security_invoker`.
-2. El alcance se evalúa **en cada consulta**, no en la interfaz — tal como
-   exige el documento de arquitectura ("ocultar un botón no es un control de
-   acceso").
-
-Los registros probatorios (`acuses`, `descargos`, `auditoria`) ya están
-protegidos hoy: triggers de inmutabilidad + REVOKE de UPDATE/DELETE.
+Los registros probatorios (`acuses`, `descargos`, `auditoria`, `registro_accesos`)
+siguen protegidos por triggers de inmutabilidad + REVOKE de UPDATE/DELETE. Regla de
+cambio: canónico + generador → migración en UNA transacción con reversión → ensayo local
+(`scripts/pg-local.mjs`, datos anonimizados) → «go» → verificador en producción;
+`scripts/ensayar-canon.mjs` comprueba estos invariantes en CI en cada push.
 
 ## Accesos y Roles (`accesos.sql`, pantallas ACC-01…ACC-06)
 
