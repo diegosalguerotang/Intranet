@@ -1,6 +1,6 @@
 # Corrección de seguridad · Fase 6 — Límites, canal y claves
 
-Fecha: 2026-09-21 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **código y migración listos y ensayados (17/17 local, 204 pruebas unitarias); migración 6b PENDIENTE del «go» de Diego.** El cliente y el proxy se despliegan con el push y funcionan con el esquema actual (degradación explícita hasta aplicar la 6b).
+Fecha: 2026-09-21 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **FASE 6 COMPLETA. Migración 6b APLICADA en producción el 2026-09-21 (Diego: «Go») y `verificar-fase6` todo verde (SQL + HTTP del proxy).** Ensayo local 17/17, 204 pruebas unitarias. Cliente y proxy desplegados (commit 37f5058).
 
 ## 1. Qué cierra la fase
 
