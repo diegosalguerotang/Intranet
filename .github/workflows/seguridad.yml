@@ -1,0 +1,88 @@
+# Corrección de seguridad · FASE 7 — comprobaciones en cada push y en cada
+# despliegue de producción.
+#
+#  · pruebas (push / PR): pruebas unitarias (proxy, canal, claves, correo…),
+#    compilación del BackOffice y del Portal, paquetes sin credenciales
+#    (scripts/comprobar-paquete.mjs) y regresión del canon SQL en un Postgres
+#    embebido (scripts/ensayar-canon.mjs): sin datos, sin token, sin secretos.
+#  · despliegue (Vercel marca el despliegue de producción como listo):
+#    comprobaciones HTTP contra producción sin token (scripts/verificar-despliegue.mjs).
+#  · produccion (mismo disparador, OPCIONAL): si el repositorio tiene el secreto
+#    SUPABASE_ACCESS_TOKEN (token de la Management API), corre los verificadores
+#    de las fases 4, 5 y 6 contra la base (solo lecturas y transacciones
+#    revertidas). Sin el secreto el job se salta y lo dice.
+name: seguridad
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  deployment_status:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    if: github.event_name != 'deployment_status'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            portal/package-lock.json
+      - name: Dependencias
+        run: npm ci
+      - name: Pruebas unitarias
+        run: npm test
+      - name: Compilar BackOffice
+        run: npx vite build
+      - name: Compilar Portal
+        working-directory: portal
+        run: npm ci && npx vite build
+      - name: Paquetes sin credenciales (P10)
+        run: node scripts/comprobar-paquete.mjs
+      - name: Regresión del canon SQL (Postgres embebido)
+        run: node scripts/ensayar-canon.mjs
+
+  despliegue:
+    # La integración de Vercel nombra el entorno «Production – <proyecto>».
+    if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && startsWith(github.event.deployment.environment, 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Comprobaciones HTTP contra producción (sin token)
+        env:
+          APP_URL: https://intranet-general.vercel.app
+        run: node scripts/verificar-despliegue.mjs
+
+  produccion:
+    if: github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' && startsWith(github.event.deployment.environment, 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sin secreto
+        if: env.SUPABASE_ACCESS_TOKEN == ''
+        run: echo "SUPABASE_ACCESS_TOKEN no está configurado como secreto del repositorio; se omiten los verificadores de base de datos (docs/seguridad/README.md explica cómo añadirlo)."
+      - name: Verificadores de fases 4, 5 y 6 contra producción
+        if: env.SUPABASE_ACCESS_TOKEN != ''
+        run: |
+          node scripts/verificar-fase4.mjs
+          node scripts/verificar-fase5.mjs
+          node scripts/verificar-fase6.mjs
