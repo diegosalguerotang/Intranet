@@ -34,3 +34,21 @@ describe("normalizarCelular", () => {
     expect(normalizarCelular("519876543")).toBe("519876543");
   });
 });
+
+// Fase 6c (P11, 2026-09-21): la clave del BackOffice exige al menos 10
+// caracteres con letras y números; la política solo puede subir el mínimo.
+import { validarClave, CLAVE_MIN_BACKOFFICE } from "../src/lib/campos.js";
+describe("validarClave (BackOffice)", () => {
+  it("el piso es 10 aunque se pida menos", () => {
+    expect(CLAVE_MIN_BACKOFFICE).toBe(10);
+    expect(validarClave("Abc123", 6)).toMatch(/al menos 10/);
+    expect(validarClave("Abcdef1234", 6)).toBeNull();
+  });
+  it("una política de 14 exige 14", () => {
+    expect(validarClave("Abcdef1234", 14)).toMatch(/al menos 14/);
+  });
+  it("exige letras y números", () => {
+    expect(validarClave("1234567890")).toMatch(/letra/);
+    expect(validarClave("abcdefghij")).toMatch(/número/);
+  });
+});

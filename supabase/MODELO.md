@@ -10,7 +10,9 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > `api-servicio.sql` (funciones de servicio para la API, fase 3a), las
 > migraciones cuyo canónico es la propia migración (lista en
 > `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (espejo acumulado de las
-> fases de la corrección de seguridad: 0, 0b, 1, 2 y 3a; desde la 3a las tablas
+> fases de la corrección de seguridad: 0, 0b, 1, 2, 3a, 3b, 3c, 4, 5a y 6b, cada una
+> con su canónico: `bancario.sql`, `claves-equipos.sql`, `rls.sql`, `auditoria.sql`,
+> `limites.sql`; desde la 3a las tablas
 > `usuarios_admin`, `perfiles`, `perfil_*`, `cargo_perfiles`, `registro_accesos`,
 > `politica_acceso`, `auditoria` y `correo_tokens` viven en el esquema
 > `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`

@@ -1,8 +1,9 @@
 // Restablecimiento de clave del portal con token de recuperación (el enlace
 // del correo lleva al portal /portal/restablecer, que POSTea aquí). El token
 // es de un solo uso y vence en 1 hora; la clave nueva la elige el trabajador.
+import { limitar, ipDe, registrar } from "./enviar-correo.js";
+import { CLAVE_MIN_PORTAL, DOMINIO_PORTAL, validarClaveBackoffice } from "./_clave.js";
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const DOMINIO_PORTAL = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 const cabService = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };
@@ -22,22 +23,28 @@ export default async function handler(req, res) {
   const cuerpo = typeof req.body === "string" ? JSON.parse(req.body) : (req.body ?? {});
   const token = String(cuerpo.token ?? "");
   const clave = String(cuerpo.clave ?? "");
+  // Fase 6d: límite por IP real (misma ventana y tope que el correo) y rastro
+  // de cada intento en correo_envios; el registro caído cierra el endpoint.
+  const ip = ipDe(req);
+  const limite = await limitar("restablecer-clave", ip, null);
+  if (limite) return res.status(limite.status).json({ error: limite.error });
+  const rastro = (resultado, detalle) => registrar({ accion: "restablecer-clave", ip, sujeto: token.slice(0, 12) || null, resultado, detalle });
   if (!token) return res.status(400).json({ error: "Falta el token del enlace." });
-  if (clave.length < 6) return res.status(400).json({ error: "La clave debe tener al menos 6 caracteres." });
+  if (clave.length < CLAVE_MIN_PORTAL) return res.status(400).json({ error: `La clave debe tener al menos ${CLAVE_MIN_PORTAL} caracteres.` });
 
   const t = (await rest("/rest/v1/rpc/api_token_leer", { method: "POST", body: JSON.stringify({ p_token: token, p_propositos: ["recuperacion", "recuperacion-admin"] }) })).json?.[0];
-  if (!t) return res.status(404).json({ error: "El enlace no es válido. Pide uno nuevo desde «Olvidé mi clave»." });
-  if (t.usado_en) return res.status(410).json({ error: "Este enlace ya se usó. Pide uno nuevo si aún lo necesitas." });
+  if (!t) { await rastro("rechazado", "token desconocido"); return res.status(404).json({ error: "El enlace no es válido. Pide uno nuevo desde «Olvidé mi clave»." }); }
+  if (t.usado_en) { await rastro("rechazado", "token usado"); return res.status(410).json({ error: "Este enlace ya se usó. Pide uno nuevo si aún lo necesitas." }); }
   if (new Date(t.expira_en) < new Date()) {
+    await rastro("rechazado", "token vencido");
     return res.status(410).json({ error: "El enlace venció (dura 1 hora). Pide uno nuevo desde «Olvidé mi clave»." });
   }
 
-  // Portal: la cuenta técnica del DNI, clave mínima 6. BackOffice: mínimo 6
-  // con al menos un número y una letra (regla #12 del 2026-08-21; antes 12).
+  // Portal: la cuenta técnica del DNI, clave mínima 6 (Auth). BackOffice: el
+  // piso de api/_clave.js (fase 6c, P11: 10 con letras y números).
   const esAdmin = t.proposito === "recuperacion-admin";
-  if (esAdmin && !(/[0-9]/.test(clave) && /[a-zA-Z]/.test(clave))) {
-    return res.status(400).json({ error: "La clave del BackOffice necesita al menos un número y una letra." });
-  }
+  const debil = esAdmin ? validarClaveBackoffice(clave) : null;
+  if (debil) return res.status(400).json({ error: debil });
   const emailCuenta = esAdmin ? t.correo.toLowerCase() : `${t.dni.toLowerCase()}@${DOMINIO_PORTAL}`;
   const cuenta = (await rest(`/auth/v1/admin/users?per_page=1000`)).json?.users
     ?.find((u) => (u.email ?? "").toLowerCase() === emailCuenta);
@@ -54,5 +61,6 @@ export default async function handler(req, res) {
   }
 
   await rest("/rest/v1/rpc/api_token_usar", { method: "POST", body: JSON.stringify({ p_token: token }) });
+  await rastro("enviado", esAdmin ? "clave del BackOffice restablecida" : "clave del Portal restablecida");
   return res.status(200).json({ listo: true, backoffice: esAdmin });
 }

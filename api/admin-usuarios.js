@@ -19,7 +19,7 @@ async function enviarAccesoAdmin(correo, clave) {
      <p><b>Dirección:</b> <a href="${APP}/admin/login">${APP}/admin/login</a><br/>
         <b>Usuario:</b> ${correo}<br/>
         <b>Clave provisional:</b> ${clave}</p>
-     <p>En tu primer ingreso el sistema te pedirá crear tu clave personal (mínimo 12 caracteres).</p>`));
+     <p>En tu primer ingreso el sistema te pedirá crear tu clave personal (mínimo 10 caracteres, con letras y números).</p>`));
   return r.error ? { avisoCorreo: r.error } : { enviadoCorreo: correo };
 }
 // SUPA_SERVICE_KEY la configura scripts/configurar-service-key.mjs con la
@@ -33,7 +33,7 @@ const cabService = {
   "content-type": "application/json",
 };
 
-// Clave provisional legible que cumple el mínimo de 12 del BackOffice.
+// Clave provisional legible (14 caracteres) que cumple el piso del BackOffice (10, P11).
 // Sin caracteres ambiguos (0/O, 1/l/I).
 function generarClave() {
   const abc = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

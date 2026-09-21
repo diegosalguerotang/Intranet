@@ -82,9 +82,9 @@ async function llamador(req) {
 }
 
 // --- Rastro, límite de tasa y lista blanca -----------------------------------
-const ipDe = (req) => (String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket?.remoteAddress || "").slice(0, 64);
+export const ipDe = (req) => (String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket?.remoteAddress || "").slice(0, 64);
 
-async function registrar(fila) {
+export async function registrar(fila) {
   // Mejor esfuerzo: un fallo del rastro no anula un envío ya hecho.
   await rest("/rest/v1/correo_envios", { method: "POST", headers: { prefer: "return=minimal" }, body: JSON.stringify(fila) }).catch(() => {});
 }
@@ -103,7 +103,7 @@ async function contar(campo, valor) {
 }
 
 // null si puede seguir; si no, { status, error } ya registrado.
-async function limitar(accion, ip, sujeto) {
+export async function limitar(accion, ip, sujeto) {
   const [porIp, porSujeto] = await Promise.all([contar("ip", ip), contar("sujeto", sujeto)]);
   const topeSujeto = LIMITES.sujeto[accion] ?? 5;
   if (porIp === Infinity || porSujeto === Infinity) {

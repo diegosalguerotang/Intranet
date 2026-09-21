@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Save, RotateCcw } from "lucide-react";
 import { useApp } from "../../state";
 import { PageHeader, Card, Button, Field, Input, Select, Note } from "../../components/ui";
+import { CLAVE_MIN_BACKOFFICE } from "../../lib/campos";
 
 const RECOMENDADOS = {
   sesionBackofficeHoras: 8, sesionPortalDias: 30,
   multisesionBackoffice: false, multisesionPortal: true,
   intentosBloqueo: 5, bloqueoMinutos: 15,
-  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 6,
+  recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: CLAVE_MIN_BACKOFFICE,
   claveProvisionalDias: 7,
 };
 
@@ -102,9 +103,9 @@ export default function Politica() {
               <Input type="number" min={6} value={p.claveLongitudMinPortal}
                 onChange={(e) => set("claveLongitudMinPortal", Math.max(6, Number(e.target.value) || 6))} />
             </Field>
-            <Field label="Clave mínima — BackOffice" hint="No menor de 6. La clave exige además un número y una letra.">
-              <Input type="number" min={6} value={p.claveLongitudMinBackoffice}
-                onChange={(e) => set("claveLongitudMinBackoffice", Math.max(6, Number(e.target.value) || 6))} />
+            <Field label="Clave mínima — BackOffice" hint={`No menor de ${CLAVE_MIN_BACKOFFICE} (P11). La clave exige además letras y números.`}>
+              <Input type="number" min={CLAVE_MIN_BACKOFFICE} value={p.claveLongitudMinBackoffice}
+                onChange={(e) => set("claveLongitudMinBackoffice", Math.max(CLAVE_MIN_BACKOFFICE, Number(e.target.value) || CLAVE_MIN_BACKOFFICE))} />
             </Field>
           </div>
         </Card>

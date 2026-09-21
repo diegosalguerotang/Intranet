@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 import { supabase } from "../lib/supabase";
-import { validarClave } from "../lib/campos";
+import { validarClave, CLAVE_MIN_BACKOFFICE } from "../lib/campos";
 import { marcarClaveCambiada } from "../lib/clave";
 
 // Aterrizaje de los enlaces de acceso del BackOffice. Dos modos:
@@ -57,7 +57,7 @@ export default function RestablecerAdmin() {
 
   const guardar = async (e) => {
     e.preventDefault();
-    const errClave = validarClave(clave, 6);
+    const errClave = validarClave(clave, CLAVE_MIN_BACKOFFICE);
     if (errClave) return setError(errClave);
     if (clave !== confirmar) return setError("Las claves no coinciden.");
     setError(null);

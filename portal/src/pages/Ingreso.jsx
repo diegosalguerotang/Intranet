@@ -72,7 +72,8 @@ export default function Ingreso() {
       }
       const r = await entrar(dni, clave);
       if (r.error) {
-        await rpc("portal_registrar_ingreso", { p_dni: dni, p_resultado: "fallido", p_dispositivo: dispositivo }, { conSesion: false });
+        // 429: la compuerta del proxy frenó el intento (fase 6d); no es un fallo de clave.
+        if (r.error.status !== 429) await rpc("portal_registrar_ingreso", { p_dni: dni, p_resultado: "fallido", p_dispositivo: dispositivo }, { conSesion: false });
         setError(r.error.status === 400 ? MENSAJE_UNICO : r.error.message);
         return;
       }

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { decidirCanal, urlCanal } from "./canal.js";
 
 // ARQUITECTURA DEL CANAL (v8): en el despliegue, el navegador habla SOLO con
 // su propio dominio y sin credenciales a la vista: la apikey la inyecta el
@@ -7,8 +8,12 @@ import { createClient } from "@supabase/supabase-js";
 // Nació persiguiendo un falso "interceptor" (ver CAUSA RAÍZ abajo), pero se
 // conserva como defensa: mantiene el mismo-origen (hay redes que bloquean
 // *.supabase.co) y tolera proxys corporativos que alteren cabeceras.
-// En desarrollo local se va directo a Supabase.
-const mismoOrigen = typeof window !== "undefined" && window.location.hostname.endsWith("vercel.app");
+// Fase 6a (P10, 2026-09-21): la elección es por CONFIGURACIÓN con fallo
+// cerrado (src/lib/canal.js): todo paquete de producción usa el proxy; el
+// canal directo solo existe en desarrollo. El paquete de producción no lleva
+// ni la URL ni la clave de Supabase: la rama directa se elimina al compilar.
+const canal = decidirCanal({ dev: import.meta.env.DEV, directo: import.meta.env.VITE_CANAL_DIRECTO });
+const usaProxy = canal === "proxy";
 
 // CAUSA RAÍZ DEL LOGIN ROTO (2026-08-13): la env var en Vercel se guardó con
 // un BOM (U+FEFF) invisible al inicio — clásico de PowerShell 5.1, que
@@ -18,12 +23,17 @@ const mismoOrigen = typeof window !== "undefined" && window.location.hostname.en
 // %EF%BB%BF… → "Invalid API key". Se sanea TODO valor que venga de env.
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[\uFEFF\u200B\s]+|[\uFEFF\u200B\s]+$/g, "") : v);
 
-const url = mismoOrigen
-  ? `${window.location.origin}/api/supa`
-  : limpiar(import.meta.env.VITE_SUPABASE_URL) || "https://mzpbdkrmokfxrrsotfgs.supabase.co";
+const url = urlCanal(canal, {
+  origin: typeof window !== "undefined" ? window.location.origin : "",
+  urlDirecta: import.meta.env.DEV ? (import.meta.env.VITE_SUPABASE_URL || "https://mzpbdkrmokfxrrsotfgs.supabase.co") : "",
+});
 
-// Clave publishable: pública por diseño; el acceso real lo controlan RLS y los triggers.
-const anonKey = limpiar(import.meta.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+// Clave publishable: pública por diseño; el acceso real lo controlan RLS y los
+// triggers. Con el proxy el navegador no la conoce: viaja un marcador que el
+// proxy descarta y reemplaza por la clave real del lado del servidor.
+const anonKey = import.meta.env.DEV && !usaProxy
+  ? limpiar(import.meta.env.VITE_SUPABASE_ANON_KEY) || "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg"
+  : "canal-proxy";
 
 // El fetch nativo de un iframe recién creado, fuera del alcance del parche
 // del interceptor (a veces; en campo se vio el parche llegar también a los
@@ -119,7 +129,7 @@ let tokenActual = null;
 // Authorization con sesión real se camufla como x-sesion, que el proxy
 // vuelve a convertir en Authorization del lado del servidor.
 function camuflarCredenciales(init) {
-  if (!mismoOrigen) return init; // conexión directa (desarrollo): tal cual
+  if (!usaProxy) return init; // conexión directa (desarrollo): tal cual
   let pares = [];
   try {
     const h = init?.headers ?? {};
@@ -172,3 +182,4 @@ if (supabase) {
 }
 export const supabaseUrl = url;
 export const supabaseAnonKey = anonKey;
+export const canalSupabase = canal;

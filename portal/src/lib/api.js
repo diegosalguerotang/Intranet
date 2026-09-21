@@ -1,15 +1,22 @@
 // Cliente mínimo de Supabase para el portal (~2KB): solo lo que el portal
-// usa — login por clave, refresh, cambio de clave, vistas y RPCs. Bajo
-// *.vercel.app habla SOLO con su propio dominio: el proxy /api/supa (de la
-// app principal, compartido por el microfrontend) inyecta la apikey del lado
-// del servidor y convierte x-sesion en Authorization. El navegador jamás
-// envía credenciales de API.
-const mismoOrigen = typeof window !== "undefined" && window.location.hostname.endsWith("vercel.app");
+// usa — login por clave, refresh, cambio de clave, vistas y RPCs. En
+// producción habla SOLO con su propio dominio: el proxy /api/supa (de la app
+// principal, compartido por el microfrontend) inyecta la apikey del lado del
+// servidor y convierte x-sesion en Authorization. El navegador jamás envía
+// credenciales de API.
+//
+// Fase 6a (P10, 2026-09-21): la elección es por CONFIGURACIÓN con fallo
+// cerrado (misma regla que src/lib/canal.js del BackOffice): todo paquete de
+// producción usa el proxy; el canal directo existe solo en desarrollo (vite
+// dev no tiene proxy) y ahí VITE_CANAL_DIRECTO=0 fuerza el proxy. Antes se
+// decidía por el hostname (*.vercel.app).
+const mismoOrigen = !(import.meta.env.DEV && String(import.meta.env.VITE_CANAL_DIRECTO ?? "").trim() !== "0");
 const BASE = mismoOrigen
-  ? `${window.location.origin}/api/supa`
+  ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/supa`
   : "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-// Solo para desarrollo local (el proxy no existe): clave publishable, pública por diseño.
-const APIKEY_DEV = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
+// Solo para desarrollo local (el proxy no existe): clave publishable, pública
+// por diseño. La rama se elimina del paquete de producción al compilar.
+const APIKEY_DEV = import.meta.env.DEV ? "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg" : "";
 
 export const DOMINIO_PORTAL = "portal.grupoer.pe";
 // El correo técnico va SIEMPRE en minúsculas (CE/pasaporte traen letras).

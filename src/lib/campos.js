@@ -14,12 +14,16 @@ export function normalizarCelular(valor) {
   return d.slice(0, 9);
 }
 
-// Validación de clave del BackOffice (decisión de Diego 2026-08-21): mínimo 6
-// caracteres, con al menos un número y al menos una letra. Devuelve el mensaje
-// de error o null si es válida.
-export function validarClave(clave, minimo = 6) {
+// Validación de clave del BackOffice: al menos CLAVE_MIN_BACKOFFICE caracteres
+// (fase 6c, decisión P11, 2026-09-21: 10; antes 6), con al menos un número y
+// al menos una letra. La política (ACC-05) solo puede subir el mínimo. El
+// servidor aplica la misma regla (api/_clave.js) en el proxy y en el
+// restablecimiento. Devuelve el mensaje de error o null si es válida.
+export const CLAVE_MIN_BACKOFFICE = 10;
+export function validarClave(clave, minimo = CLAVE_MIN_BACKOFFICE) {
   const c = String(clave ?? "");
-  if (c.length < minimo) return `La clave debe tener al menos ${minimo} caracteres.`;
+  const piso = Math.max(CLAVE_MIN_BACKOFFICE, Number(minimo) || 0);
+  if (c.length < piso) return `La clave debe tener al menos ${piso} caracteres.`;
   if (!/[0-9]/.test(c)) return "La clave debe incluir al menos un número.";
   if (!/[a-zA-Z]/.test(c)) return "La clave debe incluir al menos una letra.";
   return null;

@@ -114,6 +114,12 @@ export default function AdminLogin() {
       }
       const { error: errAuth } = await supabase.auth.signInWithPassword({ email, password: clave });
       if (errAuth) {
+        // Fase 6d: la compuerta del proxy (o Auth) frenó el intento por
+        // exceso: no es una credencial mal escrita y no se anota como fallido.
+        if (errAuth.status === 429) {
+          setError(errAuth.message || "Demasiados intentos. Espera unos minutos y vuelve a intentar.");
+          return;
+        }
         // Un fallo de RED no es una credencial mal escrita: decir "usuario o
         // clave incorrectos" cuando el servidor nunca respondió despista al
         // usuario y no deja rastro en ACC-06.

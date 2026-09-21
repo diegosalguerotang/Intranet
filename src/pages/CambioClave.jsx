@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useApp } from "../state";
 import { supabase } from "../lib/supabase";
-import { validarClave } from "../lib/campos";
+import { validarClave, CLAVE_MIN_BACKOFFICE } from "../lib/campos";
 import { marcarClaveCambiada } from "../lib/clave";
 import { Card, Button, Field, Input, Note } from "../components/ui";
 
@@ -28,7 +28,7 @@ function CampoClave({ ver, setVer, ...props }) {
 // Así, ni siquiera quien configuró el despliegue conserva la clave operativa.
 export default function CambioClave() {
   const { user, db, salir } = useApp();
-  const minimo = Math.max(6, db.politica[0]?.claveLongitudMinBackoffice ?? 6);
+  const minimo = Math.max(CLAVE_MIN_BACKOFFICE, db.politica[0]?.claveLongitudMinBackoffice ?? CLAVE_MIN_BACKOFFICE);
   const [clave, setClave] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [ver, setVer] = useState(false);
