@@ -1,10 +1,8 @@
 {
   "framework": "vite",
-  "functions": { "api/portal-cuentas.js": { "maxDuration": 60 }
-  },
+  "functions": { "api/portal-cuentas.js": { "maxDuration": 60 } },
   "redirects": [
-    { "source": "/portal/", "destination": "/portal", "permanent": true
-    }
+    { "source": "/portal/", "destination": "/portal", "permanent": true }
   ],
   "rewrites": [
     { "source": "/portal", "destination": "https://intranet-portal-two.vercel.app/portal" },
