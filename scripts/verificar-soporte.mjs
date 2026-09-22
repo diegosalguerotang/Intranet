@@ -102,12 +102,17 @@ await prueba("2026-09-22: portal_crear_ticket cerrada; crear_ticket_propio exige
   igual(`${g.fn}/${g.vista}`, "true/true", "grants");
 });
 
-await prueba("las tablas crudas no tienen grants para anon/authenticated", async () => {
+await prueba("tablas crudas: nada para anon; authenticated solo SELECT bajo RLS (fase 4: las vistas invoker las atraviesan por política)", async () => {
   const g = await sql(
-    `select count(*)::int n from information_schema.role_table_grants
+    `select grantee, string_agg(distinct privilege_type, ',') privs from information_schema.role_table_grants
      where table_name in ('tickets','ticket_tipos','ticket_subtipos','ticket_avisos')
-       and grantee in ('anon','authenticated')`);
-  igual(g[0].n, 0, `grants (${g[0].n})`);
+       and grantee in ('anon','authenticated') group by grantee`);
+  igual(g.some((r) => r.grantee === "anon"), false, "anon con grants");
+  igual(g.every((r) => r.privs === "SELECT"), true, `privilegios distintos de SELECT (${JSON.stringify(g)})`);
+  const rls = await sql(
+    `select count(*)::int n from pg_class c join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname = 'public' and c.relname in ('tickets','ticket_tipos','ticket_subtipos','ticket_avisos') and c.relrowsecurity`);
+  igual(rls[0].n, 4, "tablas con RLS");
 });
 
 await prueba("alternar tipo lo saca del catálogo activo y vuelve", async () => {
@@ -147,7 +152,7 @@ await prueba("clave de equipo: guardar/ver (servicio=99) y rastro en auditoría"
   const [{ v }] = await sql("select ver_clave_equipo('PROLT04', 'verificar-soporte') as v");
   igual(v, "zz-clave-prueba", "clave leída");
   const [au] = await sql(
-    "select count(*)::int n from auditoria where accion='CLAVE_EQUIPO_VISTA' and datos_antes->>'codigo'='PROLT04'");
+    "select count(*)::int n from interno.auditoria where accion='CLAVE_EQUIPO_VISTA' and datos_antes->>'codigo'='PROLT04'");
   igual(au.n >= 1, true, "auditoría");
   await sql("select guardar_clave_equipo('PROLT04', null, 'verificar-soporte')"); // limpiar
   const [t] = await sql("select tiene_clave from v_activos where codigo='PROLT04'");

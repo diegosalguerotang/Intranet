@@ -36,6 +36,8 @@ function clasificar(f) {
   if (/es_admin_activo\(\)|es_admin\(\)/.test(c) && !g.length) g.push("es_admin");
   if (/portal_dni\(\)|fn_persona_llamador\(\)/.test(c)) g.push("identidad del JWT (portal_dni / fn_persona_llamador)");
   if (/correo_llamador\(\)|auth\.jwt\(\)|auth\.uid\(\)/.test(c) && !g.some((x) => /propia|superadmin|nivel|identidad/.test(x))) g.push("identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo");
+  // Cerradas: el cuerpo es solo un RAISE (p. ej. portal_crear_ticket desde 2026-09-22). No hacen nada.
+  if (!g.length && /^\s*begin\s+raise exception\b[^;]*;\s*end\s*$/i.test(c.trim())) g.push("cerrada: siempre rechaza (sin efecto)");
   // Vistas previas: envoltorio que llama a la función de importación (misma guarda) y revierte.
   if (!g.length && (m = /:=\s*(importar_[a-z_]+)\(/.exec(c))) g.push(`delega en ${m[1]} (su guarda) y revierte (vista previa)`);
   const ejecutan = [f.anon && "anon", f.auth && "authenticated", f.servicio && "service_role"].filter(Boolean).join(" + ") || "ninguno";

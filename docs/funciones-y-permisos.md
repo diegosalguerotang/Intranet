@@ -1,4 +1,4 @@
-# Funciones y permisos — estado real de producción (2026-09-21)
+# Funciones y permisos — estado real de producción (2026-09-22)
 
 Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (proyecto `mzpbdkrmokfxrrsotfgs`): firma, guarda detectada en el cuerpo y roles con EXECUTE. Regenerar tras cada fase.
 
@@ -8,7 +8,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 |---|---|
 | administrativa (sesión propia) | 2 |
 | administrativa | 57 |
-| autoservicio del trabajador | 24 |
+| autoservicio del trabajador | 25 |
 | ayudante | 42 |
 | interna | 4 |
 | pre-login | 4 |
@@ -39,6 +39,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `crear_solicitud_admin(p_dni text, p_tipo text, p_datos jsonb, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `crear_solicitud_propia(p_tipo text, p_datos jsonb)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `crear_ticket_admin(p_dni text, p_tipo integer, p_subtipo integer, p_comentario text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
+| `crear_ticket_propio(p_tipo integer, p_subtipo integer, p_comentario text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `crear_usuario_admin(p_dni text, p_perfil text, p_correo text, p_celular text, p_clave text, p_por text)` | administrativa | superadmin | authenticated + service_role |
 | `decidir_propuesta_perfil(p_id bigint, p_decision text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `desactivar_perfil(p_id text)` | administrativa | superadmin | authenticated + service_role |
@@ -67,7 +68,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `fn_alcance_vinculo(p_id bigint)` | ayudante | SIN GUARDA (revisar) | authenticated + service_role |
 | `fn_auditar()` | trigger | — | service_role |
 | `fn_auditar_datos_bancarios()` | trigger | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | service_role |
-| `fn_bloquear_cambios()` | trigger | — | service_role |
+| `fn_bloquear_cambios()` | trigger | cerrada: siempre rechaza (sin efecto) | service_role |
 | `fn_cabecera(p_nombre text)` | ayudante | — | service_role |
 | `fn_cifrar_cuenta(p_texto text)` | ayudante | — | service_role |
 | `fn_clave_cuentas()` | ayudante | — | service_role |
@@ -83,7 +84,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `fn_mi_solicitud(p_id bigint)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `fn_mi_vinculo(p_id bigint)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `fn_min_hhmm(t text)` | ayudante | — | service_role |
-| `fn_movimientos_solo_insertar()` | trigger | — | service_role |
+| `fn_movimientos_solo_insertar()` | trigger | cerrada: siempre rechaza (sin efecto) | service_role |
 | `fn_nivel_memorandums()` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `fn_nivel_modulo(p_modulo text)` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `fn_perfil_nombre_unico()` | trigger | — | service_role |
@@ -96,7 +97,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `fn_registro_solo_desvincular()` | trigger | — | service_role |
 | `fn_resolver_banco(p_texto text)` | ayudante | — | service_role |
 | `fn_sede_para_importacion(p_empresa text, p_sede text, p_cliente text)` | ayudante | — | service_role |
-| `fn_solicitud_eventos_inmutables()` | trigger | — | service_role |
+| `fn_solicitud_eventos_inmutables()` | trigger | cerrada: siempre rechaza (sin efecto) | service_role |
 | `fn_solicitud_insertar(p_dni text, p_tipo text, p_datos jsonb, p_por text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `fn_solicitud_numero(p_tipo text, p_empresa text)` | ayudante | — | service_role |
 | `fn_solicitud_recalcula_asistencia()` | trigger | — | service_role |
@@ -133,7 +134,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `portal_confirmar_lectura(p_comunicado_id bigint, p_dispositivo text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `portal_confirmar_recepcion(p_documento_id bigint, p_dispositivo text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `portal_crear_solicitud(p_tipo text, p_datos jsonb)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
-| `portal_crear_ticket(p_tipo integer, p_subtipo integer, p_comentario text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
+| `portal_crear_ticket(p_tipo integer, p_subtipo integer, p_comentario text)` | autoservicio del trabajador | cerrada: siempre rechaza (sin efecto) | authenticated + service_role |
 | `portal_dni()` | autoservicio del trabajador | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `portal_marcar_visto(p_comunicado_id bigint)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `portal_mi_sesion()` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
