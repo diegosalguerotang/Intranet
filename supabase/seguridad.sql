@@ -23,6 +23,7 @@ grant execute on function
 to anon, authenticated;
 
 -- 2b · Con verificación del llamador (56) + dependencias de vistas (2).
+--      + crear_ticket_propio (2026-09-22: Soporte TI del usuario administrativo).
 grant execute on function
   actualizar_ticket(p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text),
   alternar_ticket_subtipo(p_id integer, p_activo boolean),
@@ -32,6 +33,7 @@ grant execute on function
   crear_rit(p_nombre text, p_archivo text, p_hash text, p_vigente date),
   crear_solicitud_admin(p_dni text, p_tipo text, p_datos jsonb, p_por text),
   crear_solicitud_propia(p_tipo text, p_datos jsonb),
+  crear_ticket_propio(p_tipo integer, p_subtipo integer, p_comentario text),
   crear_ticket_admin(p_dni text, p_tipo integer, p_subtipo integer, p_comentario text, p_por text),
   decidir_propuesta_perfil(p_id bigint, p_decision text, p_por text),
   editar_trabajador(p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text, p_cci text, p_tipo_documento text),

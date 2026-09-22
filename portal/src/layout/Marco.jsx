@@ -1,14 +1,14 @@
-import { Home, FileText, LifeBuoy, User } from "lucide-react";
+import { Home, FileText, User } from "lucide-react";
 import { usePortal } from "../state";
 import { useRouter, Enlace } from "../router";
 import { Nota } from "../components/ui";
 
 // Marco del portal: cabecera compacta + contenido + barra inferior fija
-// (Inicio · Boletas · Soporte · Yo). Pensado para una mano y un celular de gama baja.
+// (Inicio · Boletas · Yo). Pensado para una mano y un celular de gama baja.
+// Soporte TI salió del portal el 2026-09-22: se atiende desde el BackOffice.
 const PESTANAS = [
   { to: "/", icon: Home, label: "Inicio" },
   { to: "/boletas", icon: FileText, label: "Boletas" },
-  { to: "/soporte", icon: LifeBuoy, label: "Soporte" },
   { to: "/yo", icon: User, label: "Yo" },
 ];
 

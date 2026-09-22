@@ -85,6 +85,23 @@ await prueba("v_portal_tickets no expone la nota interna y filtra por sesión (v
   igual(filas[0].n, 0, "sin sesión debería estar vacía");
 });
 
+await prueba("2026-09-22: portal_crear_ticket cerrada; crear_ticket_propio exige persona del JWT; v_mis_tickets sin nota interna y vacía sin sesión", async () => {
+  let msj = null;
+  try { await sql("select portal_crear_ticket(1, null, 'ZZPRUEBA')"); } catch (e) { msj = e.message; }
+  igual(/ya no se atiende desde el portal/.test(msj ?? ""), true, `portal_crear_ticket (${msj})`);
+  let propio = null;
+  try { await sql("select crear_ticket_propio(1, null, 'ZZPRUEBA')"); } catch (e) { propio = e.message; }
+  igual(/no está vinculado a una persona/.test(propio ?? ""), true, `crear_ticket_propio sin JWT (${propio})`);
+  const cols = await sql("select column_name from information_schema.columns where table_name='v_mis_tickets'");
+  igual(cols.some((c) => c.column_name === "nota_interna"), false, "nota_interna expuesta");
+  igual(cols.some((c) => c.column_name === "atendido_por"), true, "falta atendido_por");
+  const [{ n }] = await sql("select count(*)::int n from v_mis_tickets");
+  igual(n, 0, "sin sesión debería estar vacía");
+  const [g] = await sql(`select has_function_privilege('authenticated', 'public.crear_ticket_propio(int, int, text)', 'execute') as fn,
+    has_table_privilege('authenticated', 'public.v_mis_tickets', 'select') as vista`);
+  igual(`${g.fn}/${g.vista}`, "true/true", "grants");
+});
+
 await prueba("las tablas crudas no tienen grants para anon/authenticated", async () => {
   const g = await sql(
     `select count(*)::int n from information_schema.role_table_grants

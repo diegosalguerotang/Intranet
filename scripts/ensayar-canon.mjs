@@ -12,6 +12,8 @@
 //   · fase 5: columnas sensibles catalogadas; fn_auditar las redacta.
 //   · fase 6: identidad con fallo cerrado; registro_accesos.fuente; compuerta
 //     de login solo service_role; piso 10 de clave del BackOffice.
+//   · 2026-09-22: Soporte TI fuera del portal (portal_crear_ticket cerrada);
+//     ticket propio del usuario administrativo (crear_ticket_propio, v_mis_tickets).
 // Uso: node scripts/ensayar-canon.mjs
 import { arrancarPgLocal } from "./pg-local.mjs";
 
@@ -147,6 +149,26 @@ try {
       (select pg_get_expr(d.adbin, d.adrelid) from pg_attrdef d join pg_attribute a on a.attrelid = d.adrelid and a.attnum = d.adnum where d.adrelid = 'interno.politica_acceso'::regclass and a.attname = 'clave_longitud_min_backoffice') as def`);
     igual(`${r.a}/${r.s}/${r.def}`, "false/true/10", "compuerta/default");
     if (!/>= 10/.test(r.chk ?? "")) throw new Error(`constraint: ${r.chk}`);
+  });
+
+  await prueba("Soporte TI fuera del portal: portal_crear_ticket rechaza siempre; crear_ticket_propio y v_mis_tickets para authenticated, con identidad por JWT (sin sesión: error / vacía)", async () => {
+    let msj = null;
+    try { await sql("select portal_crear_ticket(1, null, 'x')"); } catch (e) { msj = e.message; }
+    if (!/ya no se atiende desde el portal/.test(msj ?? "")) throw new Error(`portal_crear_ticket: ${msj}`);
+    const [g] = await sql(`select has_function_privilege('authenticated', 'public.crear_ticket_propio(int, int, text)', 'execute') as fn,
+      has_function_privilege('anon', 'public.crear_ticket_propio(int, int, text)', 'execute') as fn_anon,
+      has_table_privilege('authenticated', 'public.v_mis_tickets', 'select') as vista,
+      exists (select 1 from information_schema.columns where table_name = 'v_mis_tickets' and column_name = 'nota_interna') as nota`);
+    igual(`${g.fn}/${g.fn_anon}/${g.vista}/${g.nota}`, "true/false/true/false", "grants/columnas");
+    await sql("begin");
+    await sql("set local role authenticated");
+    await sql("savepoint sin_jwt");
+    let propio = null;
+    try { await sql("select crear_ticket_propio(1, null, 'x')"); } catch (e) { propio = e.message; await sql("rollback to savepoint sin_jwt"); }
+    const filas = await sql("select count(*)::int as n from v_mis_tickets");
+    await sql("rollback");
+    if (!/no está vinculado a una persona/.test(propio ?? "")) throw new Error(`crear_ticket_propio sin JWT: ${propio}`);
+    igual(filas[0].n, 0, "v_mis_tickets sin JWT");
   });
 } finally {
   await bd.parar();

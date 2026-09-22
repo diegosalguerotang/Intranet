@@ -38,6 +38,7 @@ const FUENTES = {
   solicitudTipos: "v_solicitud_tipos",
   solicitudAvisos: "v_solicitud_avisos",
   misSolicitudes: "v_mis_solicitudes",
+  misTickets: "v_mis_tickets",
   rits: "v_rits",
 };
 
@@ -71,6 +72,7 @@ const LOCAL = {
   solicitudTipos: [],
   solicitudAvisos: [],
   misSolicitudes: [],
+  misTickets: [],   // tickets propios del usuario administrativo (Mi solicitud)
   rits: [],          // reglamentos internos: solo existen con conexión real
 };
 
@@ -803,6 +805,18 @@ export function AppProvider({ children }) {
       });
       if (error) throw new Error(error.message);
       await recargar("solicitudes", "misSolicitudes");
+      return data;
+    },
+    // Botón global (2026-09-22): ticket de Soporte TI PROPIO del usuario
+    // administrativo. Soporte TI salió del portal del trabajador; el
+    // solicitante sale del usuario (fn_persona_llamador), sin módulo.
+    crearTicketPropio: async (tipoId, subtipoId, comentario) => {
+      if (!supabaseListo) throw new Error("Los tickets reales requieren conexión a Supabase.");
+      const { data, error } = await supabase.rpc("crear_ticket_propio", {
+        p_tipo: tipoId, p_subtipo: subtipoId, p_comentario: comentario || null,
+      });
+      if (error) throw new Error(error.message);
+      await recargar("tickets", "misTickets");
       return data;
     },
     // Historial de una solicitud: se consulta al abrir el detalle.

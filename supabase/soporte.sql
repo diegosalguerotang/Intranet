@@ -7,10 +7,17 @@
 -- con cadena de aprobación van al Centro de Solicitudes (motor aparte).
 -- APLICAR SIEMPRE DESPUÉS DE accesos.sql Y portal.sql (usa fn_nivel_modulo
 -- y portal_dni). Idempotente.
+-- 2026-09-22 (Diego): Soporte TI SALE del Portal del Trabajador. Los tickets
+-- los abren los usuarios administrativos desde «Mi solicitud» del BackOffice
+-- (crear_ticket_propio / v_mis_tickets, identidad por fn_persona_llamador) o
+-- el equipo de Soporte a nombre de un trabajador (crear_ticket_admin).
+-- portal_crear_ticket queda cerrada (siempre rechaza) y v_portal_tickets se
+-- conserva vacía de uso: ambas siguen en los inventarios de seguridad.
 -- ============================================================================
 
-drop view if exists v_tickets, v_ticket_catalogo, v_ticket_config, v_ticket_avisos, v_portal_tickets;
+drop view if exists v_tickets, v_ticket_catalogo, v_ticket_config, v_ticket_avisos, v_portal_tickets, v_mis_tickets;
 drop function if exists portal_crear_ticket(int, int, text);
+drop function if exists crear_ticket_propio(int, int, text);
 drop function if exists crear_ticket_admin(text, int, int, text, text);
 drop function if exists actualizar_ticket(bigint, text, text, text, text);
 drop function if exists guardar_ticket_tipo(int, text);
@@ -96,14 +103,26 @@ end $$;
 
 -- --------------------------- RPCs ------------------------------------------
 
--- Portal: el dni SIEMPRE sale del JWT. Devuelve el número asignado.
+-- Portal: CERRADA desde 2026-09-22 (Soporte TI ya no está en el portal). Se
+-- conserva la firma para no alterar los inventarios de seguridad; siempre
+-- rechaza, con y sin sesión.
 create function portal_crear_ticket(p_tipo int, p_subtipo int default null, p_comentario text default null)
-returns text language plpgsql security definer as $$
+returns text language plpgsql security definer set search_path = public, interno, extensions as $$
+begin
+  raise exception 'Soporte TI ya no se atiende desde el portal: pídelo a tu supervisor o a un usuario administrativo.';
+end $$;
+
+-- BackOffice, botón «Mi solicitud»: CUALQUIER usuario administrativo activo
+-- abre un ticket a su propio nombre, tenga o no el módulo Soporte. El
+-- solicitante sale de la persona vinculada a su usuario (JWT), nunca de un
+-- parámetro. Devuelve el número asignado.
+create function crear_ticket_propio(p_tipo int, p_subtipo int default null, p_comentario text default null)
+returns text language plpgsql security definer set search_path = public, interno, extensions as $$
 declare v_dni text;
 begin
-  v_dni := portal_dni();
+  v_dni := fn_persona_llamador();
   if v_dni is null then
-    raise exception 'Sesión del portal inválida.';
+    raise exception 'Tu usuario no está vinculado a una persona del padrón: pide a RR. HH. que lo vincule.';
   end if;
   return fn_ticket_insertar(v_dni, p_tipo, p_subtipo, p_comentario);
 end $$;
@@ -254,11 +273,24 @@ left join ticket_subtipos ts on ts.id = t.subtipo_id
 where t.solicitante_dni = portal_dni()
 order by t.creado_en desc;
 
+-- BackOffice: SOLO los tickets del usuario administrativo que consulta (botón
+-- «Mi solicitud»), sin nota interna. No exige módulo: cada quien ve lo suyo.
+create view v_mis_tickets as
+select t.numero, to_char(t.creado_en, 'YYYY-MM-DD HH24:MI') as creado,
+       tt.nombre as tipo, ts.nombre as subtipo, t.comentario, t.estado, t.atendido_por
+from tickets t
+join ticket_tipos tt on tt.id = t.tipo_id
+left join ticket_subtipos ts on ts.id = t.subtipo_id
+where t.solicitante_dni = fn_persona_llamador()
+order by t.creado_en desc;
+
 -- --------------------------- permisos --------------------------------------
 
 revoke all on tickets, ticket_tipos, ticket_subtipos, ticket_avisos from anon, authenticated;
 grant select on v_tickets, v_ticket_config, v_ticket_avisos to authenticated;
-grant select on v_ticket_catalogo, v_portal_tickets to authenticated;
+grant select on v_ticket_catalogo, v_portal_tickets, v_mis_tickets to authenticated;
+-- Las funciones nuevas nacen sin EXECUTE para la API (fase 1): se concede aquí.
+grant execute on function crear_ticket_propio(int, int, text) to authenticated;
 
 -- --------------------------- seed ------------------------------------------
 -- Catálogo del sistema TI de PROMANT tal cual (estados de activación incluidos).
