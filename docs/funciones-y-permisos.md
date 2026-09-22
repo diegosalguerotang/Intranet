@@ -7,7 +7,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | Grupo | Funciones |
 |---|---|
 | administrativa (sesión propia) | 2 |
-| administrativa | 57 |
+| administrativa | 58 |
 | autoservicio del trabajador | 25 |
 | ayudante | 42 |
 | interna | 4 |
@@ -32,6 +32,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `api_token_usar(p_token text)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `asignar_activo(p_codigo text, p_dni text, p_condicion text, p_antivirus boolean, p_comentario text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `asignar_rit_sede(p_sede text, p_rit text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
+| `corregir_fecha_ingreso(p_dni text, p_fecha date)` | administrativa | personal · nivel 2 | authenticated + service_role |
 | `correo_llamador()` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `crear_activo(p_codigo text, p_categoria text, p_empresa text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_imei text, p_valor numeric, p_compra date, p_observaciones text)` | autoservicio del trabajador | guarda propia sobre fn_nivel_modulo/nivel_en; identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `crear_rit(p_nombre text, p_archivo text, p_hash text, p_vigente date)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
