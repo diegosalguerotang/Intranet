@@ -555,6 +555,14 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("personal");
     },
+    // Fecha de ingreso del vínculo vigente, corregida a mano desde el legajo
+    // (Diego, 2026-09-22). Nivel de acción en Personal; auditoría en el RPC.
+    corregirFechaIngreso: async (dni, fecha) => {
+      if (!supabaseListo) throw new Error("La edición real requiere conexión a Supabase.");
+      const { error } = await supabase.rpc("corregir_fecha_ingreso", { p_dni: dni, p_fecha: fecha });
+      if (error) throw new Error(error.message);
+      await recargar("personal");
+    },
     // Bandeja de propuestas de perfil (spec Tareas 31-08 §5): la importación
     // del padrón SUGIERE; solo un superadministrador decide, y la cuenta se
     // crea en ACC-04 (exige correo). La vista trae también las decididas.

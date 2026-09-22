@@ -170,6 +170,13 @@ try {
     if (!/no está vinculado a una persona/.test(propio ?? "")) throw new Error(`crear_ticket_propio sin JWT: ${propio}`);
     igual(filas[0].n, 0, "v_mis_tickets sin JWT");
   });
+
+  await prueba("corregir_fecha_ingreso (2026-09-22): EXECUTE solo para authenticated, con guarda de Personal", async () => {
+    const [g] = await sql(`select has_function_privilege('authenticated', 'public.corregir_fecha_ingreso(text, date)', 'execute') as auth,
+      has_function_privilege('anon', 'public.corregir_fecha_ingreso(text, date)', 'execute') as anon,
+      (select prosrc from pg_proc where proname = 'corregir_fecha_ingreso') ~ 'requiere_nivel\\(''personal'', 2\\)' as guarda`);
+    igual(`${g.auth}/${g.anon}/${g.guarda}`, "true/false/true", "grants/guarda");
+  });
 } finally {
   await bd.parar();
 }

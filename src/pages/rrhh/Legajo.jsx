@@ -19,7 +19,7 @@ export default function Legajo() {
   const [tab, setTab] = useState(0);
   const [editar, setEditar] = useState(false);
   const [aviso, setAviso] = useState(null);
-  const { db, persona, sede, empresaPor, user, editarTrabajador, verCuentaBancaria,
+  const { db, persona, sede, empresaPor, user, editarTrabajador, corregirFechaIngreso, verCuentaBancaria,
     fijarHoraEntrada, historialVinculos, historialMovimientos, actividadPersona } = useApp();
   const [editarHora, setEditarHora] = useState(false);
   // Actividad real (auditoría filtrada por persona), cargada al entrar a la pestaña.
@@ -353,6 +353,7 @@ export default function Legajo() {
           persona={p}
           onClose={() => setEditar(false)}
           editarTrabajador={editarTrabajador}
+          corregirFechaIngreso={corregirFechaIngreso}
           onListo={() => { setEditar(false); setAviso("Datos actualizados. El cambio quedó en auditoría."); }}
         />
       )}
@@ -454,17 +455,21 @@ function EditarHoraEntrada({ persona: p, onClose, fijarHoraEntrada, onListo }) {
 // Edición de datos personales: lo escrito manda (vaciar sí borra), el nombre
 // no puede quedar vacío (corregirlo limpia «por confirmar») y cambiar el
 // correo lo deja pendiente de verificación. El RPC valida el nivel de nuevo.
-function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
+function EditarDatos({ persona: p, onClose, editarTrabajador, corregirFechaIngreso, onListo }) {
   const [form, setForm] = useState({
     nombre: p.nombre ?? "", celular: p.celular ?? "", correo: p.correo ?? "",
     // Cuenta y CCI llegan ENMASCARADOS (viven cifrados, fase 3b): los campos
     // arrancan vacíos y vacío significa «conservar el actual»; «-» borra.
     banco: p.banco ?? "", cuenta: "", cci: "",
     tipoDocumento: p.tipo_documento ?? "DNI",
+    // Fecha de ingreso del vínculo vigente (Diego, 2026-09-22): editable a
+    // mano; solo se envía si cambió (corregir_fecha_ingreso, con auditoría).
+    ingreso: p.ingreso ?? "",
   });
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const vigente = p.estado === "vigente";
 
   const guardar = async (e) => {
     e.preventDefault();
@@ -473,6 +478,9 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
     setOcupado(true);
     try {
       await editarTrabajador(p.dni, form);
+      if (vigente && form.ingreso && form.ingreso !== (p.ingreso ?? "")) {
+        await corregirFechaIngreso(p.dni, form.ingreso);
+      }
       onListo();
     } catch (err) {
       setError(err.message);
@@ -515,9 +523,14 @@ function EditarDatos({ persona: p, onClose, editarTrabajador, onListo }) {
             <Input value={form.cuenta} onChange={set("cuenta")} placeholder={p.cuenta ? `Actual: ${p.cuenta}` : "Sin cuenta registrada"} />
           </Field>
         </div>
-        <Field label="CCI" hint="Código interbancario (20 dígitos). Vacío conserva el actual; escribe «-» para borrarlo. Se guarda cifrado.">
-          <Input value={form.cci} onChange={set("cci")} placeholder={p.cci ? `Actual: ${p.cci}` : "Sin CCI registrado"} />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="CCI" hint="Código interbancario (20 dígitos). Vacío conserva el actual; escribe «-» para borrarlo. Se guarda cifrado.">
+            <Input value={form.cci} onChange={set("cci")} placeholder={p.cci ? `Actual: ${p.cci}` : "Sin CCI registrado"} />
+          </Field>
+          <Field label="Fecha de ingreso" hint={vigente ? "Del vínculo vigente. No puede ser futura ni pisar un vínculo anterior en la misma empresa." : "Solo se corrige en un vínculo vigente."}>
+            <Input type="date" value={form.ingreso} onChange={set("ingreso")} disabled={!vigente} max={new Date().toISOString().slice(0, 10)} />
+          </Field>
+        </div>
         {error && <Note tone="alerta">{error}</Note>}
         <div className="flex gap-2">
           <Button type="submit" disabled={ocupado || !form.nombre.trim()}>

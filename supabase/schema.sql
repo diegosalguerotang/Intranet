@@ -1543,6 +1543,44 @@ begin
   values ('EDITAR_TRABAJADOR', 'personas', j_antes, j_despues);
 end $$;
 
+-- corregir_fecha_ingreso (Diego, 2026-09-22): la fecha de ingreso se fijaba
+-- solo en el alta; ahora se corrige a mano desde el legajo (RRH-03) sobre el
+-- vínculo VIGENTE. Nivel de acción en Personal. No toca `movimientos` (tabla
+-- de solo inserción, la escriben las importaciones): la corrección queda en
+-- auditoría con el antes y el después.
+create function corregir_fecha_ingreso(p_dni text, p_fecha date)
+returns void language plpgsql security definer
+set search_path = public, interno, extensions as $$
+declare v vinculos%rowtype; v_choque date;
+begin
+  perform requiere_nivel('personal', 2);
+  if p_fecha is null then
+    raise exception 'Indica la fecha de ingreso.';
+  end if;
+  if p_fecha > current_date then
+    raise exception 'La fecha de ingreso no puede ser futura.';
+  end if;
+  select * into v from vinculos
+  where persona_dni = p_dni and fecha_fin is null
+  order by fecha_inicio desc limit 1;
+  if v.id is null then
+    raise exception 'La persona % no tiene un vínculo vigente.', p_dni;
+  end if;
+  select max(fecha_fin) into v_choque from vinculos
+  where persona_dni = p_dni and empresa_id = v.empresa_id and id <> v.id and fecha_fin is not null;
+  if v_choque is not null and p_fecha <= v_choque then
+    raise exception 'La fecha pisa un vínculo anterior en la misma empresa (cesado el %).', to_char(v_choque, 'YYYY-MM-DD');
+  end if;
+  if v.fecha_inicio = p_fecha then
+    return;
+  end if;
+  update vinculos set fecha_inicio = p_fecha where id = v.id;
+  insert into auditoria (accion, tabla, datos_antes, datos_despues)
+  values ('CORREGIR_FECHA_INGRESO', 'vinculos',
+          jsonb_build_object('vinculo_id', v.id, 'dni', p_dni, 'empresa', v.empresa_id, 'fecha_inicio', v.fecha_inicio),
+          jsonb_build_object('vinculo_id', v.id, 'dni', p_dni, 'empresa', v.empresa_id, 'fecha_inicio', p_fecha));
+end $$;
+
 -- fijar_correo_persona (2026-09-02): fija SOLO el correo de contacto (paso
 -- «completar correos» del modal masivo de cuentas del portal, RRH-02). No se
 -- reutiliza editar_trabajador: reemplaza toda la fila y limpia «por confirmar».

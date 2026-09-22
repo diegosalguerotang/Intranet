@@ -37,6 +37,7 @@ grant execute on function
   crear_ticket_admin(p_dni text, p_tipo integer, p_subtipo integer, p_comentario text, p_por text),
   decidir_propuesta_perfil(p_id bigint, p_decision text, p_por text),
   editar_trabajador(p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text, p_cci text, p_tipo_documento text),
+  corregir_fecha_ingreso(p_dni text, p_fecha date),
   eliminar_feriado(p_fecha date, p_por text),
   eliminar_sede(p_sede text),
   eliminar_solicitud_aviso(p_id bigint),
