@@ -1,7 +1,8 @@
 // scripts/factor-generar.mjs — Segundo factor por correo (2026-09-28).
 // Canónico: supabase/factor.sql. Genera:
 //   supabase/migraciones/2026-09-28-segundo-factor.sql (una transacción; respalda
-//     fn_nivel_modulo, guardar_politica y v_politica_acceso en interno.respaldo_factor;
+//     las FUNCIONES que reescribe —fn_nivel_modulo, guardar_politica y las de guarda
+//     propia de la sección 7— y v_politica_acceso en interno.respaldo_factor;
 //     verificación embebida)
 //   supabase/respaldos/2026-09-28-segundo-factor-reversion.sql
 //   bloque @@FACTOR-INICIO@@ … @@FACTOR-FIN@@ de supabase/seguridad.sql
@@ -13,7 +14,13 @@ export const FECHA = "2026-09-28";
 export const GUARDAR_POLITICA_VIEJA = "public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)";
 export const GUARDAR_POLITICA_NUEVA = "public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text, boolean)";
 // Funciones que la fase reescribe (se respaldan y la reversión las restaura).
-export const FUNCIONES = ["public.fn_nivel_modulo(text)", GUARDAR_POLITICA_VIEJA];
+// GUARDA_PROPIA: sección 7 de factor.sql (deciden «superadmin» sin fn_nivel_modulo
+// y se reescriben para consultar fn_factor_pendiente).
+export const GUARDA_PROPIA = [
+  "public.fn_ver_cuenta_bancaria(text)", "public.fn_nivel_memorandums()",
+  "public.importar_planilla_unificada(jsonb, text, text, jsonb)",
+];
+export const FUNCIONES = ["public.fn_nivel_modulo(text)", GUARDAR_POLITICA_VIEJA, ...GUARDA_PROPIA];
 export const FUNCIONES_NUEVAS = [
   "public.fn_factor_pendiente()", "public.mi_segundo_factor()",
   "public.api_factor_emitir(text, uuid, text, text, text)", "public.api_factor_verificar(text, uuid, text, text, text)",
@@ -59,6 +66,9 @@ begin
   if not exists (select 1 from pg_attribute where attrelid = 'interno.politica_acceso'::regclass and attname = 'factor_superadmin' and not attisdropped) then raise exception 'factor: falta politica_acceso.factor_superadmin'; end if;
   if (select factor_superadmin from interno.politica_acceso where id = 1) is not true then raise exception 'factor: el interruptor no quedó encendido'; end if;
   if (select prosrc from pg_proc where oid = 'public.fn_nivel_modulo(text)'::regprocedure) !~ 'fn_factor_pendiente' then raise exception 'factor: fn_nivel_modulo no consulta fn_factor_pendiente'; end if;
+  if exists (select 1 from unnest(array[${lista(GUARDA_PROPIA)}]) f
+             where (select prosrc from pg_proc where oid = f::regprocedure) !~ 'fn_factor_pendiente'
+                or not has_function_privilege('authenticated', f, 'execute')) then raise exception 'factor: una función de guarda propia no consulta fn_factor_pendiente o perdió su EXECUTE'; end if;
   if to_regprocedure('${GUARDAR_POLITICA_VIEJA}') is not null then raise exception 'factor: la firma vieja de guardar_politica sigue'; end if;
   if not has_function_privilege('authenticated', '${GUARDAR_POLITICA_NUEVA}', 'execute') then raise exception 'factor: authenticated no ejecuta guardar_politica nueva'; end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'v_politica_acceso' and column_name = 'factorSuperadmin') then raise exception 'factor: v_politica_acceso sin factorSuperadmin'; end if;
@@ -87,7 +97,8 @@ commit;
 
 export const REVERSION = `-- supabase/respaldos/${FECHA}-segundo-factor-reversion.sql
 -- Reversión del segundo factor: retira funciones y tablas nuevas, restaura
--- fn_nivel_modulo (v3) y guardar_politica (firma vieja) desde
+-- fn_nivel_modulo (v3), guardar_politica (firma vieja) y las funciones de
+-- guarda propia (${GUARDA_PROPIA.map((f) => f.slice("public.".length, f.indexOf("("))).join(", ")}) desde
 -- interno.respaldo_factor —cuerpo Y el EXECUTE que cada una tenía, leído del
 -- ACL respaldado ('acl:…'), no asumido— devuelve v_politica_acceso a su
 -- definición anterior y quita la columna del interruptor.
@@ -119,6 +130,7 @@ drop table interno.respaldo_factor;
 do $$ begin
   if to_regclass('interno.factor_sesiones') is not null then raise exception 'reversión factor: factor_sesiones sigue existiendo'; end if;
   if (select prosrc from pg_proc where oid = 'public.fn_nivel_modulo(text)'::regprocedure) ~ 'fn_factor_pendiente' then raise exception 'reversión factor: fn_nivel_modulo sigue en v4'; end if;
+  if exists (select 1 from unnest(array[${lista(GUARDA_PROPIA)}]) f where (select prosrc from pg_proc where oid = f::regprocedure) ~ 'fn_factor_pendiente') then raise exception 'reversión factor: una función de guarda propia sigue consultando fn_factor_pendiente'; end if;
   if to_regprocedure('${GUARDAR_POLITICA_VIEJA}') is null then raise exception 'reversión factor: guardar_politica vieja no volvió'; end if;
   if to_regprocedure('public.mi_segundo_factor()') is not null then raise exception 'reversión factor: mi_segundo_factor sigue existiendo'; end if;
 end $$;

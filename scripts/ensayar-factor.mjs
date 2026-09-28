@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { arrancarPgLocal, cargarDatosAnonimizados, aclNormal } from "./pg-local.mjs";
-import { FECHA, sinFactor } from "./factor-generar.mjs";
+import { FECHA, sinFactor, FUNCIONES } from "./factor-generar.mjs";
 
 const MIGRACION = readFileSync(`supabase/migraciones/${FECHA}-segundo-factor.sql`, "utf8");
 const REVERSION = readFileSync(`supabase/respaldos/${FECHA}-segundo-factor-reversion.sql`, "utf8");
@@ -61,6 +61,7 @@ const S1 = randomUUID(), S2 = randomUUID(), S3 = randomUUID(), S4 = randomUUID()
 const claims = (correo, sub, session_id) => ({ role: "authenticated", email: correo, sub, ...(session_id ? { session_id } : {}) });
 const superSin = claims(SUPER.correo, SUPER.sub);
 const superS1 = claims(SUPER.correo, SUPER.sub, S1);
+const [{ dni: DNI_CUENTA }] = await sql("select coalesce((select dni from datos_bancarios order by dni limit 1), (select dni from personas order by dni limit 1)) as dni");
 console.log(`superadmin ${SUPER.correo} · no superadmin ${NO_SUPER?.correo ?? "(ninguno en los datos)"}`);
 
 const foto = async () => {
@@ -85,10 +86,10 @@ try {
 
   console.log("\n== 1 · Migración");
   await prueba("la migración se aplica sin errores (verificación embebida incluida)", async () => { await sql(MIGRACION); });
-  await prueba("respaldo con 2 funciones + 2 ACL + vista + ACL de vista; política con factor_superadmin = true", async () => {
+  await prueba(`respaldo con ${FUNCIONES.length} funciones + ${FUNCIONES.length} ACL + vista + ACL de vista; política con factor_superadmin = true`, async () => {
     const [r] = await sql(`select (select count(*)::int from interno.respaldo_factor) as total, (select factor_superadmin from interno.politica_acceso where id = 1) as pol,
       (select "factorSuperadmin" from public.v_politica_acceso) as vista`);
-    igual(r.total, 6, "objetos"); igual(r.pol, true, "política"); igual(r.vista, true, "vista");
+    igual(r.total, 2 * FUNCIONES.length + 2, "objetos"); igual(r.pol, true, "política"); igual(r.vista, true, "vista");
   });
 
   console.log("\n== 2 · Guarda en la base");
@@ -206,6 +207,21 @@ try {
     const superPendiente = claims(SUPER.correo, SUPER.sub, S5);
     const r = await como("authenticated", { claims: superPendiente }, [["select guardar_politica(8, 30, false, true, 5, 15, 'whatsapp', 6, 10, 7, 'ensayo')"]]);
     igual(r.codigo, "42501", "pendiente sin marca");
+  });
+  await prueba("guarda propia, superadmin pendiente: fn_ver_cuenta_bancaria → null, fn_nivel_memorandums → 0, previsualizar_planilla_unificada → 42501 «Verifica el código», previsualizar_padron rechazada (fn_nivel_modulo)", async () => {
+    const superPendiente = claims(SUPER.correo, SUPER.sub, S5);
+    let r = sinError(await como("authenticated", { claims: superPendiente }, [["select fn_ver_cuenta_bancaria($1) as c, fn_nivel_memorandums() as m", [DNI_CUENTA]]]), "cuenta/memorándums");
+    igual(`${r.filas[0].c}/${r.filas[0].m}`, "null/0", "pendiente");
+    r = await como("authenticated", { claims: superPendiente }, [["select previsualizar_planilla_unificada('[]'::jsonb, '2026-09', '[]'::jsonb)"]]);
+    igual(r.codigo, "42501", "planilla unificada"); if (!/Verifica el código/.test(r.mensaje)) throw new Error(`mensaje: ${r.mensaje}`);
+    r = await como("authenticated", { claims: superPendiente }, [["select previsualizar_padron('[]'::jsonb, '[]'::jsonb)"]]);
+    if (!r.codigo) throw new Error("previsualizar_padron debió rechazar al superadmin pendiente");
+  });
+  await prueba("guarda propia, superadmin verificado (S1): cuenta bancaria no nula, fn_nivel_memorandums → 99, previsualizar_planilla_unificada sin «Verifica el código»", async () => {
+    let r = sinError(await como("authenticated", { claims: superS1 }, [["select fn_ver_cuenta_bancaria($1) as c, fn_nivel_memorandums() as m", [DNI_CUENTA]]]), "cuenta/memorándums");
+    if (r.filas[0].c === null) throw new Error("la cuenta bancaria no debería ser null con marca"); igual(r.filas[0].m, 99, "memorándums");
+    r = await como("authenticated", { claims: superS1 }, [["select previsualizar_planilla_unificada('[]'::jsonb, '2026-09', '[]'::jsonb)"]]);
+    if (r.codigo && /Verifica el código/.test(r.mensaje)) throw new Error(`con marca no debería pedir el código: ${r.mensaje}`);
   });
   await prueba("api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_factor_pendiente para nadie de la API; tablas sin acceso de la API", async () => {
     let r = await como("authenticated", { claims: superS1 }, [["select api_factor_dispositivos_revocar($1)", [SUPER.correo]]]); igual(r.codigo, "42501", "authenticated api_");

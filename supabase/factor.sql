@@ -11,6 +11,8 @@
 --  4 · v_politica_acceso y guardar_politica con el interruptor.
 --  5 · mi_segundo_factor (el navegador consulta su estado).
 --  6 · api_factor_* (solo service_role; las llama api/segundo-factor.js).
+--  7 · Funciones con guarda propia (deciden «superadmin» sin fn_nivel_modulo):
+--      fn_ver_cuenta_bancaria, fn_nivel_memorandums, importar_planilla_unificada.
 
 -- 1 · Interruptor ---------------------------------------------------------------
 alter table interno.politica_acceso add column if not exists factor_superadmin boolean not null default true;
@@ -347,3 +349,55 @@ grant execute on function
   public.api_factor_dispositivo_usar(text, uuid, text, text, text),
   public.api_factor_dispositivos_revocar(text)
 to service_role;
+
+-- 7 · Funciones con guarda propia ---------------------------------------------------
+-- Estas funciones (ejecutables por authenticated) deciden «superadmin» leyendo
+-- perfiles.es_superadmin o v_mi_acceso."esSuperadmin" sin pasar por
+-- fn_nivel_modulo, así que no verían el factor. Se reescriben desde su
+-- definición VIGENTE (pg_get_functiondef) con una sustitución exacta y
+-- verificada: si el texto buscado no aparece exactamente una vez, se aborta
+-- (jamás una sustitución silenciosa). create or replace conserva search_path y
+-- ACL; la definición se ejecuta con el search_path de este archivo
+-- (public, interno, extensions), el mismo con que pg_get_functiondef la imprimió.
+-- Idempotente: si el cuerpo ya consulta fn_factor_pendiente, no se toca.
+--   · fn_ver_cuenta_bancaria: sin marca no descifra (devuelve null; lo audita
+--     como no autorizado).
+--   · fn_nivel_memorandums: un 99 se vuelve 0 (emitir/resolver_memorandum).
+--   · importar_planilla_unificada (y previsualizar_planilla_unificada, que
+--     delega en ella): 42501 «Verifica el código de ingreso antes de operar.».
+-- importar_padron e importar_control (y sus previsualizar_*, que delegan) no
+-- se tocan: empiezan con `fn_nivel_modulo(…) < 2`, que ya vale 0 para un
+-- superadmin pendiente. ensayar-canon vigila que no aparezca otra función así.
+do $$
+declare
+  firmas text[] := array[
+    'public.fn_ver_cuenta_bancaria(text)',
+    'public.fn_nivel_memorandums()',
+    'public.importar_planilla_unificada(jsonb, text, text, jsonb)'];
+  buscados text[] := array[
+    $b$v_ok := coalesce(v_ok, false);$b$,
+    $b$return coalesce(v_nivel, 0);$b$,
+    $b$if not found then raise exception 'Tu sesión no tiene acceso al BackOffice.'; end if;$b$];
+  reemplazos text[] := array[
+    $r$v_ok := coalesce(v_ok, false) and not fn_factor_pendiente();  -- segundo factor (2026-09-28)$r$,
+    $r$if coalesce(v_nivel, 0) = 99 and fn_factor_pendiente() then return 0; end if;  -- segundo factor (2026-09-28)
+  return coalesce(v_nivel, 0);$r$,
+    $r$if not found then raise exception 'Tu sesión no tiene acceso al BackOffice.'; end if;
+    -- Segundo factor (2026-09-28): un superadmin sin verificar no opera.
+    if coalesce(v_super, false) and fn_factor_pendiente() then
+      raise insufficient_privilege using message = 'Verifica el código de ingreso antes de operar.';
+    end if;$r$];
+  d text; n int; v_sp text := current_setting('search_path');
+begin
+  -- La definición impresa se ejecuta con el search_path con que se imprimió.
+  perform set_config('search_path', 'public, interno, extensions', true);
+  for i in 1..array_length(firmas, 1) loop
+    if to_regprocedure(firmas[i]) is null then raise exception 'factor: falta la función %', firmas[i]; end if;
+    d := pg_get_functiondef(firmas[i]::regprocedure);
+    if strpos(d, 'fn_factor_pendiente') > 0 then continue; end if;  -- ya reescrita (idempotente)
+    n := (length(d) - length(replace(d, buscados[i], ''))) / length(buscados[i]);
+    if n <> 1 then raise exception 'factor: en % el texto «%» aparece % veces (se esperaba 1)', firmas[i], buscados[i], n; end if;
+    execute replace(d, buscados[i], reemplazos[i]);
+  end loop;
+  perform set_config('search_path', v_sp, true);
+end $$;

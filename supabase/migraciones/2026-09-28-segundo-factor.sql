@@ -17,9 +17,9 @@ end $$;
 create table interno.respaldo_factor (objeto text primary key, definicion text not null);
 revoke all on table interno.respaldo_factor from public, anon, authenticated;
 insert into interno.respaldo_factor
-  select 'fn:' || f, pg_get_functiondef(f::regprocedure) from unnest(array['public.fn_nivel_modulo(text)', 'public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)']) as f;
+  select 'fn:' || f, pg_get_functiondef(f::regprocedure) from unnest(array['public.fn_nivel_modulo(text)', 'public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)', 'public.fn_ver_cuenta_bancaria(text)', 'public.fn_nivel_memorandums()', 'public.importar_planilla_unificada(jsonb, text, text, jsonb)']) as f;
 insert into interno.respaldo_factor
-  select 'acl:' || f, coalesce(p.proacl::text, '') from unnest(array['public.fn_nivel_modulo(text)', 'public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)']) as f join pg_proc p on p.oid = f::regprocedure;
+  select 'acl:' || f, coalesce(p.proacl::text, '') from unnest(array['public.fn_nivel_modulo(text)', 'public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)', 'public.fn_ver_cuenta_bancaria(text)', 'public.fn_nivel_memorandums()', 'public.importar_planilla_unificada(jsonb, text, text, jsonb)']) as f join pg_proc p on p.oid = f::regprocedure;
 insert into interno.respaldo_factor
   select 'view:v_politica_acceso', pg_get_viewdef('public.v_politica_acceso'::regclass, true);
 insert into interno.respaldo_factor
@@ -38,6 +38,8 @@ insert into interno.respaldo_factor
 --  4 · v_politica_acceso y guardar_politica con el interruptor.
 --  5 · mi_segundo_factor (el navegador consulta su estado).
 --  6 · api_factor_* (solo service_role; las llama api/segundo-factor.js).
+--  7 · Funciones con guarda propia (deciden «superadmin» sin fn_nivel_modulo):
+--      fn_ver_cuenta_bancaria, fn_nivel_memorandums, importar_planilla_unificada.
 
 -- 1 · Interruptor ---------------------------------------------------------------
 alter table interno.politica_acceso add column if not exists factor_superadmin boolean not null default true;
@@ -375,6 +377,58 @@ grant execute on function
   public.api_factor_dispositivos_revocar(text)
 to service_role;
 
+-- 7 · Funciones con guarda propia ---------------------------------------------------
+-- Estas funciones (ejecutables por authenticated) deciden «superadmin» leyendo
+-- perfiles.es_superadmin o v_mi_acceso."esSuperadmin" sin pasar por
+-- fn_nivel_modulo, así que no verían el factor. Se reescriben desde su
+-- definición VIGENTE (pg_get_functiondef) con una sustitución exacta y
+-- verificada: si el texto buscado no aparece exactamente una vez, se aborta
+-- (jamás una sustitución silenciosa). create or replace conserva search_path y
+-- ACL; la definición se ejecuta con el search_path de este archivo
+-- (public, interno, extensions), el mismo con que pg_get_functiondef la imprimió.
+-- Idempotente: si el cuerpo ya consulta fn_factor_pendiente, no se toca.
+--   · fn_ver_cuenta_bancaria: sin marca no descifra (devuelve null; lo audita
+--     como no autorizado).
+--   · fn_nivel_memorandums: un 99 se vuelve 0 (emitir/resolver_memorandum).
+--   · importar_planilla_unificada (y previsualizar_planilla_unificada, que
+--     delega en ella): 42501 «Verifica el código de ingreso antes de operar.».
+-- importar_padron e importar_control (y sus previsualizar_*, que delegan) no
+-- se tocan: empiezan con `fn_nivel_modulo(…) < 2`, que ya vale 0 para un
+-- superadmin pendiente. ensayar-canon vigila que no aparezca otra función así.
+do $$
+declare
+  firmas text[] := array[
+    'public.fn_ver_cuenta_bancaria(text)',
+    'public.fn_nivel_memorandums()',
+    'public.importar_planilla_unificada(jsonb, text, text, jsonb)'];
+  buscados text[] := array[
+    $b$v_ok := coalesce(v_ok, false);$b$,
+    $b$return coalesce(v_nivel, 0);$b$,
+    $b$if not found then raise exception 'Tu sesión no tiene acceso al BackOffice.'; end if;$b$];
+  reemplazos text[] := array[
+    $r$v_ok := coalesce(v_ok, false) and not fn_factor_pendiente();  -- segundo factor (2026-09-28)$r$,
+    $r$if coalesce(v_nivel, 0) = 99 and fn_factor_pendiente() then return 0; end if;  -- segundo factor (2026-09-28)
+  return coalesce(v_nivel, 0);$r$,
+    $r$if not found then raise exception 'Tu sesión no tiene acceso al BackOffice.'; end if;
+    -- Segundo factor (2026-09-28): un superadmin sin verificar no opera.
+    if coalesce(v_super, false) and fn_factor_pendiente() then
+      raise insufficient_privilege using message = 'Verifica el código de ingreso antes de operar.';
+    end if;$r$];
+  d text; n int; v_sp text := current_setting('search_path');
+begin
+  -- La definición impresa se ejecuta con el search_path con que se imprimió.
+  perform set_config('search_path', 'public, interno, extensions', true);
+  for i in 1..array_length(firmas, 1) loop
+    if to_regprocedure(firmas[i]) is null then raise exception 'factor: falta la función %', firmas[i]; end if;
+    d := pg_get_functiondef(firmas[i]::regprocedure);
+    if strpos(d, 'fn_factor_pendiente') > 0 then continue; end if;  -- ya reescrita (idempotente)
+    n := (length(d) - length(replace(d, buscados[i], ''))) / length(buscados[i]);
+    if n <> 1 then raise exception 'factor: en % el texto «%» aparece % veces (se esperaba 1)', firmas[i], buscados[i], n; end if;
+    execute replace(d, buscados[i], reemplazos[i]);
+  end loop;
+  perform set_config('search_path', v_sp, true);
+end $$;
+
 -- Verificación embebida.
 do $$
 declare v jsonb; v_correo text;
@@ -382,6 +436,9 @@ begin
   if not exists (select 1 from pg_attribute where attrelid = 'interno.politica_acceso'::regclass and attname = 'factor_superadmin' and not attisdropped) then raise exception 'factor: falta politica_acceso.factor_superadmin'; end if;
   if (select factor_superadmin from interno.politica_acceso where id = 1) is not true then raise exception 'factor: el interruptor no quedó encendido'; end if;
   if (select prosrc from pg_proc where oid = 'public.fn_nivel_modulo(text)'::regprocedure) !~ 'fn_factor_pendiente' then raise exception 'factor: fn_nivel_modulo no consulta fn_factor_pendiente'; end if;
+  if exists (select 1 from unnest(array['public.fn_ver_cuenta_bancaria(text)', 'public.fn_nivel_memorandums()', 'public.importar_planilla_unificada(jsonb, text, text, jsonb)']) f
+             where (select prosrc from pg_proc where oid = f::regprocedure) !~ 'fn_factor_pendiente'
+                or not has_function_privilege('authenticated', f, 'execute')) then raise exception 'factor: una función de guarda propia no consulta fn_factor_pendiente o perdió su EXECUTE'; end if;
   if to_regprocedure('public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)') is not null then raise exception 'factor: la firma vieja de guardar_politica sigue'; end if;
   if not has_function_privilege('authenticated', 'public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text, boolean)', 'execute') then raise exception 'factor: authenticated no ejecuta guardar_politica nueva'; end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'v_politica_acceso' and column_name = 'factorSuperadmin') then raise exception 'factor: v_politica_acceso sin factorSuperadmin'; end if;

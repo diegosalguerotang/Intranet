@@ -15,7 +15,8 @@
 //   · 2026-09-22: Soporte TI fuera del portal (portal_crear_ticket cerrada);
 //     ticket propio del usuario administrativo (crear_ticket_propio, v_mis_tickets).
 //   · 2026-09-28: segundo factor por correo (superadmin con JWT vale 0 hasta
-//     verificar; api_factor_* solo service_role; interruptor en la política).
+//     verificar; api_factor_* solo service_role; interruptor en la política;
+//     toda función que decide «superadmin» por su cuenta consulta el factor).
 // Uso: node scripts/ensayar-canon.mjs
 import { arrancarPgLocal } from "./pg-local.mjs";
 
@@ -194,6 +195,16 @@ try {
       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'v_politica_acceso' and column_name = 'factorSuperadmin') as vista,
       to_regprocedure('public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)') is null as vieja_fuera`);
     igual(`${g.mio}/${g.mio_anon}/${g.pend}/${g.v4}/${g.pol}/${g.vista}/${g.vieja_fuera}`, "true/false/false/true/true/true/true", "guarda");
+  });
+  await prueba("toda función ejecutable por authenticated que decide por es_superadmin / \"esSuperadmin\" / ver_datos_bancarios sin fn_nivel_modulo, nivel_en( ni requiere_ consulta fn_factor_pendiente", async () => {
+    // `es_superadmin(` (la guarda central, que ya pasa por nivel_en) no cuenta:
+    // solo la lectura directa de la columna o del campo de v_mi_acceso.
+    vacio(await sql(`select p.oid::regprocedure::text as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'execute')
+        and p.proname not in ('fn_nivel_modulo', 'fn_factor_pendiente', 'mi_segundo_factor')
+        and p.prosrc ~ '(es_superadmin(?![[:space:]]*[(])|"esSuperadmin"|ver_datos_bancarios)'
+        and p.prosrc !~ '(fn_nivel_modulo|nivel_en[(]|requiere_)'
+        and p.prosrc !~ 'fn_factor_pendiente' order by 1`), "deciden «superadmin» sin ver el segundo factor");
   });
   await prueba("con claims de superadmin: sin marca → 0; con marca vigente → 99; con la política apagada → 99 (todo en una transacción que se revierte)", async () => {
     await sql("begin");
