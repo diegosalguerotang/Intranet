@@ -5,6 +5,7 @@
 //   crear   → nivel >= 2 en el módulo accesos (o superadmin)
 //   eliminar→ nivel 3 en accesos o superadmin; nunca a sí mismo
 import { enviar, plantilla } from "./_correo.js";
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
   const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${sesion}` }, method: "GET" });
   const correoLlamador = quien.json?.email;
   if (!quien.ok || !correoLlamador) return res.status(401).json({ error: "Sesión inválida o vencida." });
+  if (await factorPendiente(sesion)) return res.status(403).json({ error: MSJ_FACTOR });
 
   // 2 · ¿Qué puede? Nivel del llamador en el módulo accesos, desde la BD.
   const acceso = await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(correoLlamador)}&limit=1`, { method: "GET" });

@@ -2,6 +2,7 @@
 // identidad del llamador y emite una URL firmada de 10 minutos. Los PDFs de
 // boleta llevan datos personales impresos (Ley 29733): el bucket es privado
 // y este endpoint es el ÚNICO camino de lectura.
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
 const EXPIRA_SEGUNDOS = 600;
@@ -44,6 +45,7 @@ export default async function handler(req, res) {
     const dni = correo.split("@")[0];
     autorizado = (doc.vinculos?.persona_dni ?? "").toLowerCase() === dni;
   } else {
+    if (await factorPendiente(jwt)) return res.status(403).json({ error: MSJ_FACTOR });
     const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     autorizado = Boolean(admin);
   }

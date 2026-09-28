@@ -5,6 +5,7 @@
 // de verdad. Gate igual que descargar-documento: cuenta del portal → solo lo
 // suyo; admin activo del BackOffice → cualquiera.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
@@ -70,6 +71,7 @@ export default async function handler(req, res) {
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) {
     autorizado = dni.toLowerCase() === correo.split("@")[0];
   } else {
+    if (await factorPendiente(jwt)) return res.status(403).json({ error: MSJ_FACTOR });
     const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     autorizado = Boolean(admin);
   }

@@ -57,6 +57,7 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
     const correo = String(p_correo ?? "").toLowerCase();
     return json(estado.admins.filter((a) => a.correo === correo && (!p_solo_activo || a.estado === "activo")).slice(0, 1));
   }
+  if (u.includes("/rest/v1/rpc/mi_segundo_factor")) return json({ exigido: false, verificado: false });
   if (u.includes("/rest/v1/personas")) {
     if (p.correo) return json(estado.personas.filter((x) => x.correo.toLowerCase() === valorEq(p.correo).toLowerCase()));
     return json(estado.personas.filter((x) => x.dni.toUpperCase() === valorEq(p.dni).toUpperCase()));

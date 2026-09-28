@@ -27,6 +27,7 @@
 // contraseña vive SOLO en las variables de entorno del servidor (decisión 9).
 import { createHash, timingSafeEqual } from "node:crypto";
 import { enviar, plantilla, botonCorreo } from "./_correo.js";
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
@@ -78,6 +79,7 @@ async function llamador(req) {
   if (correo.endsWith(`@${DOMINIO_PORTAL}`)) return { tipo: "portal", dni: correo.split("@")[0].toUpperCase(), correo };
   const u = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
   if (!u) return null;
+  if (await factorPendiente(jwt)) return { tipo: "pendiente", correo, dni: u.persona_dni };
   return { tipo: "admin", correo, dni: u.persona_dni };
 }
 
@@ -233,6 +235,7 @@ export default async function handler(req, res) {
     // activa) o el sistema (secreto). Solo destinos del padrón.
     const quien = await llamador(req);
     if (!quien) return res.status(401).json({ error: "Sesión válida requerida." });
+    if (quien.tipo === "pendiente") return res.status(403).json({ error: MSJ_FACTOR });
     const numero = String(cuerpo.numero ?? "").trim();
     if (!/^TK-[0-9]+$/.test(numero)) return res.status(400).json({ error: "Número de ticket inválido." });
     const tope = await limitar(accion, ip, numero);
@@ -264,6 +267,7 @@ export default async function handler(req, res) {
     // bloquea el registro (quien llama es fire-and-forget).
     const quien = await llamador(req);
     if (!quien) return res.status(401).json({ error: "Sesión válida requerida." });
+    if (quien.tipo === "pendiente") return res.status(403).json({ error: MSJ_FACTOR });
     const numero = String(cuerpo.numero ?? "").trim();
     const evento = String(cuerpo.evento ?? "creada");
     if (!/^[A-Z]{2,4}-[A-Z]{2,4}-\d{4}-\d{4}$/.test(numero)) {
@@ -320,6 +324,7 @@ export default async function handler(req, res) {
     // su bandeja del portal desde la publicación; esto solo avisa.
     const quien = await llamador(req);
     if (!quien || quien.tipo === "sistema") return res.status(401).json({ error: "Sesión inválida o vencida." });
+    if (quien.tipo === "pendiente") return res.status(403).json({ error: MSJ_FACTOR });
     if (quien.tipo === "portal") return res.status(403).json({ error: "Los trabajadores no envían recordatorios." });
     const yo = (await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(quien.correo)}&limit=1`)).json?.[0];
     const nivelAcuses = yo?.esSuperadmin ? 3 : (yo?.matriz?.acuses ?? 0);

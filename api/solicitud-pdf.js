@@ -10,6 +10,7 @@
 // Solicitudes.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createHash } from "node:crypto";
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
@@ -40,6 +41,7 @@ export default async function handler(req, res) {
   if (!quien.ok || !correo || correo.endsWith("@portal.grupoer.pe")) {
     return res.status(401).json({ error: "Sesión inválida." });
   }
+  if (await factorPendiente(jwt)) return res.status(403).json({ error: MSJ_FACTOR });
   const acceso = (await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(correo)}&limit=1`)).json?.[0];
   const nivel = acceso?.esSuperadmin ? 3 : (acceso?.matriz?.solicitudes ?? 0);
   if (!acceso || nivel < 2) return res.status(403).json({ error: "Necesitas nivel de acción en Solicitudes." });

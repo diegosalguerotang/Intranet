@@ -5,6 +5,7 @@
 // minutos, igual que descargar-documento.
 // · Cuenta del portal → SU reglamento (el de su sede/empresa).
 // · Admin activo    → cualquier reglamento (?rit=id) o el general por defecto.
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
 const EXPIRA_SEGUNDOS = 600;
@@ -52,6 +53,7 @@ export default async function handler(req, res) {
     }
     if (ritId) rit = (await rest(`/rest/v1/rits?id=eq.${encodeURIComponent(ritId)}&select=nombre,archivo_url&limit=1`)).json?.[0];
   } else {
+    if (await factorPendiente(jwt)) return res.status(403).json({ error: MSJ_FACTOR });
     const admin = (await rest("/rest/v1/rpc/api_admin_por_correo", { method: "POST", body: JSON.stringify({ p_correo: correo, p_solo_activo: true }) })).json?.[0];
     if (!admin) return res.status(403).json({ error: "Sesión sin acceso." });
     const ritId = String(req.query.rit ?? "general-2025").replace(/[^a-z0-9-]/g, "");

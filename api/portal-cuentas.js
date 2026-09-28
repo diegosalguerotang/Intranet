@@ -9,6 +9,7 @@
 // clave propia y declarar el celular antes de poder usar nada.
 import { randomInt } from "node:crypto";
 import { enviar, plantilla } from "./_correo.js";
+import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://intranet-general.vercel.app";
@@ -116,6 +117,7 @@ export default async function handler(req, res) {
   if (correoLlamador.toLowerCase().endsWith(`@${DOMINIO}`)) {
     return res.status(403).json({ error: "Los trabajadores no administran cuentas." });
   }
+  if (await factorPendiente(sesion)) return res.status(403).json({ error: MSJ_FACTOR });
   const acceso = await rest(`/rest/v1/v_mi_acceso?correo=eq.${encodeURIComponent(correoLlamador)}&limit=1`, { method: "GET" });
   const yo = acceso.json?.[0];
   const nivelPersonal = yo?.esSuperadmin ? 3 : (yo?.matriz?.personal ?? 0);
