@@ -108,11 +108,15 @@ try {
     igual(await total(`select count(*)::int as n from pg_policies where schemaname in ('public','interno','storage') and (qual = 'true' or with_check = 'true')`), 0, "true");
     const sin = await sql(`select s.nspname || '.' || c.relname as t from pg_class c join pg_namespace s on s.oid = c.relnamespace
       where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%' and not exists (select 1 from pg_policies p where p.schemaname = s.nspname and p.tablename = c.relname) order by 1`);
-    igual(sin.map((x) => x.t).join(","), [...SIN_POLITICA].sort().join(","), "sin política");
+    // la lista «nadie» esperada se limita a las tablas que existen en este estado (las del segundo
+    // factor no existen en el estado de la fase 3c, sin @@FACTOR@@)
+    const [{ esperadas, n_esperadas }] = await sql(`select coalesce(string_agg(t, ',' order by t), '') as esperadas, count(*)::int as n_esperadas from unnest($1::text[]) t where to_regclass(t) is not null`, [SIN_POLITICA]);
+    igual(sin.map((x) => x.t).join(","), esperadas, "sin política");
     igual(await total(`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'public' and c.relkind = 'v' and 'security_invoker=on' = any(coalesce(c.reloptions, '{}'))`), 47, "invoker");
     igual(await total(`select count(*)::int as n from pg_policies where schemaname = 'storage'`), 3, "bucket");
     for (const f of AYUDANTES) { const [x] = await sql(`select has_function_privilege('anon', $1, 'execute') as a, has_function_privilege('authenticated', $1, 'execute') as u`, [`public.${f}`]); igual(`${x.a}${x.u}`, "falsetrue", f); }
-    igual(Object.keys(MATRIZ).length + SIN_POLITICA.length, await total(`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%'`), "la matriz cubre todas las tablas");
+    // mismo motivo: el total de tablas de este estado cuenta solo las de SIN_POLITICA que existen aquí
+    igual(Object.keys(MATRIZ).length + n_esperadas, await total(`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%'`), "la matriz cubre todas las tablas");
   });
 
   console.log("\n== 2 · Comportamiento");
