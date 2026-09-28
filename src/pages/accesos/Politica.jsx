@@ -119,6 +119,7 @@ export default function Politica() {
             Con el interruptor encendido, cada ingreso de una cuenta Superadministrador pide además un código de 6 dígitos
             enviado a su correo (vence en 10 minutos). Hasta verificarlo la sesión no puede leer ni escribir nada. El resto de
             categorías entra solo con su clave. Si el correo dejara de salir, la vía de contingencia es técnica (Management API).
+            Al encenderlo, tu propia sesión pedirá el código de inmediato.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-gris">

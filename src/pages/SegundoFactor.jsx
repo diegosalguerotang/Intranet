@@ -33,6 +33,18 @@ export default function SegundoFactor() {
   // cortan tras su primer await — la pantalla queda congelada.
   useEffect(() => { montado.current = true; return () => { montado.current = false; }; }, []);
 
+  // Tras factorVerificado() la pantalla queda en «Cargando el BackOffice…»; si
+  // la re-resolución vuelve a publicar al usuario como pendiente (la marca no
+  // quedó, o la base no respondió), este componente sigue montado y el usuario
+  // cambia de objeto: se vuelve al código con un aviso. Depende solo de user:
+  // con fase en las dependencias se dispararía al pasar a «listo», antes de
+  // que la re-resolución termine.
+  useEffect(() => {
+    if (fase !== "listo" || !user?.factorPendiente) return;
+    setFase("codigo"); setAgotado(true); setCodigo("");
+    setError("No se pudo completar el ingreso. Pide un código nuevo.");
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Cuenta regresiva para reenviar.
   useEffect(() => {
     if (espera <= 0) return;

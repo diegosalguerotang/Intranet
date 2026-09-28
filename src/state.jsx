@@ -180,6 +180,11 @@ export function AppProvider({ children }) {
 
   const resolverRef = useRef(null);
   const tokenEnCursoRef = useRef(null);
+  // Segundo factor: temporizador hasta que venza la marca de la sesión
+  // (expiraEn) y bandera para no re-resolver en bucle ante un 42501.
+  const vencimientoFactorRef = useRef(null);
+  const factorReintentadoRef = useRef(false);
+  const limpiarVencimientoFactor = () => { clearTimeout(vencimientoFactorRef.current); vencimientoFactorRef.current = null; };
 
   // Cierre de acceso: el usuario se deriva de la sesión de Supabase Auth y
   // del padrón de usuarios administrativos. Tener cuenta en el proveedor no
@@ -231,12 +236,25 @@ export function AppProvider({ children }) {
       // la base; se publica SOLO el usuario (sin cargar vistas, saldrían vacías)
       // y el Shell muestra la pantalla del código. Sin la migración aplicada la
       // RPC no existe (error) y se sigue como antes.
+      // Cualquier error que no sea «la función no existe» (PGRST202) se trata
+      // como pendiente: la base ya protege (nivel 0) y la pantalla del código
+      // reintenta enviar; cargar la app en nivel 0 solo mostraría todo vacío.
+      limpiarVencimientoFactor();
       if (base.acceso.esSuperadmin) {
         const { data: factor, error: eFactor } = await supabase.rpc("mi_segundo_factor");
         if (!activo || mia !== generacion) return;
-        if (!eFactor && factor?.exigido && !factor?.verificado) {
-          setUser({ ...base, factorPendiente: true, factorCorreo: factor.correo ?? null });
+        const pendiente = eFactor ? eFactor.code !== "PGRST202" : Boolean(factor?.exigido && !factor?.verificado);
+        if (pendiente) {
+          factorReintentadoRef.current = false;
+          setDb(dbVacia(FUENTES));
+          setUser({ ...base, factorPendiente: true, factorCorreo: eFactor ? null : (factor?.correo ?? null) });
           return;
+        }
+        // La marca vence con la app abierta: al llegar expiraEn se re-resuelve
+        // y mi_segundo_factor dirá pendiente → aparece la pantalla del código.
+        if (!eFactor && factor?.verificado && factor?.expiraEn) {
+          const ms = Math.min(Math.max(new Date(factor.expiraEn).getTime() - Date.now(), 0), 2 ** 31 - 1);
+          if (Number.isFinite(ms)) vencimientoFactorRef.current = setTimeout(() => { if (activo) factorVerificado(); }, ms);
         }
       }
       // La carga completa va ANTES de publicar el usuario: la interfaz nunca
@@ -251,11 +269,12 @@ export function AppProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((evento, session) => {
       if (evento !== "TOKEN_REFRESHED") resolver(session);
     });
-    return () => { activo = false; resolverRef.current = null; tokenEnCursoRef.current = null; sub.subscription.unsubscribe(); };
+    return () => { activo = false; resolverRef.current = null; tokenEnCursoRef.current = null; limpiarVencimientoFactor(); sub.subscription.unsubscribe(); };
   }, []);
 
   const salir = async (aviso = null) => {
     if (MODO_DEMO) return; // en demo no hay sesión que cerrar
+    limpiarVencimientoFactor();
     try {
       localStorage.removeItem(CLAVE_MARCADOR);
       // El motivo del cierre forzado lo lee AdminLogin tras redirigir.
@@ -266,7 +285,9 @@ export function AppProvider({ children }) {
     setUser(null);
   };
   // Tras verificar el código (o reconocer el equipo): se vuelve a resolver la
-  // misma sesión, ahora con nivel 99 → carga completa.
+  // misma sesión, ahora con nivel 99 → carga completa. También la usan el
+  // vencimiento de la marca, un 42501 de un superadmin y encender el factor
+  // en ACC-05: si la sesión quedó pendiente, aparece la pantalla del código.
   const factorVerificado = async () => {
     tokenEnCursoRef.current = null;
     const { data } = await supabase.auth.getSession();
@@ -364,6 +385,14 @@ export function AppProvider({ children }) {
       if (!eRefresh) ({ error } = await supabase.rpc(nombre, args));
     }
     if (error) console.error(`RPC ${nombre}:`, error.message);
+    // 42501 a un superadmin: lo más probable es que su marca del segundo
+    // factor venció; se re-resuelve (una vez) para mostrar la pantalla del
+    // código en vez de un «permiso insuficiente» silencioso.
+    if (error?.code === "42501" && user?.acceso?.esSuperadmin && !factorReintentadoRef.current) {
+      factorReintentadoRef.current = true;
+      await factorVerificado();
+      return { error: error.message };
+    }
     await recargar(...refrescar);
     return { error: error?.message ?? null };
   };
@@ -671,6 +700,9 @@ export function AppProvider({ children }) {
       rpc("reenviar_clave", { p_id: id, p_clave: clave }, "usuariosAdmin");
     },
     guardarPolitica: (p) => {
+      // Encender el segundo factor también alcanza a la propia sesión: tras
+      // guardar se re-resuelve y aparece la pantalla del código.
+      const encendido = db.politica?.[0]?.factorSuperadmin === false && p.factorSuperadmin === true;
       const ahora = new Date().toISOString().slice(0, 16).replace("T", " ");
       local("politica", () => [{ ...p, actualizado: ahora, actualizadoPor: user?.nombre ?? "BackOffice" }]);
       rpc("guardar_politica", {
@@ -681,7 +713,7 @@ export function AppProvider({ children }) {
         p_clave_min_portal: p.claveLongitudMinPortal, p_clave_min_backoffice: p.claveLongitudMinBackoffice,
         p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
         p_factor_superadmin: p.factorSuperadmin ?? true,
-      }, "politica");
+      }, "politica").then(({ error }) => { if (encendido && !error) factorVerificado(); });
     },
     // RRH-05 — Importación del padrón DEFINITIVO (12 columnas con centro de
     // costo; spec Tareas 31-08, único formato soportado). Patrón PV999: la
