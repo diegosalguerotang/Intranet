@@ -5,7 +5,7 @@
 // Uso: node scripts/ensayar-factor.mjs
 import { readFileSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
-import { arrancarPgLocal, cargarDatosAnonimizados } from "./pg-local.mjs";
+import { arrancarPgLocal, cargarDatosAnonimizados, aclNormal } from "./pg-local.mjs";
 import { FECHA, sinFactor } from "./factor-generar.mjs";
 
 const MIGRACION = readFileSync(`supabase/migraciones/${FECHA}-segundo-factor.sql`, "utf8");
@@ -57,7 +57,7 @@ const [SUPER] = await sql(`select ua.correo, au.id as sub from usuarios_admin ua
   join perfiles p on p.id = ua.perfil_id and p.version = ua.perfil_version where ua.estado = 'activo' and p.es_superadmin order by ua.id limit 1`);
 const [NO_SUPER] = await sql(`select ua.correo, au.id as sub from usuarios_admin ua join auth.users au on lower(au.email) = lower(ua.correo)
   join perfiles p on p.id = ua.perfil_id and p.version = ua.perfil_version where ua.estado = 'activo' and not p.es_superadmin order by ua.id limit 1`);
-const S1 = randomUUID(), S2 = randomUUID(), S3 = randomUUID(), S4 = randomUUID();
+const S1 = randomUUID(), S2 = randomUUID(), S3 = randomUUID(), S4 = randomUUID(), S5 = randomUUID(), S6 = randomUUID();
 const claims = (correo, sub, session_id) => ({ role: "authenticated", email: correo, sub, ...(session_id ? { session_id } : {}) });
 const superSin = claims(SUPER.correo, SUPER.sub);
 const superS1 = claims(SUPER.correo, SUPER.sub, S1);
@@ -69,7 +69,12 @@ const foto = async () => {
     union all select 'col:' || attname, atttypid::regtype::text from pg_attribute where attrelid = 'interno.politica_acceso'::regclass and attnum > 0 and not attisdropped
     union all select 'tabla:' || relname, '' from pg_class where relnamespace = 'interno'::regnamespace and relkind = 'r'
     order by 1`);
-  return new Map(filas.map((f) => [f.objeto, f.valor]));
+  // El ACL (primer tramo antes de "|") no tiene un orden garantizado entre
+  // concesiones equivalentes ({a=X,b=X} = {b=X,a=X}, igual que aclNormal en
+  // pg-local.mjs): se normaliza antes de comparar para no acusar una
+  // "diferencia" que es solo de orden.
+  const normalizar = (v) => { const i = v.indexOf("|"); return i < 0 ? v : aclNormal(v.slice(0, i)) + v.slice(i); };
+  return new Map(filas.map((f) => [f.objeto, normalizar(f.valor)]));
 };
 const compararFotos = (a, b) => { const d = []; for (const [k, v] of a) if (!b.has(k)) d.push(`falta: ${k}`); else if (b.get(k) !== v) d.push(`difiere: ${k}`); for (const k of b.keys()) if (!a.has(k)) d.push(`sobra: ${k}`); return d; };
 
@@ -102,8 +107,13 @@ try {
   });
   await prueba("un administrador no superadmin no cambia: exigido=false y su nivel es el de su categoría", async () => {
     if (!NO_SUPER) return;
-    const r = sinError(await como("authenticated", { claims: claims(NO_SUPER.correo, NO_SUPER.sub) }, [["select mi_segundo_factor() as f, es_superadmin() as s"]]), "no superadmin");
+    const r = sinError(await como("authenticated", { claims: claims(NO_SUPER.correo, NO_SUPER.sub) }, [["select mi_segundo_factor() as f, es_superadmin() as s, nivel_en('personal') as n"]]), "no superadmin");
     igual(`${r.filas[0].f.exigido}/${r.filas[0].f.esSuperadmin}/${r.filas[0].s}`, "false/false/false", "estado");
+    const [esperado] = await sql(`select coalesce(pp.nivel, 0) as nivel from usuarios_admin u
+      join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
+      left join perfil_permisos pp on pp.perfil_id = u.perfil_id and pp.perfil_version = u.perfil_version and pp.modulo = 'personal'
+      where lower(u.correo) = lower($1)`, [NO_SUPER.correo]);
+    igual(r.filas[0].n, esperado.nivel, "nivel de categoría (personal)");
   });
   await prueba("política apagada → 99 sin marca; encendida → 0", async () => {
     await sql("update interno.politica_acceso set factor_superadmin = false where id = 1");
@@ -139,6 +149,8 @@ try {
     let r = sinError(await servicio([["select api_factor_emitir($1, $2, $3, '203.0.113.7', 'Ensayo') as v", [SUPER.correo, S1, hash("654321" + S1)]]]), "emitir");
     igual(r.filas[0].v.ok, true, "ok");
     const [c] = await sql("select count(*)::int as n from interno.factor_codigos where session_id = $1 and usado_en is null", [S1]); igual(c.n, 1, "un solo código vigente");
+    const viejo = sinError(await servicio([["select api_factor_verificar($1, $2, $3, null, null) as v", [SUPER.correo, S1, hash(CODIGO + S1)]]]), "hash viejo tras reemitir");
+    igual(viejo.filas[0].v.motivo, "incorrecto", "el código anterior ya no sirve (se compara contra el nuevo, no vencido)");
     r = sinError(await servicio([["select api_factor_verificar($1, $2, $3, '203.0.113.7', 'Ensayo') as v", [SUPER.correo, S1, hash("654321" + S1)]]]), "verificar");
     igual(r.filas[0].v.ok, true, "verificado");
     igual(await nivel(superS1), 99, "nivel");
@@ -163,17 +175,23 @@ try {
     sinError(await servicio([["select api_factor_dispositivo_crear($1, $2, $3, '203.0.113.7', 'Ensayo')", [SUPER.correo, S1, hash(TOKEN)]]]), "crear");
     const [d] = await sql("select count(*)::int as n from interno.dispositivos_confiables where token_hash = $1 and expira_en > now() + interval '29 days'", [hash(TOKEN)]); igual(d.n, 1, "30 días");
   });
-  await prueba("usar el equipo desde una sesión nueva S3 → true, marca vía dispositivo, nivel 99; token desconocido → false", async () => {
+  await prueba("usar el equipo desde una sesión nueva S3 → true, marca vía dispositivo, nivel 99; token desconocido → false; una sesión verificada por dispositivo no puede acuñar un token nuevo (equipo recordado: 30 días SIN renovación)", async () => {
     let r = sinError(await servicio([["select api_factor_dispositivo_usar($1, $2, $3, '203.0.113.7', 'Ensayo') as v", [SUPER.correo, S3, hash(TOKEN)]]]), "usar"); igual(r.filas[0].v, true, "usar");
     igual(await nivel(claims(SUPER.correo, SUPER.sub, S3)), 99, "nivel S3");
     const [m] = await sql("select via from interno.factor_sesiones where session_id = $1", [S3]); igual(m.via, "dispositivo", "vía");
     r = sinError(await servicio([["select api_factor_dispositivo_usar($1, $2, $3, null, null) as v", [SUPER.correo, S4, hash("otro")]]]), "otro"); igual(r.filas[0].v, false, "desconocido");
     igual(await nivel(claims(SUPER.correo, SUPER.sub, S4)), 0, "S4 sigue en 0");
+    const rc = await servicio([["select api_factor_dispositivo_crear($1, $2, $3, null, null)", [SUPER.correo, S3, hash("otro-token")]]], false);
+    if (!rc.codigo) throw new Error("una sesión verificada por dispositivo no debería poder crear un token nuevo (renovaría el equipo para siempre)");
   });
-  await prueba("revocar → 1; el equipo deja de valer para S4; vencido tampoco vale", async () => {
+  await prueba("revocar → 1; el equipo deja de valer para S4; un equipo vencido (sin revocar) tampoco vale", async () => {
     let r = sinError(await servicio([["select api_factor_dispositivos_revocar($1) as n", [SUPER.correo]]]), "revocar"); igual(r.filas[0].n, 1, "revocados");
     r = sinError(await servicio([["select api_factor_dispositivo_usar($1, $2, $3, null, null) as v", [SUPER.correo, S4, hash(TOKEN)]]]), "usar revocado"); igual(r.filas[0].v, false, "revocado");
     const [a] = await sql("select count(*)::int as n from interno.auditoria where accion in ('FACTOR_DISPOSITIVO', 'FACTOR_DISPOSITIVOS_REVOCADOS')"); igual(a.n, 2, "auditoría");
+    const TOKEN_VENCIDO = "token-vencido-" + randomUUID();
+    sinError(await servicio([["select api_factor_dispositivo_crear($1, $2, $3, null, null)", [SUPER.correo, S1, hash(TOKEN_VENCIDO)]]]), "crear equipo a vencer");
+    await sql("update interno.dispositivos_confiables set expira_en = now() - interval '1 second' where token_hash = $1", [hash(TOKEN_VENCIDO)]);
+    r = sinError(await servicio([["select api_factor_dispositivo_usar($1, $2, $3, null, null) as v", [SUPER.correo, S6, hash(TOKEN_VENCIDO)]]]), "usar vencido"); igual(r.filas[0].v, false, "vencido, no revocado");
   });
 
   console.log("\n== 5 · Política y permisos");
@@ -183,6 +201,11 @@ try {
     r = sinError(await como("authenticated", { claims: superS1, conservar: true }, [[args("true")], ['select "factorSuperadmin" as v from v_politica_acceso']]), "encender"); igual(r.filas[0].v, true, "encendido");
     r = sinError(await como("authenticated", { claims: superS1 }, [["select guardar_politica(8, 30, false, true, 5, 15, 'whatsapp', 6, 10, 7, 'ensayo')"], ['select "factorSuperadmin" as v from v_politica_acceso']]), "sin parámetro"); igual(r.filas[0].v, true, "sin parámetro conserva");
     const [f] = await sql("select to_regprocedure('public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)') as vieja"); igual(f.vieja, null, "firma vieja");
+  });
+  await prueba("amenaza principal: un superadmin pendiente (con session_id, sin marca) no puede tocar la política (requiere_superadmin pasa por fn_nivel_modulo → 42501)", async () => {
+    const superPendiente = claims(SUPER.correo, SUPER.sub, S5);
+    const r = await como("authenticated", { claims: superPendiente }, [["select guardar_politica(8, 30, false, true, 5, 15, 'whatsapp', 6, 10, 7, 'ensayo')"]]);
+    igual(r.codigo, "42501", "pendiente sin marca");
   });
   await prueba("api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_factor_pendiente para nadie de la API; tablas sin acceso de la API", async () => {
     let r = await como("authenticated", { claims: superS1 }, [["select api_factor_dispositivos_revocar($1)", [SUPER.correo]]]); igual(r.codigo, "42501", "authenticated api_");

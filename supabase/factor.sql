@@ -100,6 +100,12 @@ begin
     v_correo := null;
   end;
   if v_correo is null then
+    -- Sin correo en el JWT hay dos casos legítimos con privilegio: el rol de
+    -- servicio (claims de PostgREST con role=service_role) y una sesión
+    -- directa de postgres/supabase_admin (Management API, migraciones).
+    -- Fase 6b: se mira el rol ACTIVO (SET ROLE, GUC role) antes que el de la
+    -- sesión; dentro de un SECURITY DEFINER current_user es el dueño, por eso
+    -- no sirve. Una sesión con rol activo authenticated/anon sin claims vale 0.
     v_rol := coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role',
                       nullif(current_setting('role', true), 'none'),
                       session_user::text);
@@ -215,6 +221,10 @@ begin
   select factor_superadmin into v_exige from politica_acceso where id = 1;
   if not coalesce(v_exige, true) then return jsonb_build_object('ok', false, 'motivo', 'apagado'); end if;
   if p_session_id is null or coalesce(p_codigo_hash, '') = '' then return jsonb_build_object('ok', false, 'motivo', 'datos'); end if;
+  -- Serializa por sesión: sin esto, dos emisiones concurrentes leen ambas
+  -- "sin código reciente" antes de que cualquiera inserte y se saltan la
+  -- espera de 60 s (buzón inundado).
+  perform pg_advisory_xact_lock(hashtext(p_session_id::text));
   delete from factor_codigos where usuario_id = v_usuario and expira_en < now();  -- limpieza perezosa
   select max(creado_en) into v_ultimo from factor_codigos where session_id = p_session_id and usuario_id = v_usuario;
   if v_ultimo is not null and v_ultimo > now() - interval '60 seconds' then
@@ -230,21 +240,27 @@ end $$;
 
 create or replace function public.api_factor_verificar(p_correo text, p_session_id uuid, p_codigo_hash text, p_ip text, p_agente text) returns jsonb
 language plpgsql security definer set search_path = public, interno, extensions as $$
-declare v_usuario bigint; v_super boolean; c record; v_horas int; v_expira timestamptz;
+declare v_usuario bigint; v_super boolean; c record; v_horas int; v_expira timestamptz; v_intentos int;
 begin
   select u.id, p.es_superadmin into v_usuario, v_super
   from usuarios_admin u join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
   where lower(u.correo) = lower(coalesce(p_correo, '')) and u.estado = 'activo';
   if v_usuario is null or not v_super then return jsonb_build_object('ok', false, 'motivo', 'no_superadmin'); end if;
+  -- Serializa por sesión: sin esto, N verificaciones concurrentes leen todas
+  -- "intentos < 5" antes de que cualquiera actualice y se saltan el tope.
+  perform pg_advisory_xact_lock(hashtext(p_session_id::text));
   select * into c from factor_codigos
   where session_id = p_session_id and usuario_id = v_usuario and usado_en is null
   order by creado_en desc limit 1;
   if c.id is null or c.expira_en <= now() then return jsonb_build_object('ok', false, 'motivo', 'vencido'); end if;
   if c.intentos >= 5 then return jsonb_build_object('ok', false, 'motivo', 'agotado', 'intentos_restantes', 0); end if;
   if c.codigo_hash <> coalesce(p_codigo_hash, '') then
-    update factor_codigos set intentos = intentos + 1 where id = c.id;
-    if c.intentos + 1 >= 5 then return jsonb_build_object('ok', false, 'motivo', 'agotado', 'intentos_restantes', 0); end if;
-    return jsonb_build_object('ok', false, 'motivo', 'incorrecto', 'intentos_restantes', 5 - (c.intentos + 1));
+    -- Incremento atómico con guarda en el WHERE: aunque el candado ya
+    -- serializa, esto deja el tope correcto aun si algo llama sin pasar por
+    -- el candado (defensa en profundidad).
+    update factor_codigos set intentos = intentos + 1 where id = c.id and intentos < 5 returning intentos into v_intentos;
+    if v_intentos is null or v_intentos >= 5 then return jsonb_build_object('ok', false, 'motivo', 'agotado', 'intentos_restantes', 0); end if;
+    return jsonb_build_object('ok', false, 'motivo', 'incorrecto', 'intentos_restantes', 5 - v_intentos);
   end if;
   update factor_codigos set usado_en = now() where id = c.id;
   select sesion_backoffice_horas into v_horas from politica_acceso where id = 1;
@@ -266,8 +282,14 @@ begin
   select u.id into v_usuario from usuarios_admin u join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
   where lower(u.correo) = lower(coalesce(p_correo, '')) and u.estado = 'activo' and p.es_superadmin;
   if v_usuario is null then raise exception 'No es un superadministrador activo.'; end if;
+  -- Serializa por sesión antes de leer/escribir factor_sesiones o dispositivos_confiables.
+  perform pg_advisory_xact_lock(hashtext(p_session_id::text));
   if coalesce(p_token_hash, '') = '' then raise exception 'Falta el token.'; end if;
-  if not exists (select 1 from factor_sesiones s where s.session_id = p_session_id and s.usuario_id = v_usuario and s.expira_en > now()) then
+  -- Equipo recordado: 30 días SIN renovación. Si se aceptara una sesión
+  -- verificada vía dispositivo (via = 'dispositivo') para acuñar un token
+  -- nuevo, el equipo se renovaría solo cada vez que se usa y nunca vencería;
+  -- por eso solo una sesión recién verificada por correo puede crear uno.
+  if not exists (select 1 from factor_sesiones s where s.session_id = p_session_id and s.usuario_id = v_usuario and s.expira_en > now() and s.via = 'correo') then
     raise exception 'La sesión no ha verificado el código.';
   end if;
   insert into dispositivos_confiables (usuario_id, token_hash, expira_en, ip, agente)
@@ -281,6 +303,7 @@ begin
   select u.id into v_usuario from usuarios_admin u join perfiles p on p.id = u.perfil_id and p.version = u.perfil_version
   where lower(u.correo) = lower(coalesce(p_correo, '')) and u.estado = 'activo' and p.es_superadmin;
   if v_usuario is null or p_session_id is null then return false; end if;
+  perform pg_advisory_xact_lock(hashtext(p_session_id::text));
   select d.id into v_id from dispositivos_confiables d
   where d.token_hash = coalesce(p_token_hash, '') and d.usuario_id = v_usuario and d.revocado_en is null and d.expira_en > now();
   if v_id is null then return false; end if;
