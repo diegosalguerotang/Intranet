@@ -163,7 +163,8 @@ ${BANCARIO}
 -- @@FASE3B-FIN@@`;
 
 // Quita la fase 3b y todas las posteriores (3c, 4…): el ensayo parte del estado de la 3a.
-export const sinFase3b = (texto) => texto.replace(/-- @@FASE(?:3[B-Z]|[4-9][A-Z]?)-INICIO@@[\s\S]*?-- @@FASE(?:3[B-Z]|[4-9][A-Z]?)-FIN@@\n?/g, "");
+// también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
+export const sinFase3b = (texto) => texto.replace(/-- @@(FASE(?:3[B-Z]|[4-9][A-Z]?)|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

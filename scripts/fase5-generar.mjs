@@ -143,7 +143,8 @@ export const ESPEJO = `-- @@FASE5-INICIO@@ (generado por scripts/fase5-generar.m
 ${CANONICO}
 -- @@FASE5-FIN@@`;
 
-export const sinFase5 = (texto) => texto.replace(/-- @@FASE[5-9][A-Z]?-INICIO@@[\s\S]*?-- @@FASE[5-9][A-Z]?-FIN@@\n?/g, "");
+// también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
+export const sinFase5 = (texto) => texto.replace(/-- @@(FASE[5-9][A-Z]?|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

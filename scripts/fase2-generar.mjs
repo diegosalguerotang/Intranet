@@ -229,7 +229,8 @@ ${CUERPO}-- @@FASE2-FIN@@`;
 // estado de la fase 1).
 // Quita la fase 2 y TODAS las posteriores (3, 4…): el ensayo de una fase corre
 // sobre el estado exacto de la anterior.
-export const sinFase2 = (texto) => texto.replace(/-- @@FASE[2-9][A-Z]?-INICIO@@[\s\S]*?-- @@FASE[2-9][A-Z]?-FIN@@\n?/g, "");
+// también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
+export const sinFase2 = (texto) => texto.replace(/-- @@(FASE[2-9][A-Z]?|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {
