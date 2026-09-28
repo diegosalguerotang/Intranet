@@ -4,11 +4,14 @@
 // entra por el proxy y comprueba: nivel 0 → vistas vacías salvo la fila propia;
 // mi_segundo_factor pendiente; código sembrado por Management API → verificar
 // → nivel 99; equipo recordado → segunda sesión sin código; olvidar; endpoints
-// con x-sesion cerrados mientras está pendiente. Limpieza total al final.
+// con x-sesion y funciones de guarda propia (fn_ver_cuenta_bancaria,
+// previsualizar_planilla_unificada) cerrados mientras está pendiente. Limpieza
+// total al final (las consultas de cuenta bancaria quedan en la auditoría).
 //   env: SUPABASE_ACCESS_TOKEN  (opcional: CORREO_PRUEBA para un envío real)
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-factor.mjs
 import { createHash } from "node:crypto";
 import { marcarSesionVerificada, sessionIdDe } from "./lib/marcar-factor.mjs";
+import { GUARDA_PROPIA } from "./factor-generar.mjs";
 
 const APP = "https://intranet-general.vercel.app";
 const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -77,6 +80,9 @@ try {
       (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like 'api\\_factor\\_%' and has_function_privilege('service_role', p.oid, 'execute') and not has_function_privilege('authenticated', p.oid, 'execute')) as api,
       (select count(*)::int from pg_class c where c.relnamespace = 'interno'::regnamespace and c.relname in ('factor_codigos', 'factor_sesiones', 'dispositivos_confiables') and c.relrowsecurity) as tablas`);
     igual(`${r.pol}/${r.v4}/${r.mio}/${r.api}/${r.tablas}`, "true/true/true/5/3", "catálogo");
+    const sinGuarda = await sql(`select f from unnest(array[${GUARDA_PROPIA.map((x) => `'${x}'`).join(", ")}]) f
+      where (select prosrc from pg_proc where oid = f::regprocedure) !~ 'fn_factor_pendiente'`);
+    igual(sinGuarda.map((x) => x.f).join(","), "", "funciones de guarda propia sin fn_factor_pendiente");
   });
 
   console.log("\n== 2 · Sesión pendiente (nivel 0)");
@@ -96,6 +102,15 @@ try {
     const r = await fetch(`${APP}/api/admin-usuarios`, { method: "POST", headers: { "Content-Type": "application/json", "x-sesion": s1.access_token }, body: JSON.stringify({ accion: "eliminar", usuario_id: 999999 }) });
     igual(r.status, 403, "admin-usuarios");
     const t = await json(r); if (!/Verifica el código/.test(t.error ?? "")) throw new Error(`mensaje: ${JSON.stringify(t)}`);
+  });
+
+  await prueba("guarda propia pendiente: fn_ver_cuenta_bancaria → null; previsualizar_planilla_unificada → 403 «Verifica el código»; previsualizar_padron rechazada", async () => {
+    const c = await proxy("rest/v1/rpc/fn_ver_cuenta_bancaria", s1.access_token, { method: "POST", body: JSON.stringify({ p_dni: persona.dni }) });
+    igual(`${c.status}/${c.json}`, "200/null", "cuenta bancaria");
+    const pu = await proxy("rest/v1/rpc/previsualizar_planilla_unificada", s1.access_token, { method: "POST", body: JSON.stringify({ p_filas: [], p_periodo: "2026-09", p_ceses: [] }) });
+    igual(pu.status, 403, "planilla unificada"); if (!/Verifica el código/.test(pu.json.message ?? "")) throw new Error(`mensaje: ${JSON.stringify(pu.json)}`);
+    const pp = await proxy("rest/v1/rpc/previsualizar_padron", s1.access_token, { method: "POST", body: JSON.stringify({ p_filas: [], p_ceses: [] }) });
+    if (pp.status < 400) throw new Error(`previsualizar_padron: ${pp.status} ${JSON.stringify(pp.json)}`);
   });
 
   console.log("\n== 3 · Código");
@@ -124,6 +139,9 @@ try {
     igual(`${p.status}/${p.json.length}`, `200/${total.n}`, "v_personal tras verificar");
     const m = await proxy("rest/v1/rpc/mi_segundo_factor", s1.access_token, { method: "POST", body: "{}" });
     igual(m.json.verificado, true, "verificado");
+    // Con marca la respuesta ya no es null (puede ser un objeto con nulls si la persona no tiene cuenta).
+    const c = await proxy("rest/v1/rpc/fn_ver_cuenta_bancaria", s1.access_token, { method: "POST", body: JSON.stringify({ p_dni: persona.dni }) });
+    if (c.status !== 200 || c.json === null) throw new Error(`cuenta bancaria tras verificar: ${c.status} ${JSON.stringify(c.json)}`);
   });
 
   console.log("\n== 4 · Equipo recordado y revocación");

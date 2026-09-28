@@ -18,6 +18,12 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`
 > reproduce ese orden en un Postgres local y lo compara con la foto de
 > producción; `scripts/ensayar-fase0.mjs` ensaya la migración y su reversión.
+>
+> **`seguridad.sql` ya no es re-aplicable sobre una base migrada al segundo
+> factor**: su FASE1 concede la firma vieja de `guardar_politica` (11
+> argumentos) que el bloque FACTOR elimina, y `accesos.sql` recrearía
+> `v_politica_acceso` sin la columna `factorSuperadmin`. El orden válido es
+> siempre la carga completa desde cero (`pg-local`) o las migraciones.
 
 ## Principios (no negociables)
 

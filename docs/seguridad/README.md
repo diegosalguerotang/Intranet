@@ -50,7 +50,7 @@ El navegador habla **solo con su propio dominio**: `/api/supa` (Vercel) inyecta 
 
 | Cuándo | Qué | Herramienta |
 |---|---|---|
-| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (21 invariantes de las fases 0–6 y el segundo factor) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
+| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (22 invariantes de las fases 0–6 y el segundo factor) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
 | Cada despliegue de producción | comprobaciones HTTP sin token: paquetes limpios, lista blanca del proxy, anon cerrado, pre-login vivo, clave débil rechazada, compuerta viva, canal viejo retirado | `scripts/verificar-despliegue.mjs` |
 | Cada despliegue, opcional | verificadores de las fases 4, 5 y 6 contra la base (lecturas y transacciones revertidas) | job `produccion`, requiere el secreto `SUPABASE_ACCESS_TOKEN` del repositorio (`gh secret set SUPABASE_ACCESS_TOKEN`) |
 | Antes de cada migración | ensayo local con reversión sobre el entorno 2.5 (datos anonimizados) | `scripts/ensayar-faseN.mjs`, `scripts/pg-local.mjs`, `scripts/entorno-pruebas.mjs` |
