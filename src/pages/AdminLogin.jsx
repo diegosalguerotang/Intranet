@@ -21,6 +21,10 @@ const detalle = (e) =>
 // Prueba cada canal contra /api/eco: qué cabeceras SOBREVIVEN el viaje real
 // hasta el servidor. Un interceptor puede corromperlas en tránsito sin que
 // el navegador lo muestre; el espejo del servidor es la única evidencia.
+// 2026-09-28: api/eco.js se RETIRÓ (el plan Hobby de Vercel admite 12
+// funciones por despliegue y api/segundo-factor.js ocupó el hueco). Este
+// diagnóstico queda como está: cada canal responde ERR hasta que se
+// reponga el espejo (p. ej. como ruta especial del proxy api/supa).
 async function ecoCanales() {
   const canales = [
     ["fetchGlobal", (...a) => window.fetch(...a)],
