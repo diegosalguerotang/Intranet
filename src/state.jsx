@@ -194,6 +194,11 @@ export function AppProvider({ children }) {
     // sesión más nueva → la vieja no publica nada.
     let generacion = 0;
     const resolver = async (session) => {
+      // StrictMode (dev): el efecto monta, limpia (activo=false) y vuelve a
+      // montar; sin este corte la corrida 1 deja el token escrito en el ref
+      // antes de bailar, y la corrida 2 (misma sesión) lo ve "en curso" y
+      // retorna sin publicar usuario jamás — queda en "Verificando sesión…".
+      if (!activo) return;
       const token = session?.access_token ?? null;
       if (token && token === tokenEnCursoRef.current) return;
       tokenEnCursoRef.current = token;
@@ -246,7 +251,7 @@ export function AppProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((evento, session) => {
       if (evento !== "TOKEN_REFRESHED") resolver(session);
     });
-    return () => { activo = false; resolverRef.current = null; sub.subscription.unsubscribe(); };
+    return () => { activo = false; resolverRef.current = null; tokenEnCursoRef.current = null; sub.subscription.unsubscribe(); };
   }, []);
 
   const salir = async (aviso = null) => {

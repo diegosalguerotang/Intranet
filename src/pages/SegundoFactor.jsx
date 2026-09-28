@@ -26,7 +26,12 @@ export default function SegundoFactor() {
   const [espera, setEspera] = useState(0);
   const [cargando, setCargando] = useState(false);
   const montado = useRef(true);
-  useEffect(() => () => { montado.current = false; }, []);
+  const iniciado = useRef(false);
+  // StrictMode (dev) hace un montaje falso: monta, desmonta y vuelve a
+  // montar. Sin poner montado.current en true de nuevo al remontar, el
+  // desmontaje falso deja el ref en false para siempre y enviar()/verificar()
+  // cortan tras su primer await — la pantalla queda congelada.
+  useEffect(() => { montado.current = true; return () => { montado.current = false; }; }, []);
 
   // Cuenta regresiva para reenviar.
   useEffect(() => {
@@ -46,12 +51,26 @@ export default function SegundoFactor() {
     }
     setFase("codigo");
     if (r.status === 429 && r.esperaSeg) { setEspera(r.esperaSeg); setError(r.error); return; }
-    if (r.status === 503) { setSinCorreo(true); setError(r.error); return; }
+    // 503 también cubre un fallo transitorio de la base ("La base no
+    // respondió…"); solo el mensaje de soporte técnico significa que no hay
+    // otra vía en pantalla (bloquear "Reenviar" en un error pasajero dejaría
+    // sin salida a alguien que solo necesitaba reintentar).
+    if (r.status === 503) {
+      if (r.error === "No se pudo enviar el código. Avisa a soporte técnico.") setSinCorreo(true);
+      setError(r.error);
+      return;
+    }
     setError(r.error ?? "No se pudo enviar el código.");
   };
 
   // Al montar: primero el equipo recordado; si no vale, se pide el código.
   useEffect(() => {
+    // StrictMode (dev): el montaje falso corre este efecto dos veces; sin
+    // este corte (con un ref, que sobrevive el remontaje) se dispara el
+    // POST dispositivo/enviar por duplicado y el segundo llega tarde con un
+    // 429 «espera» que se muestra como error en la primera carga.
+    if (iniciado.current) return;
+    iniciado.current = true;
     let vivo = true;
     (async () => {
       const token = leerDispositivo();
