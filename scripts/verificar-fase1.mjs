@@ -8,6 +8,7 @@
 //        PORTAL_DNI + PORTAL_CLAVE (trabajador).
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-fase1.mjs
 import { GUARDAS, NOMBRES } from "./fase1-generar.mjs";
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
 const APP = "https://intranet-general.vercel.app";
 const token = process.env.SUPABASE_ACCESS_TOKEN;
@@ -36,6 +37,7 @@ const fnDenegada = (status, cuerpo) => [401, 403].includes(status) && /permissio
 async function login(email, password) {
   const r = await proxy("auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
   const j = await r.json(); if (typeof j.access_token !== "string") throw new Error(`login ${email}: ${JSON.stringify(j).slice(0, 160)}`);
+  await marcarSesionVerificada(sql, j.access_token, email);
   return j.access_token;
 }
 // Argumentos con nombre para PostgREST: todos null (la guarda corre antes).

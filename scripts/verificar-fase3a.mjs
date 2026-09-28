@@ -10,6 +10,7 @@
 //        CORREO_PRUEBA (correo de un administrador activo: recibe el enlace de prueba).
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-fase3a.mjs
 import { ESQUEMA, TABLAS, TABLAS_CON_LECTURA_ADMIN, FUNCIONES_SERVICIO, VISTAS_DEPENDIENTES } from "./fase3-generar.mjs";
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
 const APP = "https://intranet-general.vercel.app";
 const token = process.env.SUPABASE_ACCESS_TOKEN;
@@ -31,6 +32,7 @@ const proxy = (ruta, init = {}) => fetch(`${APP}/api/supa/${ruta}`, { ...init, h
 async function login(email, password) {
   const r = await proxy("auth/v1/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
   const j = await r.json(); if (typeof j.access_token !== "string") throw new Error(`login ${email}: ${JSON.stringify(j).slice(0, 160)}`);
+  await marcarSesionVerificada(sql, j.access_token, email);
   return j.access_token;
 }
 

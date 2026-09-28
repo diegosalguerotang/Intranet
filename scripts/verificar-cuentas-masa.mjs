@@ -4,6 +4,7 @@
 //        se borra al final). Opcional: ADMIN_EMAIL/ADMIN_CLAVE para usar una
 //        cuenta real en vez del temporal.
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-cuentas-masa.mjs
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 // No prueba el envío REAL de correo (la persona de prueba no tiene correo):
 // el camino con correo queda cubierto por el flujo manual C1c del checklist.
 const APP = "https://intranet-general.vercel.app";
@@ -75,6 +76,7 @@ if (!adminEmail || !adminClave) {
 }
 const admin = await login(adminEmail, adminClave);
 if (!admin.access_token) { mal("login admin", JSON.stringify(admin)); process.exit(1); }
+await marcarSesionVerificada(sql, admin.access_token, adminEmail);
 ok(`sesión admin de ${adminEmail}`);
 
 const endpoint = async (cuerpo) => {

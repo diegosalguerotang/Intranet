@@ -7,6 +7,7 @@
 //   /api/descargar-documento → idempotencia y negativas → limpieza total.
 //   env: SUPABASE_ACCESS_TOKEN (Management API). Opcional ADMIN_EMAIL/ADMIN_CLAVE.
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-solicitud-pdf.mjs
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const APP = "https://intranet-general.vercel.app";
 const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const { ADMIN_EMAIL, ADMIN_CLAVE, SUPABASE_ACCESS_TOKEN } = process.env;
@@ -72,6 +73,7 @@ if (!adminEmail || !adminClave) {
 }
 const admin = await login(adminEmail, adminClave);
 if (!admin.access_token) { mal("login admin", JSON.stringify(admin)); process.exit(1); }
+await marcarSesionVerificada(sql, admin.access_token, adminEmail);
 ok(`sesión admin de ${adminEmail}`);
 
 const pdfApi = async (cuerpo, conSesion = true) => {

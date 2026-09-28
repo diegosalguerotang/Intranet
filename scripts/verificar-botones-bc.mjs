@@ -3,6 +3,7 @@
 // crear_activo, v_actividad_persona y el bucket aceptando imágenes.
 // Patrón admin temporal (2026-08-19); limpieza total al final.
 //   Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-botones-bc.mjs
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const APP = "https://intranet-general.vercel.app";
 const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APIKEY = "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg";
@@ -55,6 +56,7 @@ await sql(`insert into usuarios_admin (persona_dni, perfil_id, perfil_version, c
   values ('${personaAdmin.dni}', '${perfil.id}', ${perfil.version}, '${CORREO_TEMP}', 'verificar-botones-bc')`);
 const admin = await login(CORREO_TEMP, adminClave);
 if (!admin.access_token) { mal("login admin", JSON.stringify(admin)); process.exit(1); }
+await marcarSesionVerificada(sql, admin.access_token, CORREO_TEMP);
 ok(`admin temporal ${personaAdmin.dni} (${personaAdmin.nombre}) con sesión`);
 
 // Trabajador + lote + documento vigente para el acuse.

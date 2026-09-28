@@ -5,6 +5,7 @@
 // limpieza total al final (el trigger de inmutabilidad se apaga un instante
 // solo aquí, igual que en verificar-solicitudes).
 // Uso: . .\scripts\token-supabase.ps1; node scripts/verificar-movimientos.mjs
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 if (!token) { console.error("Falta SUPABASE_ACCESS_TOKEN."); process.exit(1); }
@@ -196,6 +197,7 @@ await prueba("10. E2E producción: sesión real, traslado + cese confirmado, his
     body: JSON.stringify({ email: CORREO_TEMP, password: clave }),
   }));
   if (!ses.access_token) throw new Error(`login admin: ${JSON.stringify(ses).slice(0, 150)}`);
+  await marcarSesionVerificada(sql, ses.access_token, CORREO_TEMP);
 
   // P5 vigente en A (el archivo lo trae en B → traslado); P6 vigente en B
   // ausente del archivo (los ceses solo se proponen para las RS DEL archivo).

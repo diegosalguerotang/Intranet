@@ -22,9 +22,15 @@ async function sql(q) {
   });
   const t = await r.text(); if (!r.ok) throw new Error(`HTTP ${r.status}: ${t.slice(0, 300)}`); return JSON.parse(t);
 }
-// Consulta como una cuenta real (por correo) o sin identidad.
+// Consulta como una cuenta real (por correo) o sin identidad. Segundo factor
+// (2026-09-28): la sesión simulada lleva session_id y una marca temporal (10
+// min) que se borra al final; sin ella un superadmin valdría 0.
+const SESION_PRUEBA = "00000000-0000-4000-8000-0000000000f4";
 const como = (correo, consulta) => sql(`${correo
-  ? `select set_config('request.jwt.claims', json_build_object('role','authenticated','email','${correo}','sub',coalesce((select u.id::text from auth.users u where u.email = '${correo}'), '00000000-0000-0000-0000-00000000dead'))::text, true);`
+  ? `insert into interno.factor_sesiones (session_id, usuario_id, expira_en, via, agente)
+       select '${SESION_PRUEBA}', u.id, now() + interval '10 minutes', 'correo', 'verificar-fase4' from interno.usuarios_admin u where lower(u.correo) = lower('${correo}')
+       on conflict (session_id) do update set usuario_id = excluded.usuario_id, expira_en = excluded.expira_en;
+     select set_config('request.jwt.claims', json_build_object('role','authenticated','email','${correo}','session_id','${SESION_PRUEBA}','sub',coalesce((select u.id::text from auth.users u where u.email = '${correo}'), '00000000-0000-0000-0000-00000000dead'))::text, true);`
   : `select set_config('request.jwt.claims', '{"role":"authenticated","email":"nadie@ejemplo.invalido","sub":"00000000-0000-0000-0000-000000000000"}', true);`}
   set local role authenticated; ${consulta}`);
 const lista = (arr) => arr.map((x) => `'${x}'`).join(", ");
@@ -73,6 +79,8 @@ await prueba("fuera de alcance = vacío, no error: Karen pide un usuario adminis
   const [r] = await como("karen.gusman@promant.pe", `select count(*)::int as n from public.v_usuarios_admin where correo = 'diegosalguerotang@gmail.com';`);
   igual(r.n, 0, "filas");
 });
+
+await sql(`delete from interno.factor_sesiones where session_id = '${SESION_PRUEBA}'`).catch(() => {});
 
 console.log(fallos ? `\n${fallos} fallo(s).` : "\nTodo verde.");
 process.exit(fallos ? 1 : 0);

@@ -4,6 +4,7 @@
 // Para diagnosticar «se queda en Verificando…» sin usar credenciales reales.
 //   Uso: . .\scripts\token-supabase.ps1
 //        node scripts/diagnostico-login-e2e.mjs
+import { marcarSesionVerificada } from "./lib/marcar-factor.mjs";
 const token = process.env.SUPABASE_ACCESS_TOKEN;
 if (!token) { console.error("Falta SUPABASE_ACCESS_TOKEN."); process.exit(1); }
 
@@ -79,6 +80,7 @@ const rTok = await paso("2 token (clave correcta)", () => fetch(`${PROXY}/auth/v
   method: "POST", headers: json, body: JSON.stringify({ email: EMAIL, password: CLAVE }) }));
 const ses = rTok ? (await rTok.json()).access_token : null;
 if (!ses) { console.error("Sin token: no se puede seguir."); await limpiar(); process.exit(1); }
+await marcarSesionVerificada(sql, ses, EMAIL);
 // x-sesion lleva el token CRUDO: el proxy le antepone «Bearer » él mismo.
 const auth = { ...json, "x-sesion": ses };
 await paso("3 v_usuarios_admin (padrón activo)", () => fetch(
