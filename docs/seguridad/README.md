@@ -1,4 +1,4 @@
-# Seguridad de la Intranet — arquitectura resultante (fases 0–7, 2026-09-17 → 2026-09-21)
+# Seguridad de la Intranet — arquitectura resultante (fases 0–7, 2026-09-17 → 2026-09-21; segundo factor 2026-09-28)
 
 Este documento es la referencia de seguridad del sistema tras la corrección de seguridad (sustituye a la sección de seguridad que faltaba en el documento funcional; la Arquitectura Funcional v1.0 tiene diez secciones y ninguna de seguridad). Cada fase tiene su informe en esta carpeta con lo aplicado, lo verificado y su reversión.
 
@@ -44,16 +44,17 @@ El navegador habla **solo con su propio dominio**: `/api/supa` (Vercel) inyecta 
 - Bloqueo por intentos según la política ACC-05 (hoy 10 intentos en 5 minutos), calculado **solo con los fallos que anota el proxy** tras una respuesta real de Auth (`registro_accesos.fuente = 'proxy'`); un «exitoso» solo lo registra la propia sesión. Compuerta en el proxy antes de hablar con Auth: por cuenta y por IP real (30 fallos en 15 minutos); si la base no responde, el acceso no se abre (503).
 - Correo (`api/enviar-correo.js`): sesión o secreto del sistema en tiempo constante, lista blanca de destinatarios (padrón), límite por IP y por sujeto, rastro en `correo_envios`. Restablecimiento de clave por enlace: token de un solo uso, 1 hora, límite por IP.
 - Riesgo residual: Supabase ve solo las IP de Vercel, así que sus propios límites por IP se comparten entre todos los usuarios (detalle en el informe de la fase 6).
+- **Segundo factor por correo (2026-09-28):** el Superadministrador teclea un código de 6 dígitos enviado a su correo en cada ingreso (o presenta un equipo recordado de 30 días); hasta verificar, su sesión vale nivel 0 en toda la base (`fn_nivel_modulo` v4). Interruptor `politica_acceso.factor_superadmin`; contingencia solo técnica. Informe `2026-09-28-segundo-factor.md`.
 
 ## 7. Cómo se comprueba (fase 7)
 
 | Cuándo | Qué | Herramienta |
 |---|---|---|
-| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (17 invariantes de las fases 0–6) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
+| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (21 invariantes de las fases 0–6 y el segundo factor) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
 | Cada despliegue de producción | comprobaciones HTTP sin token: paquetes limpios, lista blanca del proxy, anon cerrado, pre-login vivo, clave débil rechazada, compuerta viva, canal viejo retirado | `scripts/verificar-despliegue.mjs` |
 | Cada despliegue, opcional | verificadores de las fases 4, 5 y 6 contra la base (lecturas y transacciones revertidas) | job `produccion`, requiere el secreto `SUPABASE_ACCESS_TOKEN` del repositorio (`gh secret set SUPABASE_ACCESS_TOKEN`) |
 | Antes de cada migración | ensayo local con reversión sobre el entorno 2.5 (datos anonimizados) | `scripts/ensayar-faseN.mjs`, `scripts/pg-local.mjs`, `scripts/entorno-pruebas.mjs` |
-| A mano | `verificar-faseN.mjs`, `verificar-cierre-anon.mjs`, `diagnostico-permisos.mjs` | con `scripts/token-supabase.ps1` |
+| A mano | `verificar-faseN.mjs`, `verificar-cierre-anon.mjs`, `diagnostico-permisos.mjs`, `verificar-factor.mjs` | con `scripts/token-supabase.ps1` |
 
 Regla de trabajo: cada cambio de esquema es un canónico (`supabase/*.sql`) + un generador (`scripts/faseN-generar.mjs`) que produce la migración en UNA transacción, su reversión y el bloque `@@FASEN@@` de `supabase/seguridad.sql`; se ensaya en local, se aplica con el «go» y se verifica en producción.
 
@@ -70,3 +71,4 @@ Regla de trabajo: cada cambio de esquema es un canónico (`supabase/*.sql`) + un
 | 2026-09-18 | 5 · datos sensibles y auditoría · P16 | `2026-09-18-fase5-datos-sensibles.md`, `criterio-notificacion-brecha.md` |
 | 2026-09-21 | 6 · límites, canal y claves | `2026-09-21-fase6-limites-canal-claves.md` |
 | 2026-09-21 | 7 · comprobaciones en CI · 8 · documentación | este documento, `../funciones-y-permisos.md`, `../../supabase/MODELO.md` |
+| 2026-09-28 | segundo factor por correo (superadmin) | `2026-09-28-segundo-factor.md` |
