@@ -10,9 +10,9 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > `api-servicio.sql` (funciones de servicio para la API, fase 3a), las
 > migraciones cuyo canónico es la propia migración (lista en
 > `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (espejo acumulado de las
-> fases de la corrección de seguridad: 0, 0b, 1, 2, 3a, 3b, 3c, 4, 5a y 6b, cada una
-> con su canónico: `bancario.sql`, `claves-equipos.sql`, `rls.sql`, `auditoria.sql`,
-> `limites.sql`; desde la 3a las tablas
+> fases de la corrección de seguridad: 0, 0b, 1, 2, 3a, 3b, 3c, 4, 5a, 6b y el segundo
+> factor por correo (2026-09-28), cada una con su canónico: `bancario.sql`,
+> `claves-equipos.sql`, `rls.sql`, `auditoria.sql`, `limites.sql`, `factor.sql`; desde la 3a las tablas
 > `usuarios_admin`, `perfiles`, `perfil_*`, `cargo_perfiles`, `registro_accesos`,
 > `politica_acceso`, `auditoria` y `correo_tokens` viven en el esquema
 > `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`
@@ -118,6 +118,7 @@ Lo que el modelo de datos garantiza hoy:
    `api_login_permitido` / `api_login_registrar` son la compuerta que aplica el proxy.
 7. **Política de acceso** (`interno.politica_acceso`): clave del BackOffice ≥ 10 con letras
    y números (constraint y `guardar_politica`); Portal ≥ 6.
+8. **Segundo factor por correo (2026-09-28):** un Superadministrador con JWT vale nivel 0 en toda la base hasta que su sesión (claim `session_id`) tenga marca vigente en `interno.factor_sesiones` (`fn_nivel_modulo` v4 → `fn_factor_pendiente`). Códigos (`interno.factor_codigos`, sha256(código‖session_id), 10 min, 5 intentos) y equipos recordados (`interno.dispositivos_confiables`, 30 días) solo los escriben `api_factor_*` (service_role) desde `api/segundo-factor.js`. Interruptor `politica_acceso.factor_superadmin`. Canónico `factor.sql`; informe `docs/seguridad/2026-09-28-segundo-factor.md`.
 
 Los registros probatorios (`acuses`, `descargos`, `auditoria`, `registro_accesos`)
 siguen protegidos por triggers de inmutabilidad + REVOKE de UPDATE/DELETE. Regla de

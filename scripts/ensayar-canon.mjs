@@ -14,6 +14,8 @@
 //     de login solo service_role; piso 10 de clave del BackOffice.
 //   · 2026-09-22: Soporte TI fuera del portal (portal_crear_ticket cerrada);
 //     ticket propio del usuario administrativo (crear_ticket_propio, v_mis_tickets).
+//   · 2026-09-28: segundo factor por correo (superadmin con JWT vale 0 hasta
+//     verificar; api_factor_* solo service_role; interruptor en la política).
 // Uso: node scripts/ensayar-canon.mjs
 import { arrancarPgLocal } from "./pg-local.mjs";
 
@@ -176,6 +178,44 @@ try {
       has_function_privilege('anon', 'public.corregir_fecha_ingreso(text, date)', 'execute') as anon,
       (select prosrc from pg_proc where proname = 'corregir_fecha_ingreso') ~ 'requiere_nivel\\(''personal'', 2\\)' as guarda`);
     igual(`${g.auth}/${g.anon}/${g.guarda}`, "true/false/true", "grants/guarda");
+  });
+
+  console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");
+  await prueba("tablas de interno cerradas a la API; api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_nivel_modulo v4; interruptor encendido y expuesto en v_politica_acceso", async () => {
+    const [t] = await sql(`select bool_and(to_regclass('interno.' || t) is not null and (select relrowsecurity from pg_class where oid = to_regclass('interno.' || t))
+        and not has_table_privilege('authenticated', 'interno.' || t, 'select') and not has_table_privilege('anon', 'interno.' || t, 'select')) as ok
+      from unnest(array['factor_codigos', 'factor_sesiones', 'dispositivos_confiables']) t`);
+    igual(t.ok, true, "tablas");
+    const [g] = await sql(`select has_function_privilege('authenticated', 'public.mi_segundo_factor()', 'execute') as mio,
+      has_function_privilege('anon', 'public.mi_segundo_factor()', 'execute') as mio_anon,
+      has_function_privilege('authenticated', 'public.fn_factor_pendiente()', 'execute') as pend,
+      ((select prosrc from pg_proc where oid = 'public.fn_nivel_modulo(text)'::regprocedure) ~ 'fn_factor_pendiente') as v4,
+      (select factor_superadmin from interno.politica_acceso where id = 1) as pol,
+      exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'v_politica_acceso' and column_name = 'factorSuperadmin') as vista,
+      to_regprocedure('public.guardar_politica(integer, integer, boolean, boolean, integer, integer, text, integer, integer, integer, text)') is null as vieja_fuera`);
+    igual(`${g.mio}/${g.mio_anon}/${g.pend}/${g.v4}/${g.pol}/${g.vista}/${g.vieja_fuera}`, "true/false/false/true/true/true/true", "guarda");
+  });
+  await prueba("con claims de superadmin: sin marca → 0; con marca vigente → 99; con la política apagada → 99 (todo en una transacción que se revierte)", async () => {
+    await sql("begin");
+    try {
+      await sql(`insert into public.personas (dni, nombre) values ('ZZFACTOR1', 'ZZ FACTOR CANON')`);
+      const [pf] = await sql(`select id, version from interno.perfiles where es_superadmin and estado = 'activo' order by version desc limit 1`);
+      await sql(`insert into interno.usuarios_admin (persona_dni, perfil_id, perfil_version, correo, creado_por) values ('ZZFACTOR1', '${pf.id}', ${pf.version}, 'zzfactor@ejemplo.invalido', 'ensayar-canon')`);
+      await sql("grant execute on function public.fn_nivel_modulo(text) to authenticated");
+      const claims = (sid) => `select set_config('request.jwt.claims', '${JSON.stringify({ role: "authenticated", email: "zzfactor@ejemplo.invalido", session_id: sid })}', true)`;
+      const SID = "00000000-0000-4000-8000-0000000000fa";
+      await sql("savepoint s1"); await sql("set local role authenticated"); await sql(claims(SID));
+      let [r] = await sql("select fn_nivel_modulo('accesos') as n"); await sql("rollback to savepoint s1");
+      igual(r.n, 0, "sin marca");
+      await sql(`insert into interno.factor_sesiones (session_id, usuario_id, expira_en, via) select '${SID}', id, now() + interval '5 minutes', 'correo' from interno.usuarios_admin where correo = 'zzfactor@ejemplo.invalido'`);
+      await sql("savepoint s2"); await sql("set local role authenticated"); await sql(claims(SID));
+      [r] = await sql("select fn_nivel_modulo('accesos') as n"); await sql("rollback to savepoint s2");
+      igual(r.n, 99, "con marca");
+      await sql("update interno.politica_acceso set factor_superadmin = false where id = 1");
+      await sql("savepoint s3"); await sql("set local role authenticated"); await sql(claims("00000000-0000-4000-8000-0000000000fb"));
+      [r] = await sql("select fn_nivel_modulo('accesos') as n"); await sql("rollback to savepoint s3");
+      igual(r.n, 99, "política apagada");
+    } finally { await sql("rollback"); }
   });
 } finally {
   await bd.parar();

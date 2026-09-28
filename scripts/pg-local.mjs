@@ -16,7 +16,9 @@
 //   · esquema storage (buckets, objects, foldername) para las políticas del bucket
 //   · default privileges de la plataforma (authenticated/service_role reciben todo)
 // Después se cargan los canónicos en el orden documentado en MODELO.md:
-// schema.sql → accesos.sql → portal.sql → solicitudes.sql → soporte.sql.
+// schema.sql → accesos.sql → portal.sql → solicitudes.sql → soporte.sql →
+// api-servicio.sql. `seguridad.sql` incluye al final el bloque @@FACTOR@@
+// (segundo factor, canónico `factor.sql`).
 //
 // Uso directo:  node scripts/pg-local.mjs            → arranca, carga y compara con
 //               supabase/respaldos/2026-09-17-paso0-permisos.json (inventario).

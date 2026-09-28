@@ -92,7 +92,9 @@ export const MATRIZ = {
   // Sin política (nadie desde la API; solo funciones definer / servicio):
   // public.correo_envios, public.solicitud_correlativos, interno.correo_tokens, interno.respaldo_*.
 };
-export const SIN_POLITICA = ["public.correo_envios", "public.solicitud_correlativos", "interno.correo_tokens"];
+export const SIN_POLITICA = ["public.correo_envios", "public.solicitud_correlativos", "interno.correo_tokens",
+  // Segundo factor (2026-09-28): solo las funciones definer las tocan; nadie de la API las lee.
+  "interno.factor_codigos", "interno.factor_sesiones", "interno.dispositivos_confiables"];
 export const VISTAS_PORTAL = ["v_portal_boletas", "v_portal_comunicados", "v_portal_datos", "v_portal_mes", "v_portal_pendientes", "v_portal_perfil", "v_portal_rit", "v_portal_solicitudes", "v_portal_tickets"];
 export const AYUDANTES = ["fn_alcance_empresa(text)", "fn_alcance_persona(text)", "fn_alcance_vinculo(bigint)", "fn_alcance_documento(bigint)", "fn_alcance_memorandum(text)",
   "fn_alcance_activo(text)", "fn_alcance_solicitud(bigint)", "fn_es_mi_dni(text)", "fn_mi_vinculo(bigint)", "fn_mi_solicitud(bigint)", "fn_comunicado_me_alcanza(bigint)",
