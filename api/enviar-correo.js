@@ -35,7 +35,7 @@ const VENTANA_MIN = 60;
 // Máximo de intentos por ventana. IP: cualquier acción. Sujeto: por acción.
 export const LIMITES = {
   ip: 30,
-  sujeto: { verificacion: 3, recuperacion: 3, "recuperacion-admin": 3, "aviso-ticket": 5, "aviso-solicitud": 10, "recordatorio-acuse": 5 },
+  sujeto: { verificacion: 3, recuperacion: 3, "recuperacion-admin": 3, "aviso-ticket": 5, "aviso-solicitud": 10, "recordatorio-acuse": 5, "segundo-factor": 15 },
 };
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
