@@ -1191,6 +1191,7 @@ create table if not exists interno.columnas_sensibles (
   primary key (tabla, columna)
 );
 revoke all on table interno.columnas_sensibles from public, anon, authenticated;
+alter table interno.columnas_sensibles enable row level security;  -- 2026-09-28: sin política (nadie de la API la lee); RLS por invariante de la fase 4
 insert into interno.columnas_sensibles (tabla, columna, motivo) values
   ('usuarios_admin', 'clave_provisional', 'clave de acceso (hoy siempre null; la API no la guarda)'),
   ('usuarios_admin', 'sesion_actual',     'marcador de sesión única del BackOffice'),

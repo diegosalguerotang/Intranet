@@ -64,3 +64,7 @@ Está en `docs/seguridad/criterio-notificacion-brecha.md`: qué hallazgo obliga 
 | Espejo | bloque `@@FASE5@@` de `supabase/seguridad.sql` |
 | Ensayo | `scripts/ensayar-fase5.mjs` (9 casos) |
 | Verificación | `scripts/verificar-fase5.mjs` (sirve antes y después de 5b) |
+
+## Corrección 2026-09-28
+
+`interno.columnas_sensibles` tenía los grants revocados pero nunca había activado row level security ni tenía política (pre-existente desde esta fase; lo detectó `verificar-fase4`). Se activó RLS (sin política: nadie de la API la lee) en `supabase/auditoria.sql` y su espejo en `supabase/seguridad.sql`, se añadió a `SIN_POLITICA` en `scripts/fase4-generar.mjs`, y se aplicó con `supabase/migraciones/2026-09-28-columnas-sensibles-rls.sql`.
