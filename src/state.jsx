@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase, supabaseListo } from "./lib/supabase";
 import * as MOCK from "./data/mock";
 import { dbInicial, dbVacia, origenDesde } from "./lib/carga";
@@ -85,6 +85,7 @@ const USUARIO_DEMO = {
   id: 0, nombre: "Diego Salguero Tang", rol: "Superadministrador · demo",
   correo: "diegosalguerotang@gmail.com", esSuperadmin: true, requiereCambio: false,
   acceso: { esSuperadmin: true, matriz: {}, empresas: [] },
+  factorPendiente: false, factorCorreo: null,
 };
 
 // Llama a una función serverless propia con el JWT de la sesión en x-sesion.
@@ -110,6 +111,27 @@ async function llamarServerless(ruta, cuerpo) {
   }
 }
 const cuentaAdmin = (accion, usuarioId) => llamarServerless("/api/admin-usuarios", { accion, usuario_id: usuarioId });
+
+// Segundo factor por correo (2026-09-28). Devuelve { status, ...json } porque
+// la pantalla necesita intentosRestantes / esperaSeg además del error. Un 401
+// (sesión inválida en el servidor) cierra la sesión como en llamarServerless.
+async function llamarFactor(accion, cuerpo = {}) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) return { status: 0, error: "Sin sesión activa." };
+    const r = await fetch("/api/segundo-factor", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-sesion": token },
+      body: JSON.stringify({ accion, ...cuerpo }),
+    });
+    const json = await r.json().catch(() => ({}));
+    if (r.status === 401 && typeof alSesionInvalida === "function") alSesionInvalida();
+    return { status: r.status, ...json, ...(r.ok ? {} : { error: json.error ?? `Error ${r.status}` }) };
+  } catch (e) {
+    return { status: 0, error: e.message ?? "Fallo de red." };
+  }
+}
 
 // Política de sesión (BackOffice): cierre por inactividad y sesión única.
 const INACTIVIDAD_MS = 60 * 60 * 1000; // 1 hora sin actividad → cierre (decisión Diego 2026-08-31)
@@ -156,6 +178,9 @@ export function AppProvider({ children }) {
   };
   const reintentarCarga = () => recargar();
 
+  const resolverRef = useRef(null);
+  const tokenEnCursoRef = useRef(null);
+
   // Cierre de acceso: el usuario se deriva de la sesión de Supabase Auth y
   // del padrón de usuarios administrativos. Tener cuenta en el proveedor no
   // basta: sin fila activa en usuarios_admin, se expulsa.
@@ -168,11 +193,10 @@ export function AppProvider({ children }) {
     // veces y gana la que termine última. Misma sesión en curso → no-op;
     // sesión más nueva → la vieja no publica nada.
     let generacion = 0;
-    let tokenEnCurso = null;
     const resolver = async (session) => {
       const token = session?.access_token ?? null;
-      if (token && token === tokenEnCurso) return;
-      tokenEnCurso = token;
+      if (token && token === tokenEnCursoRef.current) return;
+      tokenEnCursoRef.current = token;
       const mia = ++generacion;
       const email = session?.user?.email;
       if (!email) { if (activo) setUser(null); return; }
@@ -187,12 +211,7 @@ export function AppProvider({ children }) {
         setUser(null);
         return;
       }
-      // La carga completa va ANTES de publicar el usuario: la interfaz nunca
-      // se pinta autenticada con colecciones vacías. Si algo falla, origen
-      // queda en "error" y el Shell ofrece reintentar.
-      await recargar();
-      if (!activo || mia !== generacion) return;
-      setUser({
+      const base = {
         id: data.id, codigo: data.codigo, nombre: data.nombre, rol: data.perfilNombre,
         correo: data.correo, esSuperadmin: data.esSuperadmin, requiereCambio: data.requiereCambio,
         // La categoría vigente manda: de aquí salen menú, selector y guards.
@@ -201,13 +220,33 @@ export function AppProvider({ children }) {
           matriz: acc?.matriz ?? {},
           empresas: acc?.empresas ?? [],
         },
-      });
+        factorPendiente: false, factorCorreo: null,
+      };
+      // Segundo factor (2026-09-28): un superadmin sin verificar vale nivel 0 en
+      // la base; se publica SOLO el usuario (sin cargar vistas, saldrían vacías)
+      // y el Shell muestra la pantalla del código. Sin la migración aplicada la
+      // RPC no existe (error) y se sigue como antes.
+      if (base.acceso.esSuperadmin) {
+        const { data: factor, error: eFactor } = await supabase.rpc("mi_segundo_factor");
+        if (!activo || mia !== generacion) return;
+        if (!eFactor && factor?.exigido && !factor?.verificado) {
+          setUser({ ...base, factorPendiente: true, factorCorreo: factor.correo ?? null });
+          return;
+        }
+      }
+      // La carga completa va ANTES de publicar el usuario: la interfaz nunca
+      // se pinta autenticada con colecciones vacías. Si algo falla, origen
+      // queda en "error" y el Shell ofrece reintentar.
+      await recargar();
+      if (!activo || mia !== generacion) return;
+      setUser(base);
     };
+    resolverRef.current = resolver;
     supabase.auth.getSession().then(({ data }) => resolver(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((evento, session) => {
       if (evento !== "TOKEN_REFRESHED") resolver(session);
     });
-    return () => { activo = false; sub.subscription.unsubscribe(); };
+    return () => { activo = false; resolverRef.current = null; sub.subscription.unsubscribe(); };
   }, []);
 
   const salir = async (aviso = null) => {
@@ -221,6 +260,14 @@ export function AppProvider({ children }) {
     if (conSupabase) setDb(dbVacia(FUENTES));
     setUser(null);
   };
+  // Tras verificar el código (o reconocer el equipo): se vuelve a resolver la
+  // misma sesión, ahora con nivel 99 → carga completa.
+  const factorVerificado = async () => {
+    tokenEnCursoRef.current = null;
+    const { data } = await supabase.auth.getSession();
+    await resolverRef.current?.(data?.session);
+  };
+  const segundoFactor = (accion, cuerpo) => llamarFactor(accion, cuerpo);
   // Un 401 de cualquier función serverless significa que la sesión ya no vale
   // en el servidor: se cierra aquí también.
   useEffect(() => {
@@ -628,6 +675,7 @@ export function AppProvider({ children }) {
         p_recuperacion: p.recuperacionDefecto,
         p_clave_min_portal: p.claveLongitudMinPortal, p_clave_min_backoffice: p.claveLongitudMinBackoffice,
         p_provisional_dias: p.claveProvisionalDias, p_por: user?.nombre ?? "BackOffice",
+        p_factor_superadmin: p.factorSuperadmin ?? true,
       }, "politica");
     },
     // RRH-05 — Importación del padrón DEFINITIVO (12 columnas con centro de
@@ -992,7 +1040,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppCtx.Provider
-      value={{ user, salir, claveCambiada, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga, ...acciones }}
+      value={{ user, salir, claveCambiada, factorVerificado, segundoFactor, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga, ...acciones }}
     >
       {children}
     </AppCtx.Provider>

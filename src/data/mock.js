@@ -205,7 +205,7 @@ export const POLITICA_ACCESO = [{
   multisesionBackoffice: false, multisesionPortal: true,
   intentosBloqueo: 5, bloqueoMinutos: 15,
   recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: 10,
-  claveProvisionalDias: 7, actualizado: null, actualizadoPor: null,
+  claveProvisionalDias: 7, factorSuperadmin: true, actualizado: null, actualizadoPor: null,
 }];
 
 export const REGISTRO_ACCESOS = [

@@ -9,6 +9,7 @@ import {
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
 import CambioClave from "../pages/CambioClave";
+import SegundoFactor from "../pages/SegundoFactor";
 
 // Cada item declara su módulo: el menú solo muestra lo que la categoría del
 // usuario concede (enforcement de Accesos v2; el guard de ruta lo respalda).
@@ -164,6 +165,7 @@ export default function Shell() {
     );
   }
   if (!user) return <Navigate to="/admin/login" replace />;
+  if (user.factorPendiente) return <SegundoFactor />;
   if (user.requiereCambio) return <CambioClave />;
 
   return (
