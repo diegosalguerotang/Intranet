@@ -68,21 +68,25 @@ export default function SegundoFactor() {
     // StrictMode (dev): el montaje falso corre este efecto dos veces; sin
     // este corte (con un ref, que sobrevive el remontaje) se dispara el
     // POST dispositivo/enviar por duplicado y el segundo llega tarde con un
-    // 429 «espera» que se muestra como error en la primera carga.
+    // 429 «espera» que se muestra como error en la primera carga. Los checks
+    // tras cada await usan montado.current (no un "vivo" local a esta
+    // corrida): con "vivo", el cleanup síncrono de la corrida 1 de StrictMode
+    // lo apagaba antes de que el POST a dispositivo resolviera, y la pantalla
+    // quedaba colgada en «Comprobando este equipo…». montado.current lo pone
+    // en true el efecto de arriba en cada montaje real (incluida la corrida
+    // que sobrevive), así que sigue en true cuando este await resuelve.
     if (iniciado.current) return;
     iniciado.current = true;
-    let vivo = true;
     (async () => {
       const token = leerDispositivo();
       if (token) {
         const r = await segundoFactor("dispositivo", { token });
-        if (!vivo) return;
+        if (!montado.current) return;
         if (r.status === 200 && r.listo) { setFase("listo"); await factorVerificado(); return; }
         borrarDispositivo();
       }
-      if (vivo) await enviar();
+      if (montado.current) await enviar();
     })();
-    return () => { vivo = false; };
   }, []);
 
   const verificar = async (e) => {
