@@ -34,3 +34,18 @@ export function correoDeSesion(jwt) {
     return "";
   }
 }
+
+// Un claim del JWT SIN verificar la firma. Solo para tokens que GoTrue acaba de
+// validar en el mismo endpoint (GET /auth/v1/user): p. ej. session_id del
+// segundo factor. Nunca para autorizar por sí solo.
+export function claimDeSesion(jwt, nombre) {
+  try {
+    const partes = String(jwt ?? "").split(".");
+    if (partes.length !== 3) return "";
+    const carga = JSON.parse(Buffer.from(partes[1], "base64url").toString("utf8"));
+    const v = carga?.[nombre];
+    return v === undefined || v === null ? "" : String(v);
+  } catch {
+    return "";
+  }
+}
