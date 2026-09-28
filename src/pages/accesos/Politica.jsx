@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw, MailCheck } from "lucide-react";
 import { useApp } from "../../state";
 import { PageHeader, Card, Button, Field, Input, Select, Note } from "../../components/ui";
 import { CLAVE_MIN_BACKOFFICE } from "../../lib/campos";
@@ -10,13 +10,16 @@ const RECOMENDADOS = {
   intentosBloqueo: 5, bloqueoMinutos: 15,
   recuperacionDefecto: "whatsapp", claveLongitudMinPortal: 6, claveLongitudMinBackoffice: CLAVE_MIN_BACKOFFICE,
   claveProvisionalDias: 7,
+  factorSuperadmin: true,
 };
 
 export default function Politica() {
-  const { db, guardarPolitica } = useApp();
+  const { db, guardarPolitica, segundoFactor } = useApp();
   const vigente = db.politica[0] ?? RECOMENDADOS;
   const [p, setP] = useState(() => ({ ...vigente }));
   const [guardado, setGuardado] = useState(false);
+  const [olvidados, setOlvidados] = useState(null);
+  const [olvidando, setOlvidando] = useState(false);
 
   const set = (campo, valor) => { setP((x) => ({ ...x, [campo]: valor })); setGuardado(false); };
   const num = (campo) => (e) => set(campo, Math.max(1, Number(e.target.value) || 1));
@@ -107,6 +110,35 @@ export default function Politica() {
               <Input type="number" min={CLAVE_MIN_BACKOFFICE} value={p.claveLongitudMinBackoffice}
                 onChange={(e) => set("claveLongitudMinBackoffice", Math.max(CLAVE_MIN_BACKOFFICE, Number(e.target.value) || CLAVE_MIN_BACKOFFICE))} />
             </Field>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="mb-1 flex items-center gap-2 text-[13px] font-bold text-tinta"><MailCheck size={15} className="text-petroleo" /> Segundo factor del Superadministrador</h2>
+          <p className="mb-4 text-[11.5px] leading-snug text-gris-cl">
+            Con el interruptor encendido, cada ingreso de una cuenta Superadministrador pide además un código de 6 dígitos
+            enviado a su correo (vence en 10 minutos). Hasta verificarlo la sesión no puede leer ni escribir nada. El resto de
+            categorías entra solo con su clave. Si el correo dejara de salir, la vía de contingencia es técnica (Management API).
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-gris">
+              <input type="checkbox" className="accent-petroleo" checked={p.factorSuperadmin ?? true}
+                onChange={(e) => set("factorSuperadmin", e.target.checked)} />
+              Exigir código por correo al Superadministrador
+            </label>
+            <div>
+              <Button type="button" variant="secondary" disabled={olvidando} onClick={async () => {
+                setOlvidando(true); setOlvidados(null);
+                const r = await segundoFactor("olvidar");
+                try { localStorage.removeItem("backoffice-dispositivo"); } catch { /* modo privado */ }
+                setOlvidando(false);
+                setOlvidados(r.status === 200 ? `${r.revocados} equipo${r.revocados === 1 ? "" : "s"} olvidado${r.revocados === 1 ? "" : "s"}. En el próximo ingreso se pedirá el código en todos.` : (r.error ?? "No se pudo olvidar los equipos."));
+              }}>
+                {olvidando ? "Olvidando…" : "Olvidar todos los equipos recordados"}
+              </Button>
+              <p className="mt-1 text-[11px] text-gris-cl">Revoca los equipos recordados de <b>tu</b> cuenta (los de 30 días). Este equipo también.</p>
+              {olvidados && <Note tone="conf">{olvidados}</Note>}
+            </div>
           </div>
         </Card>
 
