@@ -92,11 +92,16 @@ export async function registrar(fila) {
 }
 
 // Intentos de la ventana para (campo = valor). Si no se puede contar → Infinity (cerrado).
-async function contar(campo, valor) {
+// El segundo factor tiene su propio cubo (2026-09-28): solo cuenta sus propios
+// envíos y no los «limitado». Si compartiera el de las demás acciones, 30 avisos
+// de solicitudes tras el NAT de la oficina dejarían al superadmin sin BackOffice
+// y cada reintento añadiría otra fila «limitado». Las demás acciones no cambian.
+async function contar(campo, valor, accion) {
   if (!valor) return 0;
   const desde = new Date(Date.now() - VENTANA_MIN * 60_000).toISOString();
+  const propio = accion === "segundo-factor" ? "&accion=eq.segundo-factor&resultado=neq.limitado" : "";
   const r = await rest(
-    `/rest/v1/correo_envios?${campo}=eq.${encodeURIComponent(valor)}&creado_en=gte.${encodeURIComponent(desde)}&select=id&limit=1`,
+    `/rest/v1/correo_envios?${campo}=eq.${encodeURIComponent(valor)}&creado_en=gte.${encodeURIComponent(desde)}${propio}&select=id&limit=1`,
     { headers: { prefer: "count=exact" } },
   ).catch(() => null);
   if (!r?.ok) return Infinity;
@@ -106,7 +111,7 @@ async function contar(campo, valor) {
 
 // null si puede seguir; si no, { status, error } ya registrado.
 export async function limitar(accion, ip, sujeto) {
-  const [porIp, porSujeto] = await Promise.all([contar("ip", ip), contar("sujeto", sujeto)]);
+  const [porIp, porSujeto] = await Promise.all([contar("ip", ip, accion), contar("sujeto", sujeto, accion)]);
   const topeSujeto = LIMITES.sujeto[accion] ?? 5;
   if (porIp === Infinity || porSujeto === Infinity) {
     return { status: 503, error: "El registro de correo no está disponible: no se envía nada hasta que responda." };

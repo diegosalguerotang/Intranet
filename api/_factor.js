@@ -22,6 +22,8 @@ export async function factorPendiente(jwt) {
     let json = null; try { json = texto ? JSON.parse(texto) : null; } catch { /* sin JSON */ }
     if (r.status === 404 && json?.code === "PGRST202") return false;
     if (!r.ok) return true;
+    // 200 con cuerpo no JSON (o no objeto): no se sabe el estado → fallo cerrado.
+    if (json === null || typeof json !== "object") return true;
     return Boolean(json?.exigido) && !json?.verificado;
   } catch {
     return true;

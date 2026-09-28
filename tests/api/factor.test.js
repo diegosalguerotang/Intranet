@@ -4,12 +4,13 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 
 let claimDeSesion, factorPendiente;
 const estado = {};
-const reiniciar = () => Object.assign(estado, { respuesta: { exigido: true, verificado: false }, status: 200, caido: false });
+const reiniciar = () => Object.assign(estado, { respuesta: { exigido: true, verificado: false }, status: 200, caido: false, crudo: undefined });
 const json = (cuerpo, status = 200) => new Response(JSON.stringify(cuerpo), { status, headers: { "content-type": "application/json" } });
 const llamadas = [];
 globalThis.fetch = vi.fn(async (url, init = {}) => {
   llamadas.push({ url: String(url), init });
   if (estado.caido) throw new TypeError("fetch failed");
+  if (String(url).includes("/rest/v1/rpc/mi_segundo_factor") && estado.crudo !== undefined) return new Response(estado.crudo, { status: estado.status });
   if (String(url).includes("/rest/v1/rpc/mi_segundo_factor")) return json(estado.respuesta, estado.status);
   throw new Error(`ruta no simulada: ${url}`);
 });
@@ -53,5 +54,11 @@ describe("factorPendiente", () => {
     expect(await factorPendiente("jwt")).toBe(true);
     estado.caido = true;
     expect(await factorPendiente("jwt")).toBe(true);
+  });
+  it("200 con cuerpo no JSON, vacío o que no es un objeto → bloquea (fallo cerrado)", async () => {
+    for (const crudo of ["<html>proxy</html>", "", "null", "\"texto\"", "42"]) {
+      estado.crudo = crudo;
+      expect(await factorPendiente("jwt")).toBe(true);
+    }
   });
 });

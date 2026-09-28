@@ -30,6 +30,7 @@ const rpc = [];   // llamadas a api_factor_* con sus argumentos
 const reiniciar = () => Object.assign(estado, {
   sesiones: { [JWT_SUPER]: "diego@ejemplo.pe", [JWT_SIN_SID]: "diego@ejemplo.pe", [JWT_PORTAL]: "12345678@portal.grupoer.pe" },
   envios: 0,                                     // filas en correo_envios (para limitar)
+  consultas: [],                                 // URLs de los GET de conteo a correo_envios
   emitir: { ok: true, expira_en: "2026-09-28T12:10:00Z" },
   verificar: { ok: true, expira_en: "2026-09-28T20:00:00Z" },
   dispositivoUsar: true, revocados: 2,
@@ -42,7 +43,7 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
     const email = estado.sesiones[jwt];
     return email ? json({ email }) : json({ error: "invalid" }, 401);
   }
-  if (u.includes("/rest/v1/correo_envios") && (init.method ?? "GET") === "GET") return json([], 200, { "content-range": `0-0/${estado.envios}` });
+  if (u.includes("/rest/v1/correo_envios") && (init.method ?? "GET") === "GET") { estado.consultas = (estado.consultas ?? []).concat(u); return json([], 200, { "content-range": `0-0/${estado.envios}` }); }
   if (u.includes("/rest/v1/correo_envios")) { estado.rastro = (estado.rastro ?? []).concat(JSON.parse(init.body)); return json(null, 201); }
   const m = /\/rest\/v1\/rpc\/(api_factor_\w+)/.exec(u);
   if (m) {
@@ -116,6 +117,13 @@ describe("enviar", () => {
     const r = await llamar({ accion: "enviar" });
     expect(r.status).toBe(429);
     expect(rpc).toHaveLength(0); expect(enviados).toHaveLength(0);
+  });
+  it("el límite de tasa tiene cubo propio: por IP y por sujeto cuenta solo accion=segundo-factor y excluye los «limitado»", async () => {
+    await llamar({ accion: "enviar" });
+    expect(estado.consultas).toHaveLength(2);
+    for (const c of estado.consultas) { expect(c).toContain("accion=eq.segundo-factor"); expect(c).toContain("resultado=neq.limitado"); }
+    expect(estado.consultas.some((c) => c.includes("ip=eq."))).toBe(true);
+    expect(estado.consultas.some((c) => c.includes("sujeto=eq."))).toBe(true);
   });
 });
 

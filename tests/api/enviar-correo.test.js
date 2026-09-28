@@ -30,6 +30,7 @@ const reiniciar = () => Object.assign(estado, {
   registros: [],           // filas insertadas en correo_envios
   conteos: {},             // { "ip:1.2.3.4": n, "sujeto:x": n } que devuelve el count=exact
   tablaCaida: false,
+  consultas: [],           // URLs de los GET de conteo a correo_envios
 });
 const q = (url) => Object.fromEntries(new URL(url).searchParams);
 const valorEq = (v) => decodeURIComponent(String(v ?? "")).replace(/^(eq|ilike)\./, "");
@@ -46,6 +47,7 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
   if (u.includes("/rest/v1/correo_envios")) {
     if (estado.tablaCaida) return json({ error: "relation does not exist" }, 404);
     if (init.method === "POST") { estado.registros.push(JSON.parse(init.body)); return json(null, 201); }
+    estado.consultas.push(u);
     const clave = p.ip ? `ip:${valorEq(p.ip)}` : `sujeto:${valorEq(p.sujeto)}`;
     const n = estado.conteos[clave] ?? 0;
     return json([], 200, { "content-range": `0-0/${n}` });
@@ -143,6 +145,11 @@ describe("límite de tasa", () => {
     expect((await llamar({ accion: "recuperacion-admin", correo: "dsalguero@grupoer.pe" }, {}, "9.9.9.9")).status).toBe(429);
     expect((await llamar({ accion: "aviso-ticket", numero: "TK-0007" }, { "x-sesion": "jwt-admin" }, "9.9.9.9")).status).toBe(429);
     expect(enviados).toHaveLength(0);
+  });
+  it("las acciones de correo cuentan TODAS las filas de la ventana (sin filtrar por acción ni resultado): comportamiento previo intacto", async () => {
+    await llamar({ accion: "recuperacion", dni: "45231876" });
+    expect(estado.consultas.length).toBeGreaterThanOrEqual(2);
+    for (const c of estado.consultas) { expect(c).not.toContain("accion="); expect(c).not.toContain("resultado="); }
   });
   it("si la tabla correo_envios no responde, falla cerrado con 503 y no envía", async () => {
     estado.tablaCaida = true;
