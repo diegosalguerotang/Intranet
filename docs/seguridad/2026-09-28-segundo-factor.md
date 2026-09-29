@@ -1,6 +1,6 @@
 # Seguridad · Segundo factor por correo para el Superadministrador
 
-Fecha: 2026-09-28 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **PENDIENTE DE APLICAR** (se actualiza en el despliegue: migración aplicada por Diego, `verificar-factor` verde, prueba manual).
+Fecha: 2026-09-28 · Base: proyecto Supabase `mzpbdkrmokfxrrsotfgs` · Estado: **APLICADO en producción el 2026-09-28 (migración `2026-09-28-segundo-factor.sql` ejecutada por Diego por Management API, `201`). Cliente desplegado (1469dbd). `verificar-factor` 12/12 verde y `verificar-despliegue` verde en producción; `funciones-y-permisos.md` regenerado (161 funciones, 0 sin guarda). Pendiente: migración `2026-09-28-columnas-sensibles-rls.sql` (RLS en `interno.columnas_sensibles`, preexistente desde la fase 5; sin ella `verificar-fase4` falla en el catálogo) y prueba manual A3 de Diego.** Incidente del despliegue: el primer deploy (3365280) falló en «Deploying outputs» porque `api/segundo-factor.js` elevó a 13 las funciones serverless y el plan Hobby de Vercel admite 12; se retiró `api/eco.js` (espejo de diagnóstico del login) en 1469dbd.
 
 Cierra el punto «2FA superadmin: POR DEFINIR» de `Accesos_y_Roles_Intranet_V1_0_1.md`. Diseño aprobado: `docs/superpowers/specs/2026-09-28-segundo-factor-correo-design.md`.
 

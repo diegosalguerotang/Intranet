@@ -1,4 +1,4 @@
-# Funciones y permisos — estado real de producción (2026-09-22)
+# Funciones y permisos — estado real de producción (2026-09-29)
 
 Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (proyecto `mzpbdkrmokfxrrsotfgs`): firma, guarda detectada en el cuerpo y roles con EXECUTE. Regenerar tras cada fase.
 
@@ -7,12 +7,12 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | Grupo | Funciones |
 |---|---|
 | administrativa (sesión propia) | 2 |
-| administrativa | 58 |
+| administrativa | 59 |
 | autoservicio del trabajador | 25 |
-| ayudante | 42 |
+| ayudante | 43 |
 | interna | 4 |
 | pre-login | 4 |
-| servicio (api/*.js con llave de servicio) | 8 |
+| servicio (api/*.js con llave de servicio) | 13 |
 | trigger | 11 |
 
 | Función | Grupo | Guarda / regla | EXECUTE |
@@ -25,6 +25,11 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `api_admin_marcar_clave(p_id bigint, p_correo text, p_requiere_cambio boolean)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_admin_por_correo(p_correo text, p_solo_activo boolean)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_admin_por_id(p_id bigint)` | servicio (api/*.js con llave de servicio) | — | service_role |
+| `api_factor_dispositivo_crear(p_correo text, p_session_id uuid, p_token_hash text, p_ip text, p_agente text)` | servicio (api/*.js con llave de servicio) | — | service_role |
+| `api_factor_dispositivo_usar(p_correo text, p_session_id uuid, p_token_hash text, p_ip text, p_agente text)` | servicio (api/*.js con llave de servicio) | — | service_role |
+| `api_factor_dispositivos_revocar(p_correo text)` | servicio (api/*.js con llave de servicio) | — | service_role |
+| `api_factor_emitir(p_correo text, p_session_id uuid, p_codigo_hash text, p_ip text, p_agente text)` | servicio (api/*.js con llave de servicio) | — | service_role |
+| `api_factor_verificar(p_correo text, p_session_id uuid, p_codigo_hash text, p_ip text, p_agente text)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_login_permitido(p_ip text, p_correo text)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_login_registrar(p_correo text, p_resultado text, p_ip text, p_agente text)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_token_crear(p_token text, p_dni text, p_proposito text, p_correo text, p_expira_en timestamp with time zone)` | servicio (api/*.js con llave de servicio) | — | service_role |
@@ -78,6 +83,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `fn_dni_auditoria(p_antes jsonb, p_despues jsonb)` | ayudante | SIN GUARDA (revisar) | authenticated + service_role |
 | `fn_es_mi_dni(p_dni text)` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `fn_es_prefijo_truncado(p_nuevo text, p_actual text)` | ayudante | — | service_role |
+| `fn_factor_pendiente()` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | service_role |
 | `fn_guardar_datos_bancarios(p_dni text, p_banco text, p_banco_id text, p_cuenta text, p_cci text, p_pisar_banco boolean, p_por text)` | ayudante | — | service_role |
 | `fn_hora_entrada(p_dni text, p_fecha date)` | ayudante | SIN GUARDA (revisar) | authenticated + service_role |
 | `fn_mi_perfil(p_perfil text, p_version integer)` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
@@ -116,7 +122,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `guardar_clave_equipo(p_codigo text, p_clave text, p_por text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `guardar_feriado(p_fecha date, p_nombre text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `guardar_perfil(p_id text, p_nombre text, p_descripcion text, p_superadmin boolean, p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean, p_matriz jsonb, p_empresas text[], p_por text, p_ver_bancarios boolean)` | administrativa | superadmin | authenticated + service_role |
-| `guardar_politica(p_backoffice_horas integer, p_portal_dias integer, p_multisesion_backoffice boolean, p_multisesion_portal boolean, p_intentos integer, p_bloqueo_min integer, p_recuperacion text, p_clave_min_portal integer, p_clave_min_backoffice integer, p_provisional_dias integer, p_por text)` | administrativa | superadmin | authenticated + service_role |
+| `guardar_politica(p_backoffice_horas integer, p_portal_dias integer, p_multisesion_backoffice boolean, p_multisesion_portal boolean, p_intentos integer, p_bloqueo_min integer, p_recuperacion text, p_clave_min_portal integer, p_clave_min_backoffice integer, p_provisional_dias integer, p_por text, p_factor_superadmin boolean)` | administrativa | superadmin | authenticated + service_role |
 | `guardar_solicitud_aviso(p_tipo text, p_correo text, p_copia boolean, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `guardar_ticket_aviso(p_correo text, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `guardar_ticket_subtipo(p_id integer, p_tipo integer, p_nombre text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
@@ -128,6 +134,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `importar_planilla(p_empresa text, p_filas jsonb, p_por text)` | interna | — | service_role |
 | `importar_planilla_unificada(p_filas jsonb, p_periodo text, p_por text, p_ceses jsonb)` | administrativa | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `marcar_clave_cambiada(p_correo text)` | administrativa | solo la propia cuenta (correo del JWT) | authenticated + service_role |
+| `mi_segundo_factor()` | administrativa | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `mi_sesion_backoffice()` | administrativa (sesión propia) | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `nivel_en(p_modulo text)` | ayudante | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `notificar_memorandum(p_id text)` | administrativa | memorandums · nivel 2 | authenticated + service_role |
