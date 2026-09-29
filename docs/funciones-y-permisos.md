@@ -7,7 +7,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | Grupo | Funciones |
 |---|---|
 | administrativa (sesión propia) | 2 |
-| administrativa | 59 |
+| administrativa | 62 |
 | autoservicio del trabajador | 25 |
 | ayudante | 43 |
 | interna | 4 |
@@ -19,6 +19,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 |---|---|---|---|
 | `actualizar_ticket(p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `actualizar_usuario_admin(p_id bigint, p_perfil text, p_correo text, p_celular text, p_estado text)` | administrativa | superadmin | authenticated + service_role |
+| `afiliar_licencia_office(p_licencia bigint, p_dni text, p_nombre text, p_fila bigint)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `alta_trabajador(p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text, p_ingreso date, p_celular text, p_banco text, p_cuenta text, p_correo text, p_cci text, p_tipo_documento text)` | administrativa | personal · nivel 2 | authenticated + service_role |
 | `alternar_ticket_subtipo(p_id integer, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `alternar_ticket_tipo(p_id integer, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
@@ -49,6 +50,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `crear_usuario_admin(p_dni text, p_perfil text, p_correo text, p_celular text, p_clave text, p_por text)` | administrativa | superadmin | authenticated + service_role |
 | `decidir_propuesta_perfil(p_id bigint, p_decision text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `desactivar_perfil(p_id text)` | administrativa | superadmin | authenticated + service_role |
+| `desafiliar_licencia_office(p_fila bigint)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `devolver_activo(p_codigo text, p_destino text, p_condicion text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `editar_activo(p_codigo text, p_nuevo_codigo text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_area text, p_asignado_sin_confirmar text, p_observaciones text, p_por text, p_ip text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `editar_trabajador(p_dni text, p_nombre text, p_celular text, p_correo text, p_banco text, p_cuenta text, p_cci text, p_tipo_documento text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
@@ -121,6 +123,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `guardar_cargo_perfil(p_cargo text, p_destino text, p_perfil text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `guardar_clave_equipo(p_codigo text, p_clave text, p_por text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `guardar_feriado(p_fecha date, p_nombre text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
+| `guardar_licencia_office(p_id bigint, p_grupo text, p_correo text, p_estado text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `guardar_perfil(p_id text, p_nombre text, p_descripcion text, p_superadmin boolean, p_ver_remuneracion boolean, p_ver_documentos boolean, p_exportar boolean, p_matriz jsonb, p_empresas text[], p_por text, p_ver_bancarios boolean)` | administrativa | superadmin | authenticated + service_role |
 | `guardar_politica(p_backoffice_horas integer, p_portal_dias integer, p_multisesion_backoffice boolean, p_multisesion_portal boolean, p_intentos integer, p_bloqueo_min integer, p_recuperacion text, p_clave_min_portal integer, p_clave_min_backoffice integer, p_provisional_dias integer, p_por text, p_factor_superadmin boolean)` | administrativa | superadmin | authenticated + service_role |
 | `guardar_solicitud_aviso(p_tipo text, p_correo text, p_copia boolean, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
