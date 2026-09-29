@@ -122,6 +122,14 @@ export const LINEAS = [
   { numero: "955443322", operador: "Movistar", plan: "Plan Negocios 45.00", costo: 45.0, equipo: null, paga: "bremco", alta: "2025-05-15", estado: "suspendida" },
 ];
 
+// ADQ-09 · Licencias Office: forma de v_licencias_office (una fila por buzón de grupo).
+export const LICENCIAS_OFFICE = [
+  { id: 1, grupo: "RRHH_03", correo: "rrhh@promantserv.onmicrosoft.com", estado: "activa", paga: "promant", alta: "2026-09-29", cantidad: 2, porAfiliar: 1,
+    personas: [{ id: 1, dni: "45231876", nombre: "Rosa Quispe Huamán", empresa: "negliaf", afiliado: true }, { id: 2, dni: null, nombre: "ESPERANZA QUEVEDO", empresa: null, afiliado: false }] },
+  { id: 2, grupo: "SISTEMAS", correo: "sistemas@promantserv.onmicrosoft.com", estado: "suspendida", paga: "promant", alta: "2026-09-29", cantidad: 1, porAfiliar: 0,
+    personas: [{ id: 3, dni: "40125634", nombre: "Julio Mamani Apaza", empresa: "negliaf", afiliado: true }] },
+];
+
 export const EPP_ENTREGAS = [
   { id: 1, dni: "45231876", items: "Guantes de nitrilo (2), Mascarilla (5), Uniforme talla M (1)", entrega: "2026-07-01", reposicion: "2026-10-01", estado: "vigente" },
   { id: 2, dni: "41887203", items: "Guantes de nitrilo (2), Botas talla 41 (1)", entrega: "2026-07-01", reposicion: "2026-10-01", estado: "vigente" },

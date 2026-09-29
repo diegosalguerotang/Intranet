@@ -18,6 +18,7 @@ import Memorandums from "./pages/rrhh/Memorandums";
 import Asistencia from "./pages/rrhh/Asistencia";
 import Inventario from "./pages/admin/Inventario";
 import Lineas from "./pages/admin/Lineas";
+import LicenciasOffice from "./pages/admin/LicenciasOffice";
 import Tickets from "./pages/soporte/Tickets";
 import ConfigTickets from "./pages/soporte/ConfigTickets";
 import BandejaSolicitudes from "./pages/solicitudes/Bandeja";
@@ -87,6 +88,7 @@ export default function App() {
             <Route path="/rrhh/asistencia" element={<RequiereModulo modulo="asistencia"><Asistencia /></RequiereModulo>} />
             <Route path="/admin/activos" element={<RequiereModulo modulo="activos"><Inventario /></RequiereModulo>} />
             <Route path="/admin/lineas" element={<RequiereModulo modulo="activos"><Lineas /></RequiereModulo>} />
+            <Route path="/admin/licencias" element={<RequiereModulo modulo="activos"><LicenciasOffice /></RequiereModulo>} />
             <Route path="/soporte/tickets" element={<RequiereModulo modulo="soporte"><Tickets /></RequiereModulo>} />
             <Route path="/soporte/config" element={<RequiereModulo modulo="soporte"><ConfigTickets /></RequiereModulo>} />
             {/* Mi solicitud: SIN guard de módulo — cualquier usuario autenticado

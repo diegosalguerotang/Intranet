@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, FileText, CheckSquare, Megaphone, AlertTriangle,
   Clock, FileSignature, Boxes, Smartphone, HardHat, LogOut, Building2,
   UserCog, ShieldCheck, KeyRound, ScrollText, MapPin, LifeBuoy, Settings2,
-  Inbox, BellRing, BarChart3, ChevronDown, ClipboardPen, CalendarClock,
+  Inbox, BellRing, BarChart3, ChevronDown, ClipboardPen, CalendarClock, MailCheck,
 } from "lucide-react";
 import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
@@ -34,6 +34,7 @@ const NAV_RRHH = [
 const NAV_ADMIN = [
   { to: "/admin/activos", icon: Boxes, label: "Inventario de activos", code: "ADQ-01", modulo: "activos" },
   { to: "/admin/lineas", icon: Smartphone, label: "Líneas móviles", code: "ADQ-05", modulo: "activos" },
+  { to: "/admin/licencias", icon: MailCheck, label: "Licencias Office", code: "ADQ-09", modulo: "activos" },
   { to: "/admin/epp", icon: HardHat, label: "EPP y uniformes", code: "ADQ-06", modulo: "activos", proximamente: true },
 ];
 

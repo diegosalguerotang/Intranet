@@ -23,6 +23,7 @@ const FUENTES = {
   contratos: "v_contratos",
   activos: "v_activos",
   lineas: "lineas",
+  licenciasOffice: "v_licencias_office",
   epp_entregas: "v_epp_entregas",
   perfiles: "v_perfiles",
   perfilVersiones: "v_perfil_versiones",
@@ -57,6 +58,7 @@ const LOCAL = {
   contratos: MOCK.CONTRATOS,
   activos: MOCK.ACTIVOS,
   lineas: MOCK.LINEAS,
+  licenciasOffice: MOCK.LICENCIAS_OFFICE,
   epp_entregas: MOCK.EPP_ENTREGAS,
   perfiles: MOCK.PERFILES,
   perfilVersiones: MOCK.PERFIL_VERSIONES,
@@ -379,10 +381,10 @@ export function AppProvider({ children }) {
   const esErrorSesion = (msg) => /jwt|expired|PGRST301|invalid (api key|claim)|\b401\b/i.test(msg ?? "");
   const rpc = async (nombre, args, ...refrescar) => {
     if (!supabaseListo) return { error: null };
-    let { error } = await supabase.rpc(nombre, args);
+    let { data, error } = await supabase.rpc(nombre, args);
     if (error && esErrorSesion(error.message)) {
       const { error: eRefresh } = await supabase.auth.refreshSession();
-      if (!eRefresh) ({ error } = await supabase.rpc(nombre, args));
+      if (!eRefresh) ({ data, error } = await supabase.rpc(nombre, args));
     }
     if (error) console.error(`RPC ${nombre}:`, error.message);
     // 42501 a un superadmin: lo más probable es que su marca del segundo
@@ -394,7 +396,7 @@ export function AppProvider({ children }) {
       return { error: error.message };
     }
     await recargar(...refrescar);
-    return { error: error?.message ?? null };
+    return { error: error?.message ?? null, data };
   };
 
   const acciones = {
@@ -496,6 +498,13 @@ export function AppProvider({ children }) {
       if (error) { console.error("Supabase [actividad]:", error.message); return []; }
       return data ?? [];
     },
+    // ADQ-09 · Licencias Office (2026-09-29): escritura solo por RPC con nivel 2 de activos.
+    // guardar devuelve { error, data: id } (id nuevo o editado).
+    guardarLicenciaOffice: ({ id = null, grupo, correo, estado = "activa" }) =>
+      rpc("guardar_licencia_office", { p_id: id, p_grupo: grupo, p_correo: correo, p_estado: estado }, "licenciasOffice"),
+    afiliarLicenciaOffice: (licenciaId, { dni = null, nombre = null, fila = null } = {}) =>
+      rpc("afiliar_licencia_office", { p_licencia: licenciaId, p_dni: dni, p_nombre: nombre, p_fila: fila }, "licenciasOffice"),
+    desafiliarLicenciaOffice: (filaId) => rpc("desafiliar_licencia_office", { p_fila: filaId }, "licenciasOffice"),
     addLinea: (l) => {
       local("lineas", (xs) => [l, ...xs]);
       if (supabaseListo) {
