@@ -21,7 +21,7 @@ Fecha: 2026-09-29. Estado: aprobado por Diego en conversación («Ya empieza con
 
 ## 3. Datos (canónico nuevo `supabase/licencias.sql`)
 
-Se aplica después de `soporte.sql` y antes de `api-servicio.sql`/`seguridad.sql`. Idempotente (`create table if not exists`, `create or replace`, `drop policy if exists`).
+Vive como bloque `@@LICENCIAS@@` al final de `seguridad.sql` (lo embebe `scripts/licencias-generar.mjs`, que también genera migración y reversión); **no** entra en `CANONICOS` de `pg-local.mjs` porque los ensayos de fases anteriores re-aplican migraciones históricas con precondiciones fijas (fase 4: 47 vistas invoker) y recortan los bloques posteriores igual que `@@FACTOR@@`. Idempotente (`create table if not exists`, `create or replace`, `drop policy if exists`).
 
 **Tablas (public):**
 
@@ -57,9 +57,9 @@ create unique index if not exists uq_licencia_persona_abierta
 | `afiliar_licencia_office(p_licencia bigint, p_dni text, p_nombre text default null, p_fila bigint default null) returns bigint` | Con `p_fila`: pone el DNI a esa fila «por afiliar» (nombre del padrón). Sin `p_fila`: fila nueva; con DNI del padrón, o solo nombre (por afiliar). Rechaza DNI inexistente y duplicado abierto. |
 | `desafiliar_licencia_office(p_fila bigint) returns void` | `hasta = current_date` en la fila abierta. |
 
-Grants: `revoke all … from public, anon; grant execute … to authenticated, service_role`. Las tres firmas se añaden a la lista 2b de `seguridad.sql` (que revoca todo EXECUTE al inicio).
+Grants: `revoke all … from public, anon; grant execute … to authenticated, service_role`, dentro del propio bloque (va después del `revoke execute on all functions` inicial de `seguridad.sql`, como `@@FACTOR@@`; no se listan en 2b porque aún no existen en ese punto).
 
-**Seguridad y catálogos:** RLS en ambas tablas con `adm_lectura` = `(select public.nivel_en('activos')) >= 1` (sin `adm_escritura`: solo RPC); `grant select on … to authenticated` (lo exige la vista invoker); disparadores `trg_auditar_*` con `fn_auditar`. Se registran en: `scripts/fase4-generar.mjs` (`MATRIZ`, dos entradas `adm: nivel("activos")`), `scripts/fase2-generar.mjs` (`VISTAS_INVOKER` + `v_licencias_office`), `scripts/verificar-fase4.mjs` y `scripts/ensayar-fase4.mjs` (47 → 48 vistas invoker), `scripts/pg-local.mjs` (`CANONICOS` + `licencias.sql`), `supabase/MODELO.md`.
+**Seguridad y catálogos:** RLS en ambas tablas con `adm_lectura` = `(select public.nivel_en('activos')) >= 1` (sin `adm_escritura`: solo RPC); `grant select on … to authenticated` (lo exige la vista invoker); disparadores `trg_auditar_*` con `fn_auditar`. Se registran en: `scripts/fase4-generar.mjs` (`MATRIZ`, dos entradas `adm: nivel("activos")`), `scripts/fase2-generar.mjs` (`VISTAS_INVOKER` + `v_licencias_office`), `scripts/verificar-fase4.mjs` (47 → 48 vistas invoker en producción; `ensayar-fase4` sigue en 47 porque re-aplica la migración histórica sin el bloque), los `sinFaseN` de `scripts/fase2..6-generar.mjs` (recortan también `LICENCIAS`), `supabase/MODELO.md`.
 
 **Migración:** `supabase/migraciones/2026-09-29-licencias-office.sql` (una transacción: el canónico + los grants). Reversión: `supabase/respaldos/2026-09-29-licencias-office-reversion.sql` (drop de vista, funciones y tablas; el cliente desplegado tolera la ausencia de la fuente: la lista queda vacía).
 

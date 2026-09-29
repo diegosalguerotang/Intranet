@@ -18,7 +18,7 @@ export const FECHA = "2026-09-18";
 export const VISTAS_INVOKER = [
   "v_actividad_persona", "v_activos", "v_acuses", "v_asistencia_lotes", "v_asistencia_mensual",
   "v_cargo_perfiles", "v_comunicado_pendientes", "v_comunicados", "v_contratos", "v_declaraciones_vigentes",
-  "v_epp_entregas", "v_feriados", "v_lotes", "v_marcaciones", "v_memorandums", "v_mi_acceso",
+  "v_epp_entregas", "v_feriados", "v_licencias_office", "v_lotes", "v_marcaciones", "v_memorandums", "v_mi_acceso",
   "v_mis_solicitudes", "v_movimientos_persona", "v_perfil_propuestas", "v_perfil_versiones", "v_perfiles",
   "v_personal", "v_politica_acceso", "v_registro_accesos", "v_rit_faltas", "v_rits", "v_sedes",
   "v_solicitud_avisos", "v_solicitud_eventos", "v_solicitud_tipos", "v_solicitudes", "v_ticket_avisos",
@@ -230,7 +230,7 @@ ${CUERPO}-- @@FASE2-FIN@@`;
 // Quita la fase 2 y TODAS las posteriores (3, 4…): el ensayo de una fase corre
 // sobre el estado exacto de la anterior.
 // también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
-export const sinFase2 = (texto) => texto.replace(/-- @@(FASE[2-9][A-Z]?|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+export const sinFase2 = (texto) => texto.replace(/-- @@(FASE[2-9][A-Z]?|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

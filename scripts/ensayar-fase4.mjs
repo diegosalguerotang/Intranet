@@ -116,7 +116,8 @@ try {
     igual(await total(`select count(*)::int as n from pg_policies where schemaname = 'storage'`), 3, "bucket");
     for (const f of AYUDANTES) { const [x] = await sql(`select has_function_privilege('anon', $1, 'execute') as a, has_function_privilege('authenticated', $1, 'execute') as u`, [`public.${f}`]); igual(`${x.a}${x.u}`, "falsetrue", f); }
     // mismo motivo: el total de tablas de este estado cuenta solo las de SIN_POLITICA que existen aquí
-    igual(Object.keys(MATRIZ).length + n_esperadas, await total(`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%'`), "la matriz cubre todas las tablas");
+    const n_matriz = (await sql(`select count(*)::int as n from unnest($1::text[]) t where to_regclass(t) is not null`, [Object.keys(MATRIZ)]))[0].n; // ídem: solo las tablas de la MATRIZ que existen en este estado (las de bloques posteriores, p. ej. @@LICENCIAS@@, no)
+    igual(n_matriz + n_esperadas, await total(`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%'`), "la matriz cubre todas las tablas");
   });
 
   console.log("\n== 2 · Comportamiento");

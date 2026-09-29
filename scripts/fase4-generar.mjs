@@ -63,6 +63,8 @@ export const MATRIZ = {
   "public.activos":                   { adm: `${nivel("activos")} and public.fn_alcance_empresa(empresa_id)` },
   "public.asignaciones":              { adm: `${nivel("activos")} and public.fn_alcance_activo(activo_codigo)` },
   "public.lineas":                    { adm: nivel("activos"), escr: nivel("activos", 2) },
+  "public.licencias_office":          { adm: nivel("activos") },  // ADQ-09 (2026-09-29): escritura solo por RPC
+  "public.licencias_office_personas": { adm: nivel("activos") },
   "public.tickets":                   { adm: `${nivel("soporte")} and public.fn_alcance_empresa(empresa_id)`, trab: `public.fn_es_mi_dni(solicitante_dni)` },
   "public.ticket_tipos":              { sesion: true },
   "public.ticket_subtipos":           { sesion: true },
@@ -374,7 +376,7 @@ ${RLS_SQL}
 
 // Quita la fase 4 y todas las posteriores: el ensayo parte del estado de la 3c.
 // también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
-export const sinFase4 = (texto) => texto.replace(/-- @@(FASE[4-9][A-Z]?|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+export const sinFase4 = (texto) => texto.replace(/-- @@(FASE[4-9][A-Z]?|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

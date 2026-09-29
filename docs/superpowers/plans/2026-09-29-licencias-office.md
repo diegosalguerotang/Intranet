@@ -16,8 +16,8 @@ Spec: `docs/superpowers/specs/2026-09-29-licencias-office-design.md`.
 - Módulo de permisos `activos`: lectura nivel ≥ 1, escritura nivel ≥ 2 (solo por RPC, sin `adm_escritura`).
 - `grupo` en mayúsculas y `correo` en minúsculas, ambos únicos. Estados: `activa | suspendida | baja`. Paga fija `promant`.
 - Afiliación abierta = `hasta is null`; nunca se borra una afiliación, se cierra. Una persona una sola vez abierta por grupo.
-- Toda función nueva nace sin EXECUTE (default privileges); grant explícito a `authenticated, service_role`; `security definer` con `search_path = public, interno, extensions`. Firmas añadidas a la lista 2b de `supabase/seguridad.sql`.
-- Catálogos de los verificadores: `MATRIZ` (fase 4) + 2 tablas; `VISTAS_INVOKER` (fase 2) + 1 vista; conteo de vistas invoker 47 → **48** en `verificar-fase4.mjs` y `ensayar-fase4.mjs`; `CANONICOS` de `pg-local.mjs` + `licencias.sql` después de `soporte.sql`.
+- Toda función nueva nace sin EXECUTE (default privileges); grant explícito a `authenticated, service_role`; `security definer` con `search_path = public, interno, extensions`. Los grants viven en el propio bloque (no en la lista 2b de `seguridad.sql`, donde aún no existen).
+- Catálogos de los verificadores: `MATRIZ` (fase 4) + 2 tablas; `VISTAS_INVOKER` (fase 2) + 1 vista; conteo de vistas invoker 47 → **48** solo en `verificar-fase4.mjs` (producción); el canónico se embebe como bloque `@@LICENCIAS@@` al final de `seguridad.sql` con `scripts/licencias-generar.mjs` y NO entra en `CANONICOS` (los ensayos históricos lo recortan).
 - Regla de despliegue: la migración y la carga en producción las aplica **Diego con `!`** antes del push. Tope de 12 funciones en `api/`: este módulo **no añade funciones serverless**.
 - Textos de la interfaz en español, literales y accionables. Commits en español con prefijo de área (`licencias(sql): …`, `backoffice(ADQ-09): …`, `docs(licencias): …`) terminados con `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 
@@ -121,7 +121,7 @@ Nota: `normalize("NFD")` separa la tilde de la Ñ también (Ñ → N + ~); por e
 
 ### Task 2: Canónico `supabase/licencias.sql` + catálogos + ensayo local
 
-**Files:** Create `supabase/licencias.sql`, `scripts/ensayar-licencias.mjs`. Modify `scripts/pg-local.mjs:36` (CANONICOS), `scripts/fase4-generar.mjs:65` (MATRIZ), `scripts/fase2-generar.mjs:25` (VISTAS_INVOKER), `scripts/verificar-fase4.mjs:48-56` y `scripts/ensayar-fase4.mjs:107-115` (47 → 48), `supabase/seguridad.sql:84-88` (lista 2b).
+**Files:** Create `supabase/licencias.sql`, `scripts/ensayar-licencias.mjs`. Modify `scripts/pg-local.mjs:36` (CANONICOS), `scripts/fase4-generar.mjs:65` (MATRIZ), `scripts/fase2-generar.mjs:25` (VISTAS_INVOKER), `scripts/verificar-fase4.mjs:48-56` (47 → 48; `ensayar-fase4` queda en 47), `scripts/fase2..6-generar.mjs` (regex `sinFaseN` + `LICENCIAS`), `scripts/licencias-generar.mjs` (nuevo: embebe el bloque y genera migración/reversión), `supabase/seguridad.sql:84-88` (lista 2b).
 
 **Produces:** tablas `licencias_office`, `licencias_office_personas`; vista `v_licencias_office(id, grupo, correo, estado, paga, alta, personas jsonb, cantidad int, "porAfiliar" int)`; RPC `guardar_licencia_office(p_id bigint, p_grupo text, p_correo text, p_estado text) returns bigint`, `afiliar_licencia_office(p_licencia bigint, p_dni text, p_nombre text default null, p_fila bigint default null) returns bigint`, `desafiliar_licencia_office(p_fila bigint) returns void`.
 

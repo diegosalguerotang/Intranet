@@ -45,12 +45,12 @@ await prueba("0 políticas con condición true; ninguna interina; toda tabla con
   igual(`${r.t}/${r.interinas}/${r.sin_rls}`, "0/0/0", "true/interinas/sin rls"); // Comparación como conjunto: `string_agg(... order by 1)` ordena por la constante 1 (orden indefinido).
   igual(String(r.sin_politica ?? "").split(",").filter(Boolean).sort().join(","), [...SIN_POLITICA].sort().join(","), "sin política");
 });
-await prueba(`la matriz cubre todas las tablas; 47 vistas security_invoker; ${POLITICAS_BUCKET.length} políticas del bucket; ayudantes sin acceso de anon`, async () => {
+await prueba(`la matriz cubre todas las tablas; 48 vistas security_invoker; ${POLITICAS_BUCKET.length} políticas del bucket; ayudantes sin acceso de anon`, async () => {
   const [r] = await sql(`select (select count(*) from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%')::int as tablas,
     (select count(*) from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname = 'public' and c.relkind = 'v' and 'security_invoker=on' = any(coalesce(c.reloptions, '{}')))::int as inv,
     (select count(*) from pg_policies where schemaname = 'storage' and policyname in (${lista(POLITICAS_BUCKET)}))::int as bucket,
     (select count(*) from unnest(array[${lista(AYUDANTES)}]) f where has_function_privilege('anon', ('public.' || f)::regprocedure, 'execute') or not has_function_privilege('authenticated', ('public.' || f)::regprocedure, 'execute'))::int as mal`);
-  igual(r.tablas, Object.keys(MATRIZ).length + SIN_POLITICA.length, "tablas cubiertas"); igual(`${r.inv}/${r.bucket}/${r.mal}`, `47/${POLITICAS_BUCKET.length}/0`, "vistas/bucket/ayudantes");
+  igual(r.tablas, Object.keys(MATRIZ).length + SIN_POLITICA.length, "tablas cubiertas"); igual(`${r.inv}/${r.bucket}/${r.mal}`, `48/${POLITICAS_BUCKET.length}/0`, "vistas/bucket/ayudantes");
 });
 
 console.log("\n== Comportamiento (cuentas reales, sesiones simuladas)");

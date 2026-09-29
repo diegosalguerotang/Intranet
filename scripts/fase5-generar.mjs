@@ -144,7 +144,7 @@ ${CANONICO}
 -- @@FASE5-FIN@@`;
 
 // también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
-export const sinFase5 = (texto) => texto.replace(/-- @@(FASE[5-9][A-Z]?|FACTOR)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+export const sinFase5 = (texto) => texto.replace(/-- @@(FASE[5-9][A-Z]?|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {
