@@ -42,7 +42,8 @@ await prueba("0 políticas con condición true; ninguna interina; toda tabla con
     (select count(*) from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%' and not c.relrowsecurity)::int as sin_rls,
     (select string_agg(s.nspname || '.' || c.relname, ',' order by 1) from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%'
        and not exists (select 1 from pg_policies p where p.schemaname = s.nspname and p.tablename = c.relname)) as sin_politica`);
-  igual(`${r.t}/${r.interinas}/${r.sin_rls}`, "0/0/0", "true/interinas/sin rls"); igual(r.sin_politica, [...SIN_POLITICA].sort().join(","), "sin política");
+  igual(`${r.t}/${r.interinas}/${r.sin_rls}`, "0/0/0", "true/interinas/sin rls"); // Comparación como conjunto: `string_agg(... order by 1)` ordena por la constante 1 (orden indefinido).
+  igual(String(r.sin_politica ?? "").split(",").filter(Boolean).sort().join(","), [...SIN_POLITICA].sort().join(","), "sin política");
 });
 await prueba(`la matriz cubre todas las tablas; 47 vistas security_invoker; ${POLITICAS_BUCKET.length} políticas del bucket; ayudantes sin acceso de anon`, async () => {
   const [r] = await sql(`select (select count(*) from pg_class c join pg_namespace s on s.oid = c.relnamespace where s.nspname in ('public','interno') and c.relkind = 'r' and c.relname not like 'respaldo_%')::int as tablas,
