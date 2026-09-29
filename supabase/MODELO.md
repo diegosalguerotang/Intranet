@@ -12,7 +12,8 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (espejo acumulado de las
 > fases de la corrección de seguridad: 0, 0b, 1, 2, 3a, 3b, 3c, 4, 5a, 6b y el segundo
 > factor por correo (2026-09-28), cada una con su canónico: `bancario.sql`,
-> `claves-equipos.sql`, `rls.sql`, `auditoria.sql`, `limites.sql`, `factor.sql`; desde la 3a las tablas
+> `claves-equipos.sql`, `rls.sql`, `auditoria.sql`, `limites.sql`, `factor.sql`, y Licencias Office
+> (2026-09-29, `licencias.sql`, bloque `@@LICENCIAS@@`, ver sección abajo); desde la 3a las tablas
 > `usuarios_admin`, `perfiles`, `perfil_*`, `cargo_perfiles`, `registro_accesos`,
 > `politica_acceso`, `auditoria` y `correo_tokens` viven en el esquema
 > `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`
@@ -184,6 +185,28 @@ Herramientas: `scripts/aplicar-sql.mjs` (Management API vía Node; el token de
 la CLI se carga con `scripts/token-supabase.ps1` desde el Administrador de
 credenciales) y `scripts/verificar-*.sql|mjs` (verificaciones positivas,
 negativas y E2E con la clave publishable).
+
+## Licencias Office (`licencias.sql`, pantalla ADQ-09, 2026-09-29)
+
+Buzones de grupo de Microsoft 365 del tenant PROMANTSERV: cada persona dentro
+de un grupo es una licencia (spec `docs/superpowers/specs/2026-09-29-licencias-office-design.md`).
+
+- `licencias_office` (grupo único en mayúsculas, correo único en minúsculas,
+  `paga` = promant, estado activa|suspendida|baja, alta) y
+  `licencias_office_personas` (grupo → persona: `dni` del padrón o null =
+  «por afiliar» con `nombre` de la fuente; `desde`/`hasta`; índice único
+  parcial por grupo+DNI abierto). Nunca se borra una afiliación: se cierra.
+- Vista `v_licencias_office` (security_invoker): un grupo por fila con
+  `personas` (jsonb), `cantidad` y `porAfiliar`.
+- RPC con guarda `fn_nivel_modulo('activos') >= 2`: `guardar_licencia_office`,
+  `afiliar_licencia_office` (por DNI, por nombre, o resolver una fila «por
+  afiliar»), `desafiliar_licencia_office`. Lectura por RLS `adm_lectura`
+  (nivel 1 de activos). Auditoría con `fn_auditar`.
+- El canónico vive como bloque `@@LICENCIAS@@` al final de `seguridad.sql`
+  (`scripts/licencias-generar.mjs` genera también migración y reversión); los
+  ensayos de fases anteriores lo recortan. Ensayo: `scripts/ensayar-licencias.mjs`;
+  producción: `scripts/verificar-licencias.mjs`. Carga inicial:
+  `scripts/licencias-2026-09-29.sql` (20 grupos, 43 personas, 39 con DNI).
 
 ## Pendientes de modelado (marcados POR DEFINIR en los documentos)
 
