@@ -5,6 +5,8 @@ import { Card, Button, Field, Input, Note } from "../components/ui";
 
 const CLAVE_DISPOSITIVO = "backoffice-dispositivo";
 const ESPERA_REENVIO_S = 60;
+// Debe coincidir con MSJ_SIN_CORREO de api/segundo-factor.js.
+const MSJ_SIN_CORREO = "No se pudo enviar el código. Avisa a soporte técnico.";
 const leerDispositivo = () => { try { return localStorage.getItem(CLAVE_DISPOSITIVO); } catch { return null; } };
 const guardarDispositivo = (t) => { try { localStorage.setItem(CLAVE_DISPOSITIVO, t); } catch { /* modo privado */ } };
 const borrarDispositivo = () => { try { localStorage.removeItem(CLAVE_DISPOSITIVO); } catch { /* modo privado */ } };
@@ -53,7 +55,7 @@ export default function SegundoFactor() {
   }, [espera]);
 
   const enviar = async () => {
-    setError(null); setAgotado(false); setIntentos(null); setCodigo("");
+    setError(null); setAgotado(false); setIntentos(null); setCodigo(""); setSinCorreo(false);
     setFase("enviando");
     const r = await segundoFactor("enviar");
     if (!montado.current) return;
@@ -64,11 +66,16 @@ export default function SegundoFactor() {
     setFase("codigo");
     if (r.status === 429 && r.esperaSeg) { setEspera(r.esperaSeg); setError(r.error); return; }
     // 503 también cubre un fallo transitorio de la base ("La base no
-    // respondió…"); solo el mensaje de soporte técnico significa que no hay
-    // otra vía en pantalla (bloquear "Reenviar" en un error pasajero dejaría
-    // sin salida a alguien que solo necesitaba reintentar).
+    // respondió…"). El mensaje de soporte técnico significa que el correo no
+    // salió (motor sin configurar o el proveedor lo rechazó): el código ya
+    // quedó emitido en la base y ningún código llegó al buzón, así que se
+    // oculta la casilla, pero «Reenviar» SIGUE disponible tras la espera de
+    // 60 s del servidor. Antes se ocultaba también el reenvío y, cuando el
+    // rechazo era del proveedor (2026-09-29: Gmail 535, contraseña de
+    // aplicación revocada), la pantalla quedaba sin salida aunque soporte
+    // arreglara el motor con la pestaña abierta.
     if (r.status === 503) {
-      if (r.error === "No se pudo enviar el código. Avisa a soporte técnico.") setSinCorreo(true);
+      if (r.error === MSJ_SIN_CORREO) { setSinCorreo(true); setEspera(ESPERA_REENVIO_S); }
       setError(r.error);
       return;
     }
@@ -171,11 +178,9 @@ export default function SegundoFactor() {
                 {cargando ? "Verificando…" : "Verificar"}
               </Button>
             )}
-            {!sinCorreo && (
-              <Button type="button" variant="secondary" className="w-full" disabled={espera > 0 || fase === "enviando"} onClick={enviar}>
-                {agotado ? "Pedir un código nuevo" : espera > 0 ? `Reenviar código (${espera} s)` : "Reenviar código"}
-              </Button>
-            )}
+            <Button type="button" variant="secondary" className="w-full" disabled={espera > 0 || fase === "enviando"} onClick={enviar}>
+              {(agotado || sinCorreo ? "Pedir un código nuevo" : "Reenviar código") + (espera > 0 ? ` (${espera} s)` : "")}
+            </Button>
             <button type="button" onClick={() => salir()} className="w-full text-center text-[12px] text-gris-cl hover:text-tinta">
               Salir
             </button>
