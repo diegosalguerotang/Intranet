@@ -30,7 +30,7 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
 beforeEach(() => { llamadas.length = 0; rastro.length = 0; estado.factor = { exigido: true, verificado: true }; });
 const llamar = async (cuerpo) => {
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis(), setHeader: vi.fn() };
-  await handler({ method: "POST", body: cuerpo, headers: { "x-sesion": "jwt-diego" }, socket: {} }, res);
+  await handler({ method: "POST", body: cuerpo, headers: { "x-sesion": "jwt-diego", "x-forwarded-for": "190.1.2.3" }, socket: {} }, res);
   return { status: res.status.mock.calls[0][0], json: res.json.mock.calls[0][0] };
 };
 
@@ -50,10 +50,10 @@ describe("compuerta del segundo factor", () => {
 });
 
 describe("rastro del correo de acceso", () => {
-  it("crear con invitación caída → clave provisional por correo y fila acceso-admin «enviado» sin ip ni sujeto", async () => {
+  it("crear con invitación caída → clave provisional por correo y fila acceso-admin «enviado» con IP y correo como sujeto", async () => {
     const r = await llamar({ accion: "crear", usuario_id: 7 });
     expect(r.status).toBe(200);
     expect(r.json.enviadoCorreo).toBe("x@ejemplo.pe");
-    expect(rastro).toEqual([{ accion: "acceso-admin", ip: null, sujeto: null, destinatario: "x@ejemplo.pe", resultado: "enviado", detalle: null }]);
+    expect(rastro).toEqual([{ accion: "acceso-admin", ip: "190.1.2.3", sujeto: "x@ejemplo.pe", destinatario: "x@ejemplo.pe", resultado: "enviado", detalle: null }]);
   });
 });

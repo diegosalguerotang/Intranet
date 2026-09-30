@@ -95,11 +95,17 @@ export async function registrar(fila) {
 // El segundo factor tiene su propio cubo (2026-09-28): solo cuenta sus propios
 // envíos y no los «limitado». Si compartiera el de las demás acciones, 30 avisos
 // de solicitudes tras el NAT de la oficina dejarían al superadmin sin BackOffice
-// y cada reintento añadiría otra fila «limitado». Las demás acciones no cambian.
+// y cada reintento añadiría otra fila «limitado». Las demás acciones comparten
+// cubo, pero NO cuentan las filas solo informativas (RASTRO_SIN_LIMITE): los
+// correos de acceso de una creación masiva desde la oficina no deben bloquear
+// una hora el resto. Esas filas conservan ip y sujeto como evidencia.
+export const RASTRO_SIN_LIMITE = ["acceso-portal", "acceso-admin"];
 async function contar(campo, valor, accion) {
   if (!valor) return 0;
   const desde = new Date(Date.now() - VENTANA_MIN * 60_000).toISOString();
-  const propio = accion === "segundo-factor" ? "&accion=eq.segundo-factor&resultado=neq.limitado" : "";
+  const propio = accion === "segundo-factor"
+    ? "&accion=eq.segundo-factor&resultado=neq.limitado"
+    : `&accion=not.in.(${RASTRO_SIN_LIMITE.join(",")})`;
   const r = await rest(
     `/rest/v1/correo_envios?${campo}=eq.${encodeURIComponent(valor)}&creado_en=gte.${encodeURIComponent(desde)}${propio}&select=id&limit=1`,
     { headers: { prefer: "count=exact" } },

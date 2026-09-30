@@ -19,3 +19,8 @@ tests/fixtures/OFICINA_JUL_2026_UNIFICADO.xlsx
 
 # Fase 2.5: volcado de produccion anonimizado (se regenera con scripts/entorno-pruebas.mjs extraer)
 supabase/pruebas/datos-anonimizados.sql
+
+# Planillas reales usadas por las suites de padron y control semanal (datos
+# personales: viven solo en local; las suites se saltan si faltan).
+tests/fixtures/PLANILLA_UNIFICADA_ULTIMO.xlsx
+tests/fixtures/Control_Semanal_01-28_Agosto_2026.xlsx

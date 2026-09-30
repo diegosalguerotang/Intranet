@@ -13,9 +13,13 @@ const ETIQUETAS = {
 };
 export const etiquetaAccion = (accion) => ETIQUETAS[accion] ?? accion;
 
+// La función de la base devuelve como máximo 100 filas (TOPE): con 100 el
+// total real puede ser mayor y se dice «100 o más».
+export const TOPE = 100;
 export const resumenFallos = (filas) => {
   const n = filas?.length ?? 0;
   if (!n) return null;
+  if (n >= TOPE) return `${TOPE} o más correos no se pudieron enviar en las últimas 24 horas`;
   return n === 1
     ? "1 correo no se pudo enviar en las últimas 24 horas"
     : `${n} correos no se pudieron enviar en las últimas 24 horas`;

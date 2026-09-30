@@ -46,7 +46,8 @@ console.log("\n== Vercel (solo nombres de variables)");
 await prueba("RESEND_API_KEY y CORREO_REMITENTE en Production y Preview; SMTP_USER/SMTP_PASS retiradas", async () => {
   const r = spawnSync("vercel", ["env", "ls"], { shell: true, encoding: "utf8" });
   const salida = `${r.stdout}\n${r.stderr}`;
-  const tiene = (nombre, entorno) => new RegExp(`${nombre}\\s+\\S+\\s+\\S+\\s+[^\\n]*${entorno}`).test(salida);
+  // Una fila por variable: nombre al inicio de la línea y el entorno en la misma línea.
+  const tiene = (nombre, entorno) => new RegExp(`^\\s*${nombre}\\s+[^\\n]*\\b${entorno}\\b`, "m").test(salida);
   igual(`${tiene("RESEND_API_KEY", "Production")}/${tiene("RESEND_API_KEY", "Preview")}/${tiene("CORREO_REMITENTE", "Production")}`, "true/true/true", "resend");
   igual(/SMTP_USER|SMTP_PASS/.test(salida), false, "gmail sigue en Vercel");
 });

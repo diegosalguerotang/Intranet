@@ -1,5 +1,6 @@
 // tests/api/portal-cuentas.test.js — Cuentas del portal: cada correo de acceso
-// deja rastro en correo_envios (sin ip ni sujeto: es informativo, no limita).
+// deja rastro en correo_envios con ip y sujeto (informativo: contar() lo excluye
+// del límite de tasa).
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 
 process.env.SUPA_SERVICE_KEY = "clave-servicio-de-prueba";
@@ -33,11 +34,11 @@ const llamar = async (cuerpo) => {
 };
 
 describe("rastro del correo de acceso", () => {
-  it("crear con correo → 200, enviado y una fila acceso-portal «enviado» sin ip ni sujeto", async () => {
+  it("crear con correo → 200, enviado y una fila acceso-portal «enviado» con la IP real y el DNI como sujeto", async () => {
     const r = await llamar({ accion: "crear", dni: "12345678", enviarCorreo: true });
     expect(r.status).toBe(200);
     expect(r.json.enviado).toBe("ana@ejemplo.pe");
-    expect(rastro).toEqual([{ accion: "acceso-portal", ip: null, sujeto: null, destinatario: "ana@ejemplo.pe", resultado: "enviado", detalle: null }]);
+    expect(rastro).toEqual([{ accion: "acceso-portal", ip: "190.1.2.3", sujeto: "12345678", destinatario: "ana@ejemplo.pe", resultado: "enviado", detalle: null }]);
   });
   it("si el proveedor falla: la cuenta igual se crea, viaja errorCorreo y la fila dice «error» con el detalle", async () => {
     motor.falla = true;

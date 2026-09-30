@@ -160,12 +160,17 @@ export function AppProvider({ children }) {
   const [db, setDb] = useState(() => dbInicial(conSupabase, FUENTES, LOCAL));
   const [origen, setOrigen] = useState(conSupabase ? "supabase" : "local"); // "supabase" | "local" | "error"
   // Aviso de correos fallidos (2026-09-30): solo superadministradores, cargado
-  // DESPUÉS del segundo factor (pendiente daría 42501). Un error deja la lista
-  // vacía: la franja jamás bloquea la carga.
+  // DESPUÉS de publicar el usuario y fuera de la ruta crítica (no se espera).
+  // Con sesión vencida refresca y reintenta una vez; cualquier otro error deja
+  // la lista vacía: la franja jamás bloquea ni retrasa la carga.
   const [correoFallos, setCorreoFallos] = useState([]);
   const cargarCorreoFallos = async (esSuperadmin) => {
     if (!conSupabase || !esSuperadmin) { setCorreoFallos([]); return; }
-    const { data, error } = await supabase.rpc("correo_fallos_recientes");
+    let { data, error } = await supabase.rpc("correo_fallos_recientes");
+    if (error && /jwt|expired|PGRST301|\b401\b/i.test(error.message ?? "")) {
+      const { error: eRefresh } = await supabase.auth.refreshSession();
+      if (!eRefresh) ({ data, error } = await supabase.rpc("correo_fallos_recientes"));
+    }
     setCorreoFallos(error || !Array.isArray(data) ? [] : data);
   };
 
@@ -273,9 +278,9 @@ export function AppProvider({ children }) {
       // queda en "error" y el Shell ofrece reintentar.
       await recargar();
       if (!activo || mia !== generacion) return;
-      await cargarCorreoFallos(base.acceso.esSuperadmin);
-      if (!activo || mia !== generacion) return;
       setUser(base);
+      // Informativo: después de publicar el usuario y sin esperar.
+      cargarCorreoFallos(base.acceso.esSuperadmin).catch(() => setCorreoFallos([]));
     };
     resolverRef.current = resolver;
     supabase.auth.getSession().then(({ data }) => resolver(data.session));

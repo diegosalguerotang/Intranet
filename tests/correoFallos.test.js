@@ -18,6 +18,9 @@ describe("resumenFallos", () => {
     expect(resumenFallos([{}])).toBe("1 correo no se pudo enviar en las últimas 24 horas");
     expect(resumenFallos([{}, {}, {}])).toBe("3 correos no se pudieron enviar en las últimas 24 horas");
   });
+  it("al llegar al tope de la función dice «100 o más»", () => {
+    expect(resumenFallos(Array.from({ length: 100 }, () => ({})))).toBe("100 o más correos no se pudieron enviar en las últimas 24 horas");
+  });
 });
 describe("formatearHora", () => {
   it("día/mes y hora local con dos dígitos", () => {

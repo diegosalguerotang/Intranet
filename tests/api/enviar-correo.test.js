@@ -146,10 +146,13 @@ describe("límite de tasa", () => {
     expect((await llamar({ accion: "aviso-ticket", numero: "TK-0007" }, { "x-sesion": "jwt-admin" }, "9.9.9.9")).status).toBe(429);
     expect(enviados).toHaveLength(0);
   });
-  it("las acciones de correo cuentan TODAS las filas de la ventana (sin filtrar por acción ni resultado): comportamiento previo intacto", async () => {
+  it("las acciones de correo cuentan las filas de la ventana sin filtrar por resultado, pero excluyen el rastro informativo de los correos de acceso (2026-09-30)", async () => {
     await llamar({ accion: "recuperacion", dni: "45231876" });
     expect(estado.consultas.length).toBeGreaterThanOrEqual(2);
-    for (const c of estado.consultas) { expect(c).not.toContain("accion="); expect(c).not.toContain("resultado="); }
+    for (const c of estado.consultas) {
+      expect(c).toContain("accion=not.in.(acceso-portal,acceso-admin)");
+      expect(c).not.toContain("resultado=");
+    }
   });
   it("si la tabla correo_envios no responde, falla cerrado con 503 y no envía", async () => {
     estado.tablaCaida = true;

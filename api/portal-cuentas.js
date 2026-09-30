@@ -9,7 +9,7 @@
 // clave propia y declarar el celular antes de poder usar nada.
 import { randomInt } from "node:crypto";
 import { enviar, plantilla } from "./_correo.js";
-import { registrar } from "./enviar-correo.js";
+import { registrar, ipDe } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -27,10 +27,10 @@ const cabService = {
 const claveAleatoria = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
 
 // Correo de acceso: solo lo manda este endpoint (nadie más conoce la clave).
-// Deja rastro en correo_envios SIN ip ni sujeto (2026-09-30): el límite de
-// tasa cuenta por ip/sujeto sin distinguir acción y una creación masiva desde
-// la oficina bloquearía una hora las demás acciones. Solo informa.
-async function correoAcceso(persona, dni, clave) {
+// Deja rastro en correo_envios con ip y sujeto (2026-09-30); la acción
+// «acceso-portal» queda FUERA del límite de tasa (contar() la excluye): una
+// creación masiva desde la oficina no debe bloquear las demás acciones.
+async function correoAcceso(persona, dni, clave, ip) {
   const r = await enviar(persona.correo, "Tu acceso al Portal del Trabajador — GrupoER", plantilla(
     "Tu acceso al Portal del Trabajador",
     `<p>Hola ${persona.nombre.split(" ")[0]}: ya puedes entrar al portal.</p>
@@ -38,7 +38,7 @@ async function correoAcceso(persona, dni, clave) {
         <b>Usuario:</b> tu número de documento (${dni})<br/>
         <b>Clave inicial:</b> ${clave}</p>
      <p>En tu primer ingreso el portal te pedirá crear tu clave personal.</p>`));
-  await registrar({ accion: "acceso-portal", ip: null, sujeto: null, destinatario: persona.correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
+  await registrar({ accion: "acceso-portal", ip, sujeto: dni, destinatario: persona.correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
   return r.error ? { errorCorreo: r.error } : { enviado: persona.correo };
 }
 
@@ -58,7 +58,7 @@ async function buscarCuenta(correo) {
 // crear: cuenta GoTrue + fila en cuentas_portal (primer ingreso pendiente).
 // El número puede ser DNI, CE o pasaporte (alfanumérico): la verdad es el
 // maestro, no un regex; el correo técnico va SIEMPRE en minúsculas.
-async function crearCuenta(dni, creadoPor, conCorreo = false) {
+async function crearCuenta(dni, creadoPor, conCorreo = false, ip = null) {
   if (!/^[0-9A-Za-z-]{4,20}$/.test(dni)) return { dni, error: "Número de documento inválido." };
   const persona = (await rest(
     `/rest/v1/personas?dni=eq.${encodeURIComponent(dni.toUpperCase())}&select=dni,nombre,correo&limit=1`, { method: "GET" }
@@ -82,11 +82,11 @@ async function crearCuenta(dni, creadoPor, conCorreo = false) {
     body: JSON.stringify({ dni, primer_ingreso_pendiente: true, creado_por: creadoPor }),
   });
   // El envío de correo jamás deshace la cuenta: si falla, viaja errorCorreo.
-  const aviso = conCorreo && persona.correo ? await correoAcceso(persona, dni, clave) : {};
+  const aviso = conCorreo && persona.correo ? await correoAcceso(persona, dni, clave, ip) : {};
   return { dni, nombre: persona.nombre, clave, ...aviso };
 }
 
-async function restablecerCuenta(dni, conCorreo = false) {
+async function restablecerCuenta(dni, conCorreo = false, ip = null) {
   dni = dni.toUpperCase();
   const correo = `${dni.toLowerCase()}@${DOMINIO}`;
   const cuenta = await buscarCuenta(correo);
@@ -105,7 +105,7 @@ async function restablecerCuenta(dni, conCorreo = false) {
     headers: { prefer: "return=minimal" },
     body: JSON.stringify({ primer_ingreso_pendiente: true }),
   });
-  const aviso = conCorreo && persona?.correo ? await correoAcceso(persona, dni, clave) : {};
+  const aviso = conCorreo && persona?.correo ? await correoAcceso(persona, dni, clave, ip) : {};
   return { dni, nombre: persona?.nombre, clave, ...aviso };
 }
 
@@ -135,23 +135,24 @@ export default async function handler(req, res) {
   const autor = correoLlamador;
 
   const conCorreo = Boolean(cuerpo.enviarCorreo);
+  const ip = ipDe(req);
 
   if (accion === "crear") {
     if (!dni) return res.status(400).json({ error: "Falta el dni." });
-    const r = await crearCuenta(String(dni), autor, conCorreo);
+    const r = await crearCuenta(String(dni), autor, conCorreo, ip);
     return res.status(r.error ? 400 : 200).json(r);
   }
   if (accion === "restablecer") {
     if (!dni) return res.status(400).json({ error: "Falta el dni." });
-    const r = await restablecerCuenta(String(dni), conCorreo);
+    const r = await restablecerCuenta(String(dni), conCorreo, ip);
     return res.status(r.error ? 400 : 200).json(r);
   }
   if (accion === "crear-lote") {
     if (!Array.isArray(dnis) || dnis.length === 0) return res.status(400).json({ error: "Falta la lista de dnis." });
-    // Tope corto porque cada envío SMTP suma segundos: el cliente troza en 10.
+    // Tope corto porque cada envío de correo suma segundos: el cliente troza en 10.
     if (dnis.length > 10) return res.status(400).json({ error: "Máximo 10 por lote (el cliente envía por partes)." });
     const resultados = [];
-    for (const d of dnis) resultados.push(await crearCuenta(String(d), autor, conCorreo));
+    for (const d of dnis) resultados.push(await crearCuenta(String(d), autor, conCorreo, ip));
     return res.status(200).json({ resultados });
   }
   return res.status(400).json({ error: "Acción desconocida." });

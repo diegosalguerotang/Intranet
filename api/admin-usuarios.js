@@ -5,7 +5,7 @@
 //   crear   → nivel >= 2 en el módulo accesos (o superadmin)
 //   eliminar→ nivel 3 en accesos o superadmin; nunca a sí mismo
 import { enviar, plantilla } from "./_correo.js";
-import { registrar } from "./enviar-correo.js";
+import { registrar, ipDe } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -14,8 +14,9 @@ const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\
 
 // Envío del acceso por correo (mejor esfuerzo: si el motor no está
 // configurado, la clave igual se muestra en pantalla y se entrega en mano).
-// Rastro en correo_envios sin ip ni sujeto (2026-09-30): informa, no limita.
-async function enviarAccesoAdmin(correo, clave) {
+// Rastro en correo_envios (2026-09-30); la acción «acceso-admin» queda fuera
+// del límite de tasa (contar() la excluye): informa, no limita.
+async function enviarAccesoAdmin(correo, clave, ip) {
   const r = await enviar(correo, "Tu acceso al BackOffice — GrupoER", plantilla(
     "Tu acceso al BackOffice",
     `<p>Ya tienes acceso al BackOffice de GrupoER.</p>
@@ -23,7 +24,7 @@ async function enviarAccesoAdmin(correo, clave) {
         <b>Usuario:</b> ${correo}<br/>
         <b>Clave provisional:</b> ${clave}</p>
      <p>En tu primer ingreso el sistema te pedirá crear tu clave personal (mínimo 10 caracteres, con letras y números).</p>`));
-  await registrar({ accion: "acceso-admin", ip: null, sujeto: null, destinatario: correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
+  await registrar({ accion: "acceso-admin", ip, sujeto: correo, destinatario: correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
   return r.error ? { avisoCorreo: r.error } : { enviadoCorreo: correo };
 }
 // SUPA_SERVICE_KEY la configura scripts/configurar-service-key.mjs con la
@@ -63,6 +64,7 @@ export default async function handler(req, res) {
 
   // 1 · ¿Quién llama? Su JWT debe ser una sesión válida de GoTrue.
   const sesion = req.headers["x-sesion"];
+  const ip = ipDe(req);
   if (!sesion) return res.status(401).json({ error: "Sesión requerida." });
   const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${sesion}` }, method: "GET" });
   const correoLlamador = quien.json?.email;
@@ -117,7 +119,7 @@ export default async function handler(req, res) {
     }
     // Cambio obligatorio al primer ingreso; la clave NO se guarda en texto plano.
     await rest("/rest/v1/rpc/api_admin_marcar_clave", { method: "POST", body: JSON.stringify({ p_id: usuario_id, p_correo: null, p_requiere_cambio: true }) });
-    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
+    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave, ip)) });
   }
 
   if (accion === "reenviar") {
@@ -147,7 +149,7 @@ export default async function handler(req, res) {
     });
     if (!cambio.ok) return res.status(cambio.status).json({ error: "No se pudo restablecer la clave." });
     await rest("/rest/v1/rpc/api_admin_marcar_clave", { method: "POST", body: JSON.stringify({ p_id: usuario_id, p_correo: null, p_requiere_cambio: true }) });
-    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave)) });
+    return res.status(200).json({ clave, ...(await enviarAccesoAdmin(objetivo.correo, clave, ip)) });
   }
 
   if (accion === "eliminar") {
