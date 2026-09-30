@@ -45,16 +45,17 @@ El navegador habla **solo con su propio dominio**: `/api/supa` (Vercel) inyecta 
 - Correo (`api/enviar-correo.js`): sesión o secreto del sistema en tiempo constante, lista blanca de destinatarios (padrón), límite por IP y por sujeto, rastro en `correo_envios`. Restablecimiento de clave por enlace: token de un solo uso, 1 hora, límite por IP.
 - Riesgo residual: Supabase ve solo las IP de Vercel, así que sus propios límites por IP se comparten entre todos los usuarios (detalle en el informe de la fase 6).
 - **Segundo factor por correo (2026-09-28):** el Superadministrador teclea un código de 6 dígitos enviado a su correo en cada ingreso (o presenta un equipo recordado de 30 días); hasta verificar, su sesión vale nivel 0 en toda la base (`fn_nivel_modulo` v4). Interruptor `politica_acceso.factor_superadmin`; contingencia solo técnica. Informe `2026-09-28-segundo-factor.md`.
+- **Motor de correo en Resend (2026-09-30):** único proveedor, dominio propio `avisos.servicios-intranet.net` (DKIM/SPF/DMARC en el DNS de Vercel), llave de solo envío en `RESEND_API_KEY`; Supabase Auth envía por el mismo SMTP con plantillas en español. Gmail retirado. Todo intento (incluidos los correos de acceso) deja rastro en `correo_envios`; `correo_fallos_recientes()` (solo superadministradores) alimenta la franja de aviso del BackOffice. Informe `2026-09-30-motor-correo-resend.md`.
 
 ## 7. Cómo se comprueba (fase 7)
 
 | Cuándo | Qué | Herramienta |
 |---|---|---|
-| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (22 invariantes de las fases 0–6 y el segundo factor) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
+| Cada push / PR | pruebas unitarias (proxy, canal, claves, correo, importaciones), compilación, paquetes sin credenciales, regresión del canon SQL en un Postgres embebido (23 invariantes de las fases 0–6, el segundo factor y el aviso de correo) | `.github/workflows/seguridad.yml` → `npm test`, `scripts/comprobar-paquete.mjs`, `scripts/ensayar-canon.mjs` |
 | Cada despliegue de producción | comprobaciones HTTP sin token: paquetes limpios, lista blanca del proxy, anon cerrado, pre-login vivo, clave débil rechazada, compuerta viva, canal viejo retirado | `scripts/verificar-despliegue.mjs` |
 | Cada despliegue, opcional | verificadores de las fases 4, 5 y 6 contra la base (lecturas y transacciones revertidas) | job `produccion`, requiere el secreto `SUPABASE_ACCESS_TOKEN` del repositorio (`gh secret set SUPABASE_ACCESS_TOKEN`) |
 | Antes de cada migración | ensayo local con reversión sobre el entorno 2.5 (datos anonimizados) | `scripts/ensayar-faseN.mjs`, `scripts/pg-local.mjs`, `scripts/entorno-pruebas.mjs` |
-| A mano | `verificar-faseN.mjs`, `verificar-cierre-anon.mjs`, `diagnostico-permisos.mjs`, `verificar-factor.mjs` | con `scripts/token-supabase.ps1` |
+| A mano | `verificar-faseN.mjs`, `verificar-cierre-anon.mjs`, `diagnostico-permisos.mjs`, `verificar-factor.mjs`, `verificar-correo.mjs` | con `scripts/token-supabase.ps1` |
 
 Regla de trabajo: cada cambio de esquema es un canónico (`supabase/*.sql`) + un generador (`scripts/faseN-generar.mjs`) que produce la migración en UNA transacción, su reversión y el bloque `@@FASEN@@` de `supabase/seguridad.sql`; se ensaya en local, se aplica con el «go» y se verifica en producción.
 
@@ -72,3 +73,4 @@ Regla de trabajo: cada cambio de esquema es un canónico (`supabase/*.sql`) + un
 | 2026-09-21 | 6 · límites, canal y claves | `2026-09-21-fase6-limites-canal-claves.md` |
 | 2026-09-21 | 7 · comprobaciones en CI · 8 · documentación | este documento, `../funciones-y-permisos.md`, `../../supabase/MODELO.md` |
 | 2026-09-28 | segundo factor por correo (superadmin) | `2026-09-28-segundo-factor.md` |
+| 2026-09-30 | motor de correo en Resend · aviso de fallos | `2026-09-30-motor-correo-resend.md` |
