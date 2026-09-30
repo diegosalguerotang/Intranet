@@ -141,6 +141,16 @@ export default async function handler(req, res) {
     if (negado) return errorAuth(res, negado.status, negado.error_code, negado.msg);
   }
 
+  // Correos que GoTrue mandaría a una cuenta técnica del Portal (2026-09-30):
+  // dni@portal.grupoer.pe no recibe correo (sin MX) y con el SMTP de Resend el
+  // rebote contaría contra el dominio. El Portal recupera su clave por el
+  // motor propio (api/enviar-correo) al correo declarado. Respuesta genérica
+  // idéntica a la de Auth, sin reenviar.
+  const RUTAS_CORREO_AUTH = ["auth/v1/recover", "auth/v1/otp", "auth/v1/magiclink", "auth/v1/resend"];
+  if (metodo === "POST" && RUTAS_CORREO_AUTH.includes(ruta) && esCorreoPortal(jsonDe(cuerpo)?.email)) {
+    return res.status(200).json({});
+  }
+
   // Cambio de clave de una cuenta administrativa: piso del BackOffice (P11).
   if (ruta === "auth/v1/user" && (metodo === "PUT" || metodo === "PATCH")) {
     const datos = jsonDe(cuerpo);

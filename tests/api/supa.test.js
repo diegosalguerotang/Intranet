@@ -211,3 +211,27 @@ describe("handler /api/supa · clave del BackOffice (P11)", () => {
     expect(hacia("auth/v1/user")).toHaveLength(1);
   });
 });
+
+describe("handler /api/supa · correos de Auth a cuentas técnicas del portal (2026-09-30)", () => {
+  // portal.grupoer.pe no recibe correo: un recover/otp a esas cuentas rebotaría
+  // en Resend. Respuesta genérica de Auth ({} 200) sin reenviar nada.
+  it("recover a dni@portal.grupoer.pe → 200 {} sin tocar Auth; a un correo real se reenvía", async () => {
+    let { req, res } = peticion({ ruta: "auth/v1/recover", metodo: "POST", cuerpo: { email: "45231876@portal.grupoer.pe" } });
+    await handler(req, res);
+    expect(res.codigo).toBe(200);
+    expect(JSON.parse(res.cuerpo)).toEqual({});
+    expect(llamadas).toHaveLength(0);
+    ({ req, res } = peticion({ ruta: "auth/v1/recover", metodo: "POST", cuerpo: { email: "karen@grupoer.pe" } }));
+    await handler(req, res);
+    expect(hacia("auth/v1/recover")).toHaveLength(1);
+  });
+  it("otp y magiclink a una cuenta técnica tampoco salen; resend se trata igual", async () => {
+    for (const ruta of ["auth/v1/otp", "auth/v1/magiclink", "auth/v1/resend"]) {
+      llamadas.length = 0;
+      const { req, res } = peticion({ ruta, metodo: "POST", cuerpo: { email: "45231876@PORTAL.grupoer.pe" } });
+      await handler(req, res);
+      expect(res.codigo).toBe(200);
+      expect(llamadas).toHaveLength(0);
+    }
+  });
+});
