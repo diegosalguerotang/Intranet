@@ -24,11 +24,14 @@ await prueba("correo_fallos_recientes: definer con search_path, EXECUTE solo aut
     from pg_proc p where p.oid = 'public.correo_fallos_recientes()'::regprocedure`);
   igual(`${g.def}/${g.sp}/${g.auth}/${g.anon}/${g.guarda}/${g.tabla}`, "true/true/true/false/true/false", "catálogo");
 });
-await prueba("rastro: últimos 10 envíos (informativo) y ningún error de Gmail (535) en las últimas 24 h", async () => {
+await prueba("rastro: últimos 10 envíos (informativo); ningún error de Gmail/SMTP después del último envío exitoso", async () => {
   const filas = await sql(`select to_char(creado_en at time zone 'America/Lima', 'DD/MM HH24:MI') as hora, accion, resultado, left(detalle, 80) as detalle from correo_envios order by id desc limit 10`);
   for (const f of filas) console.log(`   ${f.hora}  ${f.accion.padEnd(18)} ${f.resultado.padEnd(9)} ${f.detalle ?? ""}`);
-  const [{ n }] = await sql(`select count(*)::int as n from correo_envios where resultado = 'error' and detalle ~ '535|BadCredentials|SMTP' and creado_en >= now() - interval '24 hours'`);
-  igual(n, 0, "errores de Gmail recientes");
+  // El código ya no tiene camino SMTP: un 535/SMTP posterior al último «enviado»
+  // significaría que producción corre un paquete viejo.
+  const [{ n }] = await sql(`select count(*)::int as n from correo_envios where resultado = 'error' and detalle ~ '535|BadCredentials|SMTP'
+    and creado_en > coalesce((select max(creado_en) from correo_envios where resultado = 'enviado'), '-infinity')`);
+  igual(n, 0, "errores de Gmail tras el último envío exitoso");
 });
 
 console.log("\n== Supabase Auth");
