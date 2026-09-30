@@ -9,6 +9,7 @@
 // clave propia y declarar el celular antes de poder usar nada.
 import { randomInt } from "node:crypto";
 import { enviar, plantilla } from "./_correo.js";
+import { registrar } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -26,6 +27,9 @@ const cabService = {
 const claveAleatoria = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
 
 // Correo de acceso: solo lo manda este endpoint (nadie más conoce la clave).
+// Deja rastro en correo_envios SIN ip ni sujeto (2026-09-30): el límite de
+// tasa cuenta por ip/sujeto sin distinguir acción y una creación masiva desde
+// la oficina bloquearía una hora las demás acciones. Solo informa.
 async function correoAcceso(persona, dni, clave) {
   const r = await enviar(persona.correo, "Tu acceso al Portal del Trabajador — GrupoER", plantilla(
     "Tu acceso al Portal del Trabajador",
@@ -34,6 +38,7 @@ async function correoAcceso(persona, dni, clave) {
         <b>Usuario:</b> tu número de documento (${dni})<br/>
         <b>Clave inicial:</b> ${clave}</p>
      <p>En tu primer ingreso el portal te pedirá crear tu clave personal.</p>`));
+  await registrar({ accion: "acceso-portal", ip: null, sujeto: null, destinatario: persona.correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
   return r.error ? { errorCorreo: r.error } : { enviado: persona.correo };
 }
 

@@ -5,6 +5,7 @@
 //   crear   → nivel >= 2 en el módulo accesos (o superadmin)
 //   eliminar→ nivel 3 en accesos o superadmin; nunca a sí mismo
 import { enviar, plantilla } from "./_correo.js";
+import { registrar } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -13,6 +14,7 @@ const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\
 
 // Envío del acceso por correo (mejor esfuerzo: si el motor no está
 // configurado, la clave igual se muestra en pantalla y se entrega en mano).
+// Rastro en correo_envios sin ip ni sujeto (2026-09-30): informa, no limita.
 async function enviarAccesoAdmin(correo, clave) {
   const r = await enviar(correo, "Tu acceso al BackOffice — GrupoER", plantilla(
     "Tu acceso al BackOffice",
@@ -21,6 +23,7 @@ async function enviarAccesoAdmin(correo, clave) {
         <b>Usuario:</b> ${correo}<br/>
         <b>Clave provisional:</b> ${clave}</p>
      <p>En tu primer ingreso el sistema te pedirá crear tu clave personal (mínimo 10 caracteres, con letras y números).</p>`));
+  await registrar({ accion: "acceso-admin", ip: null, sujeto: null, destinatario: correo, resultado: r.error ? "error" : "enviado", detalle: r.error ?? null });
   return r.error ? { avisoCorreo: r.error } : { enviadoCorreo: correo };
 }
 // SUPA_SERVICE_KEY la configura scripts/configurar-service-key.mjs con la
