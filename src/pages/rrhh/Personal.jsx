@@ -428,9 +428,9 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
               <input type="checkbox" checked={enviarCorreo} onChange={(e) => setEnviarCorreo(e.target.checked)} />
               Enviar el acceso por correo a quienes lo tienen registrado ({conCorreoN})
             </label>
-            {envios > 400 && (
+            {envios >= 80 && (
               <Note tone="pend">
-                Se enviarían {envios} correos y el tope diario de Gmail ronda los 500: corre la creación por sede
+                Se enviarían {envios} correos y el tope diario del proveedor es 100: corre la creación por sede
                 o en varios días para no perder envíos.
               </Note>
             )}

@@ -22,9 +22,9 @@
 //     cuentas administrativas (usuarios_admin.correo). Un aviso configurado a
 //     un correo ajeno se omite y queda registrado como «rechazado».
 //  Cada intento deja rastro en correo_envios (accion, ip, sujeto, destinatario, resultado).
-// Proveedores (en orden): Resend (env RESEND_API_KEY) o SMTP (env SMTP_USER +
-// SMTP_PASS — contraseña de aplicación de Gmail, ~500 correos/día). La
-// contraseña vive SOLO en las variables de entorno del servidor (decisión 9).
+// Proveedor: Resend (env RESEND_API_KEY, remitente CORREO_REMITENTE; plan gratis
+// 100 correos/día). La llave vive SOLO en las variables de entorno del servidor
+// (decisión 9).
 import { createHash, timingSafeEqual } from "node:crypto";
 import { enviar, plantilla, botonCorreo } from "./_correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";

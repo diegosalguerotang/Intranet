@@ -11,7 +11,7 @@ const PATRONES = [
   [/sb_publishable_qgP/, "clave publishable"],
   [/mzpbdkrmokfxrrsotfgs/, "referencia al proyecto Supabase"],
   [/sb_secret_[A-Za-z0-9_-]{16,}/, "clave secreta"],  // supabase-js menciona el prefijo suelto en su código
-  [/SUPA_SERVICE_KEY|SMTP_PASS|CORREO_SECRETO/, "nombre de secreto del servidor"],
+  [/SUPA_SERVICE_KEY|SMTP_PASS|RESEND_API_KEY|CORREO_SECRETO/, "nombre de secreto del servidor"],
 ];
 
 function archivos(dir) {

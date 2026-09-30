@@ -1,41 +1,30 @@
 // Núcleo compartido del motor de correo (el guion bajo evita que Vercel lo
-// exponga como endpoint). Proveedores en orden: Resend (RESEND_API_KEY) o
-// SMTP con nodemailer (SMTP_USER + SMTP_PASS; default Gmail 465). Sin
-// ninguno, devuelve el error claro y quien llama decide si es bloqueante.
+// exponga como endpoint). Único proveedor: Resend (env RESEND_API_KEY, llave de
+// solo envío limitada al dominio avisos.servicios-intranet.net; remitente en
+// CORREO_REMITENTE). Gmail/SMTP se retiró el 2026-09-30: Google revocaba la
+// contraseña de aplicación y dejaba sin segundo factor a los superadmins.
+// Sin llave, devuelve el error claro y quien llama decide si es bloqueante.
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const RESEND = limpiar(process.env.RESEND_API_KEY) || "";
-const SMTP_USER = limpiar(process.env.SMTP_USER) || "";
-const SMTP_PASS = limpiar(process.env.SMTP_PASS) || "";
-const SMTP_HOST = limpiar(process.env.SMTP_HOST) || "smtp.gmail.com";
-export const REMITENTE = limpiar(process.env.CORREO_REMITENTE) ||
-  (SMTP_USER ? `GrupoER <${SMTP_USER}>` : "GrupoER <onboarding@resend.dev>");
+export const REMITENTE = limpiar(process.env.CORREO_REMITENTE) || "GrupoER <onboarding@resend.dev>";
+// Resend limita las peticiones por segundo: ante 429 se espera y se reintenta
+// UNA vez (cubre los envíos en lote de cuentas del portal).
+export const PAUSA_429_MS = 1000;
+const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const motorConfigurado = () => Boolean(RESEND || (SMTP_USER && SMTP_PASS));
+export const motorConfigurado = () => Boolean(RESEND);
 
 export async function enviar(destino, asunto, html) {
-  if (RESEND) {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: REMITENTE, to: [destino], subject: asunto, html }),
-    });
-    if (!r.ok) return { error: `El proveedor de correo respondió ${r.status}: ${(await r.text()).slice(0, 200)}` };
-    return {};
-  }
-  if (SMTP_USER && SMTP_PASS) {
-    try {
-      const { default: nodemailer } = await import("nodemailer");
-      const transporte = nodemailer.createTransport({
-        host: SMTP_HOST, port: 465, secure: true,
-        auth: { user: SMTP_USER, pass: SMTP_PASS },
-      });
-      await transporte.sendMail({ from: REMITENTE, to: destino, subject: asunto, html });
-      return {};
-    } catch (e) {
-      return { error: `El envío SMTP falló: ${String(e.message).slice(0, 200)}` };
-    }
-  }
-  return { error: "El motor de correo aún no está configurado (falta RESEND_API_KEY o SMTP_USER/SMTP_PASS)." };
+  if (!RESEND) return { error: "El motor de correo aún no está configurado (falta RESEND_API_KEY)." };
+  const pedir = () => fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND}`, "content-type": "application/json" },
+    body: JSON.stringify({ from: REMITENTE, to: [destino], subject: asunto, html }),
+  });
+  let r = await pedir();
+  if (r.status === 429) { await pausa(PAUSA_429_MS); r = await pedir(); }
+  if (!r.ok) return { error: `El proveedor de correo respondió ${r.status}: ${(await r.text()).slice(0, 200)}` };
+  return {};
 }
 
 export const plantilla = (titulo, cuerpo) => `
