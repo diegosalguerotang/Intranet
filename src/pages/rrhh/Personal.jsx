@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UserPlus, Upload, Download, Trash2, Smartphone, KeyRound } from "lucide-react";
 import { useApp } from "../../state";
@@ -7,6 +7,7 @@ import {
 } from "../../components/ui";
 import { CARGOS } from "../../data/mock";
 import { soloDigitos } from "../../lib/campos";
+import { esSeleccionable, alternarVisibles, depurar } from "../../lib/seleccionPortal";
 
 const PORTAL_BADGE = {
   activo: { tone: "conf", label: "Activo" },
@@ -34,6 +35,12 @@ export default function Personal() {
   const [conCorreo, setConCorreo] = useState(true); // checkbox del modal individual
   const [masa, setMasa] = useState(false);          // modal masivo
   const [bajandoConsent, setBajandoConsent] = useState(false);
+  // Selección para crear cuentas del portal en bloque (2026-09-30): Set de DNI;
+  // se limpia al cambiar de razón social y al cerrar el modal tras crear.
+  const [seleccion, setSeleccion] = useState(() => new Set());
+  const [masaSeleccion, setMasaSeleccion] = useState(null); // string[] | null → modal con lista fija
+  useEffect(() => { setSeleccion(new Set()); }, [empresaId]);
+  const alternar = (dni) => setSeleccion((s) => { const n = new Set(s); if (n.has(dni)) n.delete(dni); else n.add(dni); return n; });
 
   // Consentimientos para firma física de TODO el personal vigente de la RS
   // activa (D.Leg. 1310 / Ley 29733): un PDF, un formato por trabajador.
@@ -72,6 +79,14 @@ export default function Personal() {
       ),
     [db.personal, empresaId, q, fSede, fPortal, fEstado]
   );
+  const seleccionados = useMemo(() => depurar(seleccion, db.personal, empresaId), [seleccion, db.personal, empresaId]);
+  const visiblesSeleccionables = filas.filter((p) => esSeleccionable(p, empresaId));
+  const visiblesMarcados = visiblesSeleccionables.filter((p) => seleccion.has(p.dni)).length;
+  const todosVisibles = visiblesSeleccionables.length > 0 && visiblesMarcados === visiblesSeleccionables.length;
+  const casillaTodosRef = useRef(null);
+  useEffect(() => {
+    if (casillaTodosRef.current) casillaTodosRef.current.indeterminate = visiblesMarcados > 0 && !todosVisibles;
+  }, [visiblesMarcados, todosVisibles]);
 
   // Exportación real del maestro filtrado (gated por la casilla «Exportar
   // datos personales»; sin columnas bancarias — la cuenta ni enmascarada sale).
@@ -152,16 +167,59 @@ export default function Personal() {
           </Select>
         </div>
 
+        {seleccionados.length > 0 && (
+          <div className="flex items-center gap-3 border-b border-borde bg-[#eef4fa] px-3.5 py-2 text-[13px] text-tinta">
+            <span className="font-semibold">
+              {seleccionados.length} {seleccionados.length === 1 ? "seleccionado" : "seleccionados"}
+            </span>
+            <Button size="sm" onClick={() => setMasaSeleccion(seleccionados)}>
+              <Smartphone size={13} /> Crear cuentas del portal
+            </Button>
+            <button
+              type="button"
+              onClick={() => setSeleccion(new Set())}
+              className="text-[12.5px] font-semibold text-petroleo hover:underline"
+            >
+              Limpiar selección
+            </button>
+          </div>
+        )}
+
         {filas.length === 0 ? (
           <div className="p-5">
             <EmptyState title="Sin resultados" body="Ningún trabajador coincide con los filtros aplicados." />
           </div>
         ) : (
-          <Table head={["Documento", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", ""]}>
+          <Table
+            head={[
+              // Casilla de cabecera: marca/desmarca los VISIBLES sin cuenta (respeta los filtros).
+              <input
+                key="todos"
+                ref={casillaTodosRef}
+                type="checkbox"
+                checked={todosVisibles}
+                disabled={visiblesSeleccionables.length === 0}
+                title="Seleccionar visibles sin cuenta"
+                aria-label="Seleccionar visibles sin cuenta"
+                onChange={(e) => setSeleccion((s) => alternarVisibles(s, filas, empresaId, e.target.checked))}
+              />,
+              "Documento", "Trabajador", "Cargo", "Sede", "Contacto", "Ingreso", "Portal", "",
+            ]}
+          >
             {filas.map((p) => {
               const pb = !p.tieneCuenta ? PORTAL_BADGE.sin_cuenta : (PORTAL_BADGE[p.portal] ?? PORTAL_BADGE.activo);
               return (
                 <tr key={p.dni} className="hover:bg-papel/60">
+                  <Td className="w-8">
+                    {esSeleccionable(p, empresaId) && (
+                      <input
+                        type="checkbox"
+                        checked={seleccion.has(p.dni)}
+                        onChange={() => alternar(p.dni)}
+                        aria-label={`Seleccionar a ${p.nombre}`}
+                      />
+                    )}
+                  </Td>
                   <Td className="font-mono text-[12px]">{p.dni}</Td>
                   <Td>
                     <Link to={`/rrhh/personal/${p.dni}`} className="font-semibold text-petroleo hover:underline">
@@ -259,6 +317,14 @@ export default function Personal() {
         sedes={sedesEmpresa} cuentasPortalLote={cuentasPortalLote} refrescarPersonal={refrescarPersonal}
         fijarCorreo={fijarCorreo}
       />
+      {/* Mismo modal, limitado a las personas marcadas en la tabla; la selección
+          se limpia solo si se llegó a crear (paso 3). */}
+      <CuentasMasa
+        open={!!masaSeleccion} seleccion={masaSeleccion}
+        onClose={(creo) => { setMasaSeleccion(null); if (creo) setSeleccion(new Set()); }}
+        personal={db.personal} empresaId={empresaId} sedes={sedesEmpresa}
+        cuentasPortalLote={cuentasPortalLote} refrescarPersonal={refrescarPersonal} fijarCorreo={fijarCorreo}
+      />
 
       <Modal open={!!eliminar} onClose={() => setEliminar(null)} title="Eliminar trabajador">
         {eliminar && (
@@ -284,9 +350,11 @@ export default function Personal() {
 
 // #13 — Creación masiva de cuentas del portal: toma a los vigentes SIN cuenta
 // de la razón social activa, las crea por tramos de 10 (tope del endpoint:
-// cada envío SMTP suma segundos) y entrega un CSV con las claves — que no se
-// pueden volver a consultar — para quienes no tienen correo.
-function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalLote, refrescarPersonal, fijarCorreo }) {
+// cada envío de correo suma segundos) y entrega un CSV con las claves — que no
+// se pueden volver a consultar — para quienes no tienen correo. Con `seleccion`
+// (lista de DNI marcados en la tabla, 2026-09-30) los candidatos son solo esos
+// y el selector de sede se oculta; onClose recibe true si se llegó a crear.
+function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalLote, refrescarPersonal, fijarCorreo, seleccion = null }) {
   const [fSede, setFSede] = useState("");
   const [enviarCorreo, setEnviarCorreo] = useState(true);
   const [correos, setCorreos] = useState({});             // dni → texto tecleado
@@ -302,8 +370,9 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
 
   const candidatos = useMemo(
     () => personal.filter((p) =>
-      p.empresa === empresaId && p.estado === "vigente" && !p.tieneCuenta && (!fSede || p.sede === fSede)),
-    [personal, empresaId, fSede]
+      p.empresa === empresaId && p.estado === "vigente" && !p.tieneCuenta &&
+      (seleccion ? seleccion.includes(p.dni) : (!fSede || p.sede === fSede))),
+    [personal, empresaId, fSede, seleccion]
   );
   const conCorreoN = candidatos.filter((p) => p.correo).length;
   const envios = enviarCorreo ? conCorreoN : 0;
@@ -311,10 +380,11 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
   const porGuardarN = sinCorreo.filter((p) => (correos[p.dni] ?? "").trim()).length;
 
   const cerrar = () => {
+    const creo = paso === 3;
     sesionRef.current += 1;
     setPaso(1); setAvance(0); setTotal(0); setResultados([]); setFSede(""); setEnviarCorreo(true);
     setCorreos({}); setErroresCorreo({}); setGuardandoCorreos(false);
-    onClose();
+    onClose(creo);
   };
 
   // Guarda en bloque los correos tecleados (RPC fijar_correo_persona: SOLO el
@@ -378,19 +448,32 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
   };
 
   return (
-    <Modal open={open} onClose={cerrar} title="Cuentas del portal en masa" wide>
+    <Modal
+      open={open} onClose={cerrar} wide
+      title={seleccion ? `Cuentas del portal — ${seleccion.length} ${seleccion.length === 1 ? "seleccionado" : "seleccionados"}` : "Cuentas del portal en masa"}
+    >
       <div className="space-y-4">
         {paso === 1 && (
           <>
-            <p className="text-[13px] leading-relaxed text-gris">
-              Crea de una sola vez las cuentas del portal de los trabajadores <b>vigentes sin cuenta</b> de la razón
-              social activa. Usuario: su número de documento. Clave inicial: <b>aleatoria de 6 dígitos</b> — se envía
-              al correo registrado y queda en un CSV descargable para entrega en mano.
-            </p>
-            <Select value={fSede} onChange={(e) => setFSede(e.target.value)} style={{ maxWidth: 260 }}>
-              <option value="">Todas las sedes</option>
-              {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-            </Select>
+            {seleccion ? (
+              <p className="text-[13px] leading-relaxed text-gris">
+                Crea las cuentas del portal de las <b>personas marcadas</b> en la tabla. Usuario: su número de documento.
+                Clave inicial: <b>aleatoria de 6 dígitos</b> — se envía al correo registrado y queda en un CSV descargable
+                para entrega en mano.
+              </p>
+            ) : (
+              <>
+                <p className="text-[13px] leading-relaxed text-gris">
+                  Crea de una sola vez las cuentas del portal de los trabajadores <b>vigentes sin cuenta</b> de la razón
+                  social activa. Usuario: su número de documento. Clave inicial: <b>aleatoria de 6 dígitos</b> — se envía
+                  al correo registrado y queda en un CSV descargable para entrega en mano.
+                </p>
+                <Select value={fSede} onChange={(e) => setFSede(e.target.value)} style={{ maxWidth: 260 }}>
+                  <option value="">Todas las sedes</option>
+                  {sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </Select>
+              </>
+            )}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="rounded-md bg-alerta-bg py-4"><div className="text-[22px] font-bold text-alerta">{candidatos.length}</div><div className="font-mono text-[10px] uppercase text-gris">Sin cuenta</div></div>
               <div className="rounded-md bg-conf-bg py-4"><div className="text-[22px] font-bold text-conf">{conCorreoN}</div><div className="font-mono text-[10px] uppercase text-gris">Con correo</div></div>
@@ -435,7 +518,11 @@ function CuentasMasa({ open, onClose, personal, empresaId, sedes, cuentasPortalL
               </Note>
             )}
             {candidatos.length === 0 ? (
-              <Note tone="conf">Todos los vigentes {fSede ? "de esa sede " : ""}ya tienen cuenta del portal.</Note>
+              <Note tone="conf">
+                {seleccion
+                  ? "Las personas marcadas ya tienen cuenta del portal o ya no están vigentes."
+                  : `Todos los vigentes ${fSede ? "de esa sede " : ""}ya tienen cuenta del portal.`}
+              </Note>
             ) : (
               <div className="flex gap-2">
                 <Button onClick={crear}>Crear {candidatos.length} {candidatos.length === 1 ? "cuenta" : "cuentas"}</Button>
