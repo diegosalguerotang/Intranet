@@ -12,8 +12,9 @@ estructurales del esquema (`schema.sql`) para el equipo de desarrollo.
 > `scripts/pg-local.mjs`) y, AL FINAL, `seguridad.sql` (espejo acumulado de las
 > fases de la corrección de seguridad: 0, 0b, 1, 2, 3a, 3b, 3c, 4, 5a, 6b y el segundo
 > factor por correo (2026-09-28), cada una con su canónico: `bancario.sql`,
-> `claves-equipos.sql`, `rls.sql`, `auditoria.sql`, `limites.sql`, `factor.sql`, y Licencias Office
-> (2026-09-29, `licencias.sql`, bloque `@@LICENCIAS@@`, ver sección abajo); desde la 3a las tablas
+> `claves-equipos.sql`, `rls.sql`, `auditoria.sql`, `limites.sql`, `factor.sql`, Licencias Office
+> (2026-09-29, `licencias.sql`, bloque `@@LICENCIAS@@`, ver sección abajo) y el aviso de correos
+> fallidos (2026-09-30, `correo.sql`, bloque `@@CORREO@@`); desde la 3a las tablas
 > `usuarios_admin`, `perfiles`, `perfil_*`, `cargo_perfiles`, `registro_accesos`,
 > `politica_acceso`, `auditoria` y `correo_tokens` viven en el esquema
 > `interno`, que PostgREST no publica). `node scripts/pg-local.mjs`
@@ -207,6 +208,18 @@ de un grupo es una licencia (spec `docs/superpowers/specs/2026-09-29-licencias-o
   ensayos de fases anteriores lo recortan. Ensayo: `scripts/ensayar-licencias.mjs`;
   producción: `scripts/verificar-licencias.mjs`. Carga inicial:
   `scripts/licencias-2026-09-29.sql` (20 grupos, 43 personas, 39 con DNI).
+
+## Correo (`correo.sql`, aviso de envíos fallidos, 2026-09-30)
+
+`correo_envios` es el rastro del motor de correo (solo `service_role`; sin
+política RLS ni privilegios para la API). `correo_fallos_recientes()` devuelve
+los envíos con `resultado = 'error'` de las últimas 24 h y es el ÚNICO camino de
+lectura desde la API: `security definer` con `requiere_superadmin()` en la primera
+línea (pasa por el segundo factor). Alimenta la franja de aviso del BackOffice
+(`src/layout/AvisoCorreo.jsx`). El canónico vive como bloque `@@CORREO@@` al final
+de `seguridad.sql` (`scripts/correo-generar.mjs` genera migración y reversión).
+Ensayo: `scripts/ensayar-correo.mjs`; producción: `scripts/verificar-correo.mjs`.
+Spec: `docs/superpowers/specs/2026-09-30-motor-correo-resend-design.md`.
 
 ## Pendientes de modelado (marcados POR DEFINIR en los documentos)
 

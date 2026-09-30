@@ -181,6 +181,16 @@ try {
     igual(`${g.auth}/${g.anon}/${g.guarda}`, "true/false/true", "grants/guarda");
   });
 
+  await prueba("correo_fallos_recientes (2026-09-30): definer, EXECUTE solo authenticated, guarda requiere_superadmin; correo_envios sigue cerrada", async () => {
+    const [g] = await sql(`select p.prosecdef as def,
+      has_function_privilege('authenticated', 'public.correo_fallos_recientes()', 'execute') as auth,
+      has_function_privilege('anon', 'public.correo_fallos_recientes()', 'execute') as anon,
+      (p.prosrc ~ 'perform requiere_superadmin\\(\\)') as guarda,
+      has_table_privilege('authenticated', 'public.correo_envios', 'select') as tabla
+      from pg_proc p where p.oid = 'public.correo_fallos_recientes()'::regprocedure`);
+    igual(`${g.def}/${g.auth}/${g.anon}/${g.guarda}/${g.tabla}`, "true/true/false/true/false", "correo");
+  });
+
   console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");
   await prueba("tablas de interno cerradas a la API; api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_nivel_modulo v4; interruptor encendido y expuesto en v_politica_acceso", async () => {
     const [t] = await sql(`select bool_and(to_regclass('interno.' || t) is not null and (select relrowsecurity from pg_class where oid = to_regclass('interno.' || t))
