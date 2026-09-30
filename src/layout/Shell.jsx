@@ -10,6 +10,7 @@ import { useApp } from "../state";
 import { nivelDe, MODULOS_RRHH } from "../data/modulos";
 import CambioClave from "../pages/CambioClave";
 import SegundoFactor from "../pages/SegundoFactor";
+import AvisoCorreo from "./AvisoCorreo";
 
 // Cada item declara su módulo: el menú solo muestra lo que la categoría del
 // usuario concede (enforcement de Accesos v2; el guard de ruta lo respalda).
@@ -240,6 +241,7 @@ export default function Shell() {
             </button>
           </div>
         )}
+        <AvisoCorreo />
         <main className="mx-auto max-w-[1180px] px-6 py-7">
           <Outlet />
         </main>

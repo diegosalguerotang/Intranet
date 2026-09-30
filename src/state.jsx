@@ -159,6 +159,15 @@ export function AppProvider({ children }) {
   const conSupabase = supabaseListo && !MODO_DEMO;
   const [db, setDb] = useState(() => dbInicial(conSupabase, FUENTES, LOCAL));
   const [origen, setOrigen] = useState(conSupabase ? "supabase" : "local"); // "supabase" | "local" | "error"
+  // Aviso de correos fallidos (2026-09-30): solo superadministradores, cargado
+  // DESPUÉS del segundo factor (pendiente daría 42501). Un error deja la lista
+  // vacía: la franja jamás bloquea la carga.
+  const [correoFallos, setCorreoFallos] = useState([]);
+  const cargarCorreoFallos = async (esSuperadmin) => {
+    if (!conSupabase || !esSuperadmin) { setCorreoFallos([]); return; }
+    const { data, error } = await supabase.rpc("correo_fallos_recientes");
+    setCorreoFallos(error || !Array.isArray(data) ? [] : data);
+  };
 
   const recargar = async (...claves) => {
     if (!conSupabase) return true;
@@ -264,6 +273,8 @@ export function AppProvider({ children }) {
       // queda en "error" y el Shell ofrece reintentar.
       await recargar();
       if (!activo || mia !== generacion) return;
+      await cargarCorreoFallos(base.acceso.esSuperadmin);
+      if (!activo || mia !== generacion) return;
       setUser(base);
     };
     resolverRef.current = resolver;
@@ -284,6 +295,7 @@ export function AppProvider({ children }) {
     } catch { /* modo privado */ }
     if (supabaseListo) await supabase.auth.signOut();
     if (conSupabase) setDb(dbVacia(FUENTES));
+    setCorreoFallos([]);
     setUser(null);
   };
   // Tras verificar el código (o reconocer el equipo): se vuelve a resolver la
@@ -1086,7 +1098,8 @@ export function AppProvider({ children }) {
 
   return (
     <AppCtx.Provider
-      value={{ user, salir, claveCambiada, factorVerificado, segundoFactor, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga, ...acciones }}
+      value={{ user, salir, claveCambiada, factorVerificado, segundoFactor, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga,
+        correoFallos, recargarCorreoFallos: () => cargarCorreoFallos(Boolean(user?.acceso?.esSuperadmin)), ...acciones }}
     >
       {children}
     </AppCtx.Provider>
