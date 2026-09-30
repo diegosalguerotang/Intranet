@@ -1,4 +1,4 @@
-# Funciones y permisos — estado real de producción (2026-09-29)
+# Funciones y permisos — estado real de producción (2026-09-30)
 
 Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (proyecto `mzpbdkrmokfxrrsotfgs`): firma, guarda detectada en el cuerpo y roles con EXECUTE. Regenerar tras cada fase.
 
@@ -7,7 +7,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | Grupo | Funciones |
 |---|---|
 | administrativa (sesión propia) | 2 |
-| administrativa | 62 |
+| administrativa | 63 |
 | autoservicio del trabajador | 25 |
 | ayudante | 43 |
 | interna | 4 |
@@ -39,6 +39,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `asignar_activo(p_codigo text, p_dni text, p_condicion text, p_antivirus boolean, p_comentario text)` | administrativa | activos · nivel 2 | authenticated + service_role |
 | `asignar_rit_sede(p_sede text, p_rit text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `corregir_fecha_ingreso(p_dni text, p_fecha date)` | administrativa | personal · nivel 2 | authenticated + service_role |
+| `correo_fallos_recientes()` | administrativa | superadmin | authenticated + service_role |
 | `correo_llamador()` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `crear_activo(p_codigo text, p_categoria text, p_empresa text, p_tipo text, p_marca text, p_modelo text, p_serie text, p_imei text, p_valor numeric, p_compra date, p_observaciones text)` | autoservicio del trabajador | guarda propia sobre fn_nivel_modulo/nivel_en; identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `crear_rit(p_nombre text, p_archivo text, p_hash text, p_vigente date)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |

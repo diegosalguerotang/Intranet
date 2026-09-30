@@ -45,4 +45,5 @@ El motor de correo (`api/_correo.js`) enviaba por SMTP de Gmail con una contrase
 ## 5. Estado
 
 - 2026-09-30 · configuración: dominio verificado, variables cargadas, redeploy; el segundo factor llegó por Resend (`correo_envios` id 17, `enviado`). Primera carga de la llave falló (`API key is invalid`, ids 15–16): el portapapeles no tenía la llave; recargada y verificada.
-- 2026-09-30 · código: Tareas 1–7 del plan construidas y ensayadas en local (pendiente de aplicar la migración `2026-09-30-correo-fallos.sql` en producción, push, configuración de Auth y retiro de Gmail — se completa al cerrar).
+- 2026-09-30 · código: Tareas 1–7 del plan construidas y ensayadas en local (244 pruebas, ensayo 8/8, canon 23).
+- 2026-09-30 · despliegue CERRADO: migración `2026-09-30-correo-fallos.sql` aplicada por Diego; push `1098a6c`, CI `seguridad.yml` verde, deploy Ready; Supabase Auth configurado por el SMTP de Resend con `configurar-correo-auth.mjs` (plantillas ok); `SMTP_USER`/`SMTP_PASS` retiradas de Production y Preview; `verificar-correo.mjs` todo verde; `funciones-y-permisos.md` regenerado (165 funciones, 0 sin guarda). Pendiente de Diego: revocar la contraseña de aplicación en Google.
