@@ -273,6 +273,9 @@ create table lotes (
   publicado_en  timestamptz not null default now(),
   publicado_por text not null,
   avisos        integer not null default 0,
+  -- SHA-256 de los pares dni:hash ordenados (2026-09-30): publicar de nuevo un
+  -- lote idéntico devuelve este en vez de crear otra versión.
+  huella        text,
   unique (empresa_id, tipo, periodo, version)   -- nunca se sobrescribe en silencio
 );
 
@@ -727,10 +730,10 @@ create index ix_marcaciones_doc_fecha on marcaciones (documento, fecha);
 -- dni canónico del maestro si resuelve, si no el código sin ceros.
 create function importar_asistencia(
   p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb, p_por text
-) returns jsonb language plpgsql security definer as $$
+) returns jsonb language plpgsql security definer set search_path = public, interno, extensions as $$
 declare
   v_lote bigint; v_desde date; v_hasta date; v_filas int;
-  v_reconocidos int; v_no_reconocidos text[];
+  v_reconocidos int; v_no_reconocidos text[]; v_insertadas int; v_candidatas int;
 begin
   if fn_nivel_modulo('asistencia') < 2 then
     raise exception 'Tu categoría no permite importar asistencias (requiere nivel de acción en el módulo Asistencia).';
@@ -742,7 +745,7 @@ begin
     raise exception 'El archivo no trae filas de marcación importables.';
   end if;
 
-  drop table if exists tmp_asist; drop table if exists tmp_doc;
+  drop table if exists tmp_asist; drop table if exists tmp_doc; drop table if exists tmp_dedup;
   -- with ordinality: conserva el orden del archivo (ord) para poder decidir
   -- después, ante una colisión de mismo canónico+fecha, cuál fila es "la
   -- última" sin depender de ON CONFLICT (ver INSERT más abajo).
@@ -788,36 +791,43 @@ begin
           coalesce(p_resumen, '{}'::jsonb), p_por)
   returning id into v_lote;
 
-  -- Reemplazo por rango: lo que había de esa empresa en el periodo se va.
-  delete from marcaciones where empresa_id = p_empresa and fecha between v_desde and v_hasta;
+  -- Reemplazo por rango SOLO de lo que vino del reloj (2026-09-30): las filas
+  -- del control semanal (origen = 'control') son el dato declarado y
+  -- prevalecen; antes este DELETE las barría también.
+  delete from marcaciones where empresa_id = p_empresa and origen = 'reloj'
+    and fecha between v_desde and v_hasta;
 
   -- Si dos códigos del archivo resuelven a la misma persona y fecha (p. ej.
   -- 9972665 y 09972665), no se puede usar ON CONFLICT DO UPDATE: dentro de
   -- un mismo INSERT, Postgres no permite que la cláusula afecte la misma
   -- fila dos veces ("ON CONFLICT DO UPDATE command cannot affect row a
-  -- second time") y como el DELETE por rango ya barrió lo previo, ese es el
-  -- único caso en que se podría disparar. Se resuelve antes del INSERT:
-  -- nos quedamos con la fila de mayor `ord` (la última del archivo) por
-  -- (documento, fecha) — "la última fila manda", sin depender de conflicto.
+  -- second time"). Se resuelve antes del INSERT: nos quedamos con la fila de
+  -- mayor `ord` (la última del archivo) por (documento, fecha) — "la última
+  -- fila manda". El único conflicto posible entonces es con una fila del
+  -- control semanal de ese día: se conserva la del control (do nothing).
+  create temp table tmp_dedup on commit drop as
+  select distinct on (coalesce(d.dni, t.canonico), t.fecha)
+         coalesce(d.dni, t.canonico) as documento, t.fecha, t.m1, t.m2, t.m3, t.m4
+  from tmp_asist t left join tmp_doc d using (canonico)
+  order by coalesce(d.dni, t.canonico), t.fecha, t.ord desc;
+  select count(*)::int into v_candidatas from tmp_dedup;
   insert into marcaciones (empresa_id, documento, fecha, m1, m2, m3, m4, lote_id)
-  select p_empresa, dedup.documento, dedup.fecha, dedup.m1, dedup.m2, dedup.m3, dedup.m4, v_lote
-  from (
-    select distinct on (coalesce(d.dni, t.canonico), t.fecha)
-           coalesce(d.dni, t.canonico) as documento, t.fecha, t.m1, t.m2, t.m3, t.m4
-    from tmp_asist t left join tmp_doc d using (canonico)
-    order by coalesce(d.dni, t.canonico), t.fecha, t.ord desc
-  ) dedup;
+  select p_empresa, documento, fecha, m1, m2, m3, m4, v_lote from tmp_dedup
+  on conflict (empresa_id, documento, fecha) do nothing;
+  get diagnostics v_insertadas = row_count;
 
   insert into auditoria (accion, tabla, datos_antes, datos_despues)
   values ('IMPORTAR_ASISTENCIA', 'marcaciones', null,
     jsonb_build_object('por', p_por, 'empresa', p_empresa, 'archivo', p_archivo,
       'lote', v_lote, 'desde', v_desde, 'hasta', v_hasta, 'filas', v_filas,
-      'reconocidos', v_reconocidos, 'no_reconocidos', to_jsonb(v_no_reconocidos)));
+      'reconocidos', v_reconocidos, 'no_reconocidos', to_jsonb(v_no_reconocidos),
+      'conservadas_control', v_candidatas - v_insertadas));
 
   return jsonb_build_object('lote', v_lote,
     'desde', to_char(v_desde, 'YYYY-MM-DD'), 'hasta', to_char(v_hasta, 'YYYY-MM-DD'),
     'filas', v_filas, 'reconocidos', v_reconocidos,
-    'no_reconocidos', to_jsonb(v_no_reconocidos));
+    'no_reconocidos', to_jsonb(v_no_reconocidos),
+    'conservadas_control', v_candidatas - v_insertadas);
 end $$;
 
 -- Vista previa sin rastro: mismo patrón PV999 verificado de los otros importadores.
@@ -1732,9 +1742,10 @@ end $$;
 -- válido, pero la función queda inejecutable hasta que portal.sql corra.
 create function publicar_lote_pdf(
   p_empresa text, p_tipo text, p_periodo text, p_por text, p_boletas jsonb
-) returns jsonb language plpgsql security definer as $$
+) returns jsonb language plpgsql security definer set search_path = public, interno, extensions as $$
 declare
   b jsonb; v_version int; v_id text; v_avisos int; v_vinculo bigint; v_docs int := 0;
+  v_huella text; v_previo record;
 begin
   perform requiere_nivel('boletas', 2);  -- fase 1: guarda central
   -- Validación previa completa: entra todo o no entra nada.
@@ -1752,6 +1763,22 @@ begin
     raise exception 'Hay DNI repetidos en el lote: excepción sin resolver.';
   end if;
 
+  -- Idempotencia (2026-09-30): la huella del lote es el SHA-256 de sus pares
+  -- dni:hash ordenados. Si ya existe un lote idéntico (misma empresa, tipo y
+  -- periodo), se devuelve ese: un «Reintentar» tras una respuesta perdida no
+  -- crea la versión N+1 ni marca reemplazadas las boletas de esa gente. Un
+  -- PDF distinto cambia la huella y sigue creando versión nueva.
+  select encode(extensions.digest(string_agg(x->>'dni' || ':' || (x->>'hash'), '|' order by x->>'dni'), 'sha256'), 'hex')
+    into v_huella from jsonb_array_elements(p_boletas) x;
+  select l.id, l.version, (select count(*) from documentos d where d.lote_id = l.id) as documentos
+    into v_previo
+  from lotes l where l.empresa_id = p_empresa and l.tipo = p_tipo and l.periodo = p_periodo and l.huella = v_huella
+  order by l.version desc limit 1;
+  if v_previo.id is not null then
+    return jsonb_build_object('lote_id', v_previo.id, 'documentos', v_previo.documentos,
+                              'version', v_previo.version, 'repetido', true);
+  end if;
+
   select coalesce(max(version), 0) + 1 into v_version
   from lotes where empresa_id = p_empresa and tipo = p_tipo and periodo = p_periodo;
   -- Mismo saneo del corto que en publicar_lote: solo alfanumérico antes de
@@ -1767,8 +1794,8 @@ begin
   where v.empresa_id = p_empresa and v.fecha_fin is null and p.celular is not null
     and v.persona_dni in (select x->>'dni' from jsonb_array_elements(p_boletas) x);
 
-  insert into lotes (id, empresa_id, tipo, periodo, version, publicado_por, avisos)
-  values (v_id, p_empresa, p_tipo, p_periodo, v_version, p_por, v_avisos);
+  insert into lotes (id, empresa_id, tipo, periodo, version, publicado_por, avisos, huella)
+  values (v_id, p_empresa, p_tipo, p_periodo, v_version, p_por, v_avisos, v_huella);
 
   for b in select * from jsonb_array_elements(p_boletas) loop
     select id into v_vinculo from vinculos

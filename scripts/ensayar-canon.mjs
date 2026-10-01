@@ -191,6 +191,16 @@ try {
     igual(`${g.def}/${g.auth}/${g.anon}/${g.guarda}/${g.tabla}`, "true/true/false/true/false", "correo");
   });
 
+  await prueba("arreglos (2026-09-30): importar_asistencia solo borra origen = 'reloj' y no pisa el control; publicar_lote_pdf guarda huella y devuelve el lote repetido; lotes.huella existe", async () => {
+    const [g] = await sql(`select
+      (select prosrc from pg_proc where oid = 'public.importar_asistencia(text, jsonb, text, jsonb, text)'::regprocedure) as a,
+      (select prosrc from pg_proc where oid = 'public.publicar_lote_pdf(text, text, text, text, jsonb)'::regprocedure) as p,
+      exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'lotes' and column_name = 'huella') as h`);
+    igual(/delete from marcaciones where empresa_id = p_empresa and origen = 'reloj'/.test(g.a) && /on conflict \(empresa_id, documento, fecha\) do nothing/.test(g.a), true, "reloj");
+    igual(/l\.huella = v_huella/.test(g.p) && /'repetido', true/.test(g.p), true, "huella");
+    igual(g.h, true, "columna");
+  });
+
   console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");
   await prueba("tablas de interno cerradas a la API; api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_nivel_modulo v4; interruptor encendido y expuesto en v_politica_acceso", async () => {
     const [t] = await sql(`select bool_and(to_regclass('interno.' || t) is not null and (select relrowsecurity from pg_class where oid = to_regclass('interno.' || t))

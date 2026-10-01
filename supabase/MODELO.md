@@ -221,6 +221,21 @@ de `seguridad.sql` (`scripts/correo-generar.mjs` genera migración y reversión)
 Ensayo: `scripts/ensayar-correo.mjs`; producción: `scripts/verificar-correo.mjs`.
 Spec: `docs/superpowers/specs/2026-09-30-motor-correo-resend-design.md`.
 
+## Arreglos del 2026-09-30 (asistencia y boletas)
+
+- `importar_asistencia` (reloj) borra por rango SOLO `origen = 'reloj'` y su INSERT
+  no pisa filas del control semanal (`on conflict do nothing`; la respuesta trae
+  `conservadas_control`). Antes borraba también el control del mismo rango.
+- `lotes.huella` (SHA-256 de los pares dni:hash ordenados) y `publicar_lote_pdf`
+  devuelve el lote idéntico ya publicado (`repetido: true`) en vez de crear otra
+  versión: un reintento tras una respuesta perdida ya no marca reemplazadas las
+  boletas. Canónico: `schema.sql`; migración y reversión generadas por
+  `scripts/arreglos-generar.mjs` (los cuerpos viejos salen de git). Ensayo
+  `scripts/ensayar-arreglos.mjs`; producción `scripts/verificar-arreglos.mjs`.
+- OJO: las reversiones históricas (`respaldos/2026-09-17-fase1-reversion.sql`,
+  hardening 08-24) contienen cuerpos antiguos de estas funciones; revertir esas
+  fases desharía este arreglo.
+
 ## Pendientes de modelado (marcados POR DEFINIR en los documentos)
 
 - Firma de contratos (digital acreditada vs. física escaneada) — el campo
