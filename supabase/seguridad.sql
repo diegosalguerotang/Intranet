@@ -24,6 +24,7 @@ to anon, authenticated;
 
 -- 2b · Con verificación del llamador (56) + dependencias de vistas (2).
 --      + crear_ticket_propio (2026-09-22: Soporte TI del usuario administrativo).
+--      + fn_politica_responsable (2026-10-01: la usa v_declaraciones_vigentes, invoker).
 grant execute on function
   actualizar_ticket(p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text),
   alternar_ticket_subtipo(p_id integer, p_activo boolean),
@@ -50,6 +51,7 @@ grant execute on function
   fn_nivel_memorandums(),
   fn_nivel_modulo(p_modulo text),
   fn_persona_llamador(),
+  fn_politica_responsable(),
   fn_solicitud_insertar(p_dni text, p_tipo text, p_datos jsonb, p_por text),
   fn_ver_cuenta_bancaria(p_dni text),
   guardar_cargo_perfil(p_cargo text, p_destino text, p_perfil text, p_por text),

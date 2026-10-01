@@ -151,6 +151,51 @@ Los documentos se guardan en un repositorio privado al que solo se accede con id
 Tu aceptación queda registrada con fecha, hora y la versión exacta de este texto, y puedes releer la política vigente cuando quieras desde la pestaña «Yo» del portal.')
 on conflict (id, version) do nothing;
 
+-- Política de datos v3 (2026-10-01): el punto 1 NOMBRA a la razón social de la
+-- planilla del trabajador (pedido de Diego). La marca {{RESPONSABLE}} se
+-- resuelve por sesión con fn_politica_responsable(): la vista
+-- v_declaraciones_vigentes muestra el texto ya resuelto y portal_primer_ingreso
+-- guarda ese mismo texto en consentimientos. El resto es idéntico a la v2.
+-- Canónico de la migración 2026-10-01-politica-razon-social.sql (generada por
+-- scripts/politica-generar.mjs desde este archivo).
+insert into declaraciones (id, version, superficie, texto) values
+('politica-datos', 3, 'portal',
+'POLÍTICA DE PRIVACIDAD Y TRATAMIENTO DE DATOS PERSONALES
+Ley N.º 29733 — Ley de Protección de Datos Personales — y su Reglamento
+Versión 3 · Octubre de 2026
+
+1. QUIÉN TRATA TUS DATOS
+El responsable del tratamiento es {{RESPONSABLE}}. Es la empresa de IntraTech que figura como tu empleadora en la planilla y en tu boleta de pago. IntraTech administra esta intranet para todas sus empresas.
+
+2. QUÉ DATOS TRATAMOS
+· De identificación: nombres y apellidos, tipo y número de documento.
+· De contacto: celular, correo y dirección que tú declaras.
+· Laborales y de planilla: cargo, sede, fechas de ingreso y cese, remuneraciones, cuenta de haberes.
+· De asistencia: tus marcaciones.
+· Los que se generan al usar este portal: confirmaciones de recepción, lecturas, solicitudes, tickets de soporte y registros de acceso.
+
+3. PARA QUÉ LOS USAMOS
+Únicamente para administrar la relación laboral: pagarte y gestionar la planilla; entregarte boletas y documentos con constancia; comunicarte avisos de la empresa; gestionar tu asistencia, solicitudes y beneficios; tramitar procesos conforme al Reglamento Interno de Trabajo; darte soporte; y proteger la seguridad de la información. El tratamiento necesario para ejecutar la relación laboral y cumplir la ley no requiere tu consentimiento (art. 14 de la Ley 29733); para todo lo demás vale tu aceptación de esta política.
+
+4. ENTREGA ELECTRÓNICA DE BOLETAS Y DOCUMENTOS
+AUTORIZO expresamente que mis boletas de pago y demás documentos laborales se pongan a mi disposición a través de este portal, conforme al artículo 3.2 del Decreto Legislativo N.º 1310. Cada documento queda con constancia de emisión (fecha, hora del servidor y huella digital SHA-256 del archivo exacto) y puedo verlo y descargarlo desde mi cuenta en cualquier momento. Puedo pedir además una copia impresa en Recursos Humanos. Confirmar la recepción de un documento reemplaza la firma del cargo físico y NO significa estar de acuerdo con su contenido: conservo intacto mi derecho a reclamar.
+
+5. CON QUIÉN SE COMPARTEN
+Tus datos no se venden ni se comparten con terceros ajenos a IntraTech. Solo acceden a ellos: (a) el personal autorizado según su nivel de acceso; (b) los proveedores tecnológicos que alojan la intranet y su base de datos, que actúan por encargo y pueden estar ubicados fuera del Perú (flujo transfronterizo con salvaguardas de seguridad); y (c) las autoridades cuando la ley lo exige (SUNAT, SUNAFIL, Poder Judicial, entre otras).
+
+6. CUÁNTO TIEMPO LOS CONSERVAMOS
+Mientras dure tu vínculo laboral y, después, por los plazos que exigen las normas laborales y tributarias (como mínimo cinco años para los documentos de planilla) y los plazos de prescripción de acciones legales.
+
+7. TUS DERECHOS
+Puedes ejercer en cualquier momento tus derechos de acceso, rectificación, cancelación y oposición (ARCO), y revocar esta autorización en lo que no sea indispensable para la relación laboral, presentando tu solicitud a Recursos Humanos de tu empresa. Te responderemos en los plazos de ley. Si no estás conforme con la respuesta, puedes acudir a la Autoridad Nacional de Protección de Datos Personales.
+
+8. CÓMO LOS PROTEGEMOS
+Los documentos se guardan en un repositorio privado al que solo se accede con identidad verificada; los datos bancarios se almacenan cifrados; tu cuenta tiene clave personal, sesión única y cierre automático por inactividad; y todos los accesos quedan registrados.
+
+9. TU ACEPTACIÓN
+Tu aceptación queda registrada con fecha, hora y la versión exacta de este texto, y puedes releer la política vigente cuando quieras desde la pestaña «Yo» del portal.')
+on conflict (id, version) do nothing;
+
 -- 4 · Identidad de la sesión del portal ---------------------------------------
 -- NULL si la sesión no es del portal (las vistas devuelven vacío); los RPC
 -- validan y revientan con mensaje claro.
@@ -234,7 +279,7 @@ create or replace function portal_primer_ingreso(
   p_correo text default null
 ) returns void language plpgsql security definer
 set search_path = public, extensions as $$
-declare v_dni text; v_correo text; v_texto text;
+declare v_dni text; v_correo text; v_texto text; v_responsable text;
 begin
   v_dni := portal_dni();
   if v_dni is null then raise exception 'Sesión del portal requerida.'; end if;
@@ -249,6 +294,15 @@ begin
   where id = 'politica-datos' and version = p_politica_version;
   if v_texto is null then
     raise exception 'Versión de la política de datos desconocida.';
+  end if;
+  -- Desde la v3 el texto nombra a la razón social de la planilla: se guarda
+  -- EXACTAMENTE lo que mostró v_declaraciones_vigentes, nunca la plantilla.
+  if position('{{RESPONSABLE}}' in v_texto) > 0 then
+    v_responsable := fn_politica_responsable();
+    if v_responsable is null then
+      raise exception 'No se pudo identificar la razón social de tu planilla. Avisa a Recursos Humanos.';
+    end if;
+    v_texto := replace(v_texto, '{{RESPONSABLE}}', v_responsable);
   end if;
   update cuentas_portal
   set primer_ingreso_pendiente = false,
@@ -493,10 +547,26 @@ left join sedes s on s.id = vig.sede_id
 left join empresas em on em.id = vig.empresa_id
 where pe.dni = portal_dni();
 
--- Declaración vigente por id (el portal la muestra antes de confirmar).
+-- Responsable del tratamiento para la sesión del portal (política de datos v3,
+-- 2026-10-01): «RAZÓN SOCIAL (RUC n)» del vínculo vigente o, si cesó, del
+-- último. NULL sin sesión del portal o sin vínculo. NO es definer: corre como
+-- el que consulta y la RLS solo deja ver el vínculo propio. La misma regla
+-- está en api/_politica.js para el formato en papel.
+create or replace function fn_politica_responsable() returns text
+language sql stable set search_path = public, extensions as $$
+  select e.nombre || coalesce(' (RUC ' || e.ruc || ')', '')
+  from vinculos v join empresas e on e.id = v.empresa_id
+  where v.persona_dni = portal_dni()
+  order by (v.fecha_fin is null) desc, v.fecha_inicio desc
+  limit 1
+$$;
+
+-- Declaración vigente por id (el portal la muestra antes de confirmar). La
+-- marca {{RESPONSABLE}} sale ya resuelta para la sesión del trabajador.
 drop view if exists v_declaraciones_vigentes;
 create view v_declaraciones_vigentes as
-select distinct on (id) id, version, superficie, texto
+select distinct on (id) id, version, superficie,
+       replace(texto, '{{RESPONSABLE}}', coalesce(fn_politica_responsable(), 'tu empleadora')) as texto
 from declaraciones
 order by id, version desc;
 

@@ -201,6 +201,17 @@ try {
     igual(g.h, true, "columna");
   });
 
+  await prueba("política de datos v3 (2026-10-01): la marca {{RESPONSABLE}} va una vez; fn_politica_responsable NO es definer, EXECUTE solo authenticated; la vista sigue invoker; portal_primer_ingreso la resuelve antes de guardar", async () => {
+    const [g] = await sql(`select
+      (select array_length(string_to_array(texto, '{{RESPONSABLE}}'), 1) from declaraciones where id = 'politica-datos' and version = 3) as marcas,
+      (select prosecdef from pg_proc where oid = 'public.fn_politica_responsable()'::regprocedure) as def,
+      has_function_privilege('authenticated', 'public.fn_politica_responsable()', 'execute') as auth,
+      has_function_privilege('anon', 'public.fn_politica_responsable()', 'execute') as anon,
+      exists (select 1 from pg_class c, unnest(coalesce(c.reloptions, '{}')) o where c.oid = 'public.v_declaraciones_vigentes'::regclass and o in ('security_invoker=on', 'security_invoker=true')) as invoker,
+      (select prosrc from pg_proc where oid = 'public.portal_primer_ingreso(text, boolean, integer, text)'::regprocedure) ~ 'replace\\(v_texto, ''\\{\\{RESPONSABLE\\}\\}'', v_responsable\\)' as guarda`);
+    igual(`${g.marcas}/${g.def}/${g.auth}/${g.anon}/${g.invoker}/${g.guarda}`, "2/false/true/false/true/true", "política");
+  });
+
   console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");
   await prueba("tablas de interno cerradas a la API; api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_nivel_modulo v4; interruptor encendido y expuesto en v_politica_acceso", async () => {
     const [t] = await sql(`select bool_and(to_regclass('interno.' || t) is not null and (select relrowsecurity from pg_class where oid = to_regclass('interno.' || t))

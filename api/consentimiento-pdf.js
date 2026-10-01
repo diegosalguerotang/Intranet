@@ -4,12 +4,15 @@
 // papel al personal YA contratado (recomendación legal D.Leg. 1310 / Ley
 // 29733). Imprime el texto ÍNTEGRO de la política vigente + su versión y su
 // huella SHA-256, para que el papel firmado apunte exactamente al mismo texto
-// que acepta el portal. No se archiva: se genera a demanda.
+// que acepta el portal. Desde la política v3 el texto nombra a la razón social
+// de la planilla de cada trabajador (api/_politica.js): la huella es por hoja.
+// No se archiva: se genera a demanda.
 //  · ?dni=XXXX      → un formato para esa persona (gate: admin activo)
 //  · ?empresa=id    → un PDF con el formato de TODOS los vigentes de la RS
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createHash } from "node:crypto";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
+import { textoPolitica } from "./_politica.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://servicios-intranet.net";
@@ -55,7 +58,6 @@ export default async function handler(req, res) {
     `/rest/v1/declaraciones?id=eq.politica-datos&select=version,texto&order=version.desc&limit=1`
   )).json?.[0];
   if (!politica) return res.status(500).json({ error: "No hay política de datos publicada." });
-  const huella = createHash("sha256").update(politica.texto, "utf8").digest("hex");
 
   // Destinatarios del formato.
   let filas;
@@ -100,6 +102,9 @@ export default async function handler(req, res) {
   for (const f of filas) {
     const persona = f.personas ?? {};
     const empresa = f.empresas ?? {};
+    // El texto de ESTE trabajador (con su razón social) y su huella.
+    const textoFila = textoPolitica(politica.texto, empresa);
+    const huella = createHash("sha256").update(textoFila, "utf8").digest("hex");
     let pagina = pdf.addPage([595, 842]);
     let y = 800;
     const salto = (necesario = 60) => {
@@ -138,9 +143,9 @@ export default async function handler(req, res) {
       const alto = 34;
       pagina.drawImage(img, { x: 50, y: y - alto, width: (img.width / img.height) * alto, height: alto });
     }
-    texto("Intranet GrupoER", 440, y - 12, { b: true, size: 10, color: azul });
+    texto("IntraTech", 440, y - 12, { b: true, size: 10, color: azul });
     y -= 50;
-    texto(empresa.nombre ?? "Grupo ER", 50, y, { size: 9, color: gris });
+    texto(empresa.nombre ?? "IntraTech", 50, y, { size: 9, color: gris });
     texto(empresa.ruc ? `RUC ${empresa.ruc}` : "", 440, y, { size: 9, color: gris });
     y -= 26;
     texto("CONSENTIMIENTO — ENTREGA ELECTRÓNICA DE DOCUMENTOS", 50, y, { b: true, size: 13, color: azul });
@@ -160,11 +165,11 @@ export default async function handler(req, res) {
     parrafo(
       "Declaro que he leído y acepto el texto íntegro que sigue, que corresponde a la política " +
       `de datos personales y autorización de entrega electrónica versión ${politica.version} de la ` +
-      "Intranet GrupoER — el mismo texto que se acepta en el primer ingreso al Portal del Trabajador.",
+      "IntraTech — el mismo texto que se acepta en el primer ingreso al Portal del Trabajador.",
       50, 495, { size: 9, salto: 12 }
     );
     y -= 6; linea(50, y, 545); y -= 16;
-    parrafo(politica.texto, 50, 495, { size: 8.2, salto: 10.5 });
+    parrafo(textoFila, 50, 495, { size: 8.2, salto: 10.5 });
     y -= 4; salto(120); linea(50, y, 545); y -= 14;
     texto(`Versión del texto: ${politica.version} · Algoritmo de huella: SHA-256`, 50, y, { size: 8, color: gris });
     y -= 12;
