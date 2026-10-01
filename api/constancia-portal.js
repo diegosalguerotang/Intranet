@@ -8,7 +8,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const APP = "https://intranet-general.vercel.app";
+const APP = "https://servicios-intranet.net";
 const DOMINIO_PORTAL = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || "";

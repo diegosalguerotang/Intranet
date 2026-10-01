@@ -9,7 +9,7 @@ import { registrar, ipDe } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const APP = "https://intranet-general.vercel.app";
+const APP = "https://servicios-intranet.net";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 
 // Envío del acceso por correo (mejor esfuerzo: si el motor no está

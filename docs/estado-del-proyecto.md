@@ -36,7 +36,6 @@ Quién lo usa hoy: **once cuentas administrativas activas** (RRHH, TI, gerencia)
 - TRB-02 Recuperar clave: por correo, no por código SMS/WhatsApp como pedía el original.
 - Motor 9 (mensajería WhatsApp/SMS): no existe. Todo lo que dependía de él se resolvió por correo o quedó diferido.
 - Correo de invitación de las siete cuentas administrativas sin cuenta de ingreso: pendiente de que se dispare desde ACC-04.
-- Dominio propio `servicios-intranet.net`: sirve la intranet desde 2026-09-30, pero el dominio oficial (enlaces en correos y PDFs, `site_url` de Auth) sigue siendo el de Vercel.
 
 **Descartado o retirado**
 - ADQ-07 Costo de activos por sede (retirado 2026-08-17; el archivo sigue huérfano).
@@ -60,7 +59,7 @@ Quién lo usa hoy: **once cuentas administrativas activas** (RRHH, TI, gerencia)
 | BackOffice (`src/`) + funciones (`api/*.js`) | Vercel, proyecto `intranet-general` | Push a `main` → build y deploy automático |
 | Portal (`portal/`) | Vercel, proyecto `intranet-portal`, enrutado por rewrite en `/portal` desde el dominio principal | Push a `main` |
 | Base, Auth, Storage | Supabase, plan gratis | Las migraciones SQL las aplica a mano el responsable del proyecto (Management API) **antes** del push del código que las necesita |
-| Dominios | `intranet-general.vercel.app` (oficial) y `servicios-intranet.net` (desde 2026-09-30, DNS en Vercel) | — |
+| Dominios | `servicios-intranet.net` (oficial desde 2026-10-01, DNS en Vercel: enlaces de correos y PDFs, `site_url` de Auth) e `intranet-general.vercel.app` (sigue vivo: enlaces antiguos y scripts de verificación) | — |
 | Correo | Resend, dominio de envío `avisos.servicios-intranet.net` | Variables de entorno en Vercel; Supabase Auth usa el mismo SMTP |
 
 Vercel está en plan Hobby: tope de **12 funciones** (ya se usan las 12; hubo que retirar un endpoint de diagnóstico) y términos de uso no comercial.
@@ -201,7 +200,7 @@ Invariantes por trigger: siempre queda un superadministrador activo; el superadm
 | **Supabase** (Postgres, Auth, Storage) — plan gratis | Todo el dato, todas las sesiones, todos los PDFs | Nada funciona: el BackOffice muestra «No se pudieron cargar los datos» y el Portal no entra. El plan gratis **pausa el proyecto tras una semana sin uso** (ocurrió el 2026-09-14: el proxy devolvía 500 hasta que se reactivó a mano) y **no tiene respaldos automáticos**. Sus límites por IP se comparten entre todos los usuarios porque solo ve la IP de Vercel |
 | **Vercel** (Hobby) | BackOffice, Portal, 12 funciones serverless, DNS del dominio nuevo | Nada se sirve. Tope de 12 funciones ya alcanzado. Incidente del 2026-08-17: «Resource provisioning failed» en todo deploy durante 6 horas; se resolvió recreando el proyecto. Los logs de funciones tienen retención corta (no cubren investigaciones posteriores) |
 | **Resend** (gratis: 100 correos/día, 3,000/mes) | Código del segundo factor, accesos al Portal y al BackOffice, avisos de tickets y solicitudes, recordatorios, recuperaciones; y el SMTP de Supabase Auth (invitaciones, recuperación del BackOffice) | Los superadministradores **no pueden entrar** (el código no llega). Contingencia: apagar `politica_acceso.factor_superadmin` por Management API. Los demás flujos siguen; cada fallo queda como `error` en `correo_envios` y en la franja del BackOffice |
-| **Dominio `servicios-intranet.net`** (comprado en Vercel, DNS en Vercel) | Envío de correo (DKIM/SPF/DMARC) y acceso alternativo | Sin renovación (vence 2027-09-30) el correo deja de salir |
+| **Dominio `servicios-intranet.net`** (comprado en Vercel, DNS en Vercel) | Envío de correo (DKIM/SPF/DMARC) y dirección oficial de la intranet | Sin renovación (vence 2027-09-30) el correo deja de salir y los enlaces de correos y PDFs dejan de abrir (`intranet-general.vercel.app` seguiría sirviendo) |
 | **Cuenta Google del responsable** | Ya no: Gmail se retiró el 2026-09-30 | — |
 | **GitHub** | Repositorio y CI (`seguridad.yml`) | Sin CI no hay deploy verificado; Vercel despliega igual |
 | **Management API de Supabase** (token del responsable) | Aplicar migraciones, verificadores, configuración de Auth | Sin token no se puede migrar ni verificar; el token caduca y hay que renovarlo desde el panel |

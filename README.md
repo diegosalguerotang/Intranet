@@ -3,7 +3,7 @@
 BackOffice administrador (`src/`) y Portal del Trabajador (`portal/`, microfrontend bajo `/portal`) de la intranet del Grupo NEGLIAF (NEGLIAF, BREMCO, PROMANT, Limpieza Americana).
 
 - **Stack:** React 19 + Vite 7 + Tailwind 4 (BackOffice), Preact (Portal), funciones serverless en `api/` (Vercel), Supabase (Postgres + Auth + Storage).
-- **Despliegue:** push a `main` → Vercel (`intranet-general` y `intranet-portal`). Producción: https://intranet-general.vercel.app.
+- **Despliegue:** push a `main` → Vercel (`intranet-general` y `intranet-portal`). Producción: https://servicios-intranet.net (el dominio `intranet-general.vercel.app` sigue activo).
 - **Datos:** modelo relacional en `supabase/` (`MODELO.md` explica las decisiones y el orden de carga; `seguridad.sql` es el espejo acumulado de las fases de seguridad).
 - **Seguridad:** `docs/seguridad/README.md` (arquitectura resultante e índice de informes) y `docs/funciones-y-permisos.md` (generado desde producción).
 
