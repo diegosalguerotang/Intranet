@@ -555,10 +555,20 @@ export default function Boletas() {
           <div className="mb-4 flex items-center gap-3">
             <CheckCircle2 size={26} className="text-conf" />
             <div>
-              <h2 className="text-[15px] font-bold text-tinta">Publicación confirmada</h2>
+              <h2 className="text-[15px] font-bold text-tinta">{loteCreado.repetido ? "Este lote ya estaba publicado" : "Publicación confirmada"}</h2>
               <div className="font-mono text-[12px] text-gris">Lote {loteCreado.lote_id} · registrado en auditoría</div>
             </div>
           </div>
+          {/* Idempotencia (2026-09-30): un reintento tras una respuesta perdida
+              devuelve el lote idéntico ya publicado en vez de crear otra versión. */}
+          {loteCreado.repetido && (
+            <div className="mb-4">
+              <Note tone="pend">
+                Estas mismas boletas ya se habían publicado como la versión v{loteCreado.version}: no se creó otra versión ni se
+                tocaron los acuses existentes. Si querías corregir boletas, carga el PDF corregido.
+              </Note>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
               ["Publicadas", String(loteCreado.documentos ?? boletasActivas.length)],
