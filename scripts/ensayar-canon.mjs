@@ -212,6 +212,19 @@ try {
     igual(`${g.marcas}/${g.def}/${g.auth}/${g.anon}/${g.invoker}/${g.guarda}`, "2/false/true/false/true/true", "política");
   });
 
+  await prueba("V°B° del jefe directo (2026-10-01): jefes_disponibles y solicitudes_por_mi_visto_bueno definer, EXECUTE solo authenticated, identidad del JWT y segundo factor; el documento del jefe no se acepta del cliente; resolver_solicitud admite al jefe designado", async () => {
+    const [g] = await sql(`select
+      bool_and(p.prosecdef and has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute')
+               and p.prosrc ~ 'fn_factor_pendiente' and p.prosrc ~ 'fn_persona_llamador') as nuevas, count(*)::int as n
+      from pg_proc p where p.oid in ('public.jefes_disponibles()'::regprocedure, 'public.solicitudes_por_mi_visto_bueno()'::regprocedure)`);
+    const [c] = await sql(`select
+      (select prosrc from pg_proc where oid = 'public.fn_solicitud_insertar(text, text, jsonb, text)'::regprocedure) as ins,
+      (select prosrc from pg_proc where oid = 'public.resolver_solicitud(bigint, text, text, text)'::regprocedure) as res`);
+    igual(`${g.nuevas}/${g.n}`, "true/2", "funciones nuevas");
+    igual(/supervisor_usuario/.test(c.ins) && !/v_sup_dni := nullif\(trim\(coalesce\(p_datos->>'supervisor_dni'/.test(c.ins), true, "documento del cliente");
+    igual(/v_caller = s\.supervisor_dni/.test(c.res) && /not fn_factor_pendiente\(\)/.test(c.res), true, "jefe designado");
+  });
+
   console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");
   await prueba("tablas de interno cerradas a la API; api_factor_* solo service_role; mi_segundo_factor solo authenticated; fn_nivel_modulo v4; interruptor encendido y expuesto en v_politica_acceso", async () => {
     const [t] = await sql(`select bool_and(to_regclass('interno.' || t) is not null and (select relrowsecurity from pg_class where oid = to_regclass('interno.' || t))

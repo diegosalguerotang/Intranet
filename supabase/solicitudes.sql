@@ -20,6 +20,8 @@ drop function if exists resolver_solicitud(bigint, text, text, text);
 drop function if exists reenviar_solicitud(bigint, jsonb, text);
 drop function if exists guardar_solicitud_aviso(text, text, boolean, boolean);
 drop function if exists eliminar_solicitud_aviso(bigint);
+drop function if exists jefes_disponibles();
+drop function if exists solicitudes_por_mi_visto_bueno();
 drop function if exists fn_solicitud_insertar(text, text, jsonb, text);
 drop function if exists fn_solicitud_validar(text, jsonb);
 drop function if exists fn_solicitud_numero(text, text);
@@ -183,11 +185,16 @@ end $$;
 
 -- Inserta congelando el vínculo y la cadena. El paso «jefe» se salta si el
 -- supervisor de la sede ES el propio solicitante (nadie se aprueba a sí mismo).
+-- Jefe inmediato (2026-10-01), por orden: (1) elegido de jefes_disponibles()
+-- por su código de usuario (supervisor_usuario → persona; puede dar su V°B°
+-- desde su buzón); (2) escrito a mano (solo el nombre: el V°B° lo da la
+-- jefatura); (3) el supervisor de la sede. El documento del jefe JAMÁS llega
+-- del cliente, y el solicitante no puede elegirse a sí mismo.
 create function fn_solicitud_insertar(p_dni text, p_tipo text, p_datos jsonb, p_por text)
 returns text language plpgsql as $$
 declare
   t record; v record; p record;
-  v_num text; v_sup_dni text; v_sup_nombre text; v_sede_nombre text;
+  v_num text; v_sup_dni text; v_sup_nombre text; v_sede_nombre text; v_sup_usuario text;
   v_cadena jsonb; v_paso jsonb; v_id bigint;
 begin
   select * into t from solicitud_tipos where id = p_tipo and activo;
@@ -209,10 +216,22 @@ begin
 
   select s.nombre, s.supervisor_dni into v_sede_nombre, v_sup_dni
   from sedes s where s.id = v.sede_id;
-  -- El formulario puede corregir al jefe inmediato (la sede puede no tenerlo).
-  if coalesce(trim(p_datos->>'supervisor_nombre'),'') <> '' then
+  -- El formulario puede fijar al jefe inmediato (la sede puede no tenerlo).
+  v_sup_usuario := nullif(trim(coalesce(p_datos->>'supervisor_usuario','')), '');
+  if v_sup_usuario is not null then
+    v_sup_dni := null;
+    select u.persona_dni, pe.nombre into v_sup_dni, v_sup_nombre
+    from usuarios_admin u join personas pe on pe.dni = u.persona_dni
+    where u.codigo = v_sup_usuario and u.estado = 'activo';
+    if v_sup_dni is null then
+      raise exception 'El jefe inmediato elegido no existe o ya no está activo.';
+    end if;
+    if v_sup_dni = p_dni then
+      raise exception 'El solicitante no puede ser su propio jefe inmediato.';
+    end if;
+  elsif coalesce(trim(p_datos->>'supervisor_nombre'),'') <> '' then
     v_sup_nombre := trim(p_datos->>'supervisor_nombre');
-    v_sup_dni := nullif(trim(coalesce(p_datos->>'supervisor_dni','')), '');
+    v_sup_dni := null;
   elsif v_sup_dni is not null then
     select nombre into v_sup_nombre from personas where dni = v_sup_dni;
   end if;
@@ -235,7 +254,7 @@ begin
     supervisor_dni, supervisor_nombre, datos, cadena, creado_por)
   values (v_num, p_tipo, p_dni, p.nombre, v.cargo, v.sede_id, v_sede_nombre,
     v.empresa_id, v.fecha_inicio, v_sup_dni, v_sup_nombre,
-    p_datos - 'supervisor_nombre' - 'supervisor_dni', v_cadena, p_por)
+    p_datos - 'supervisor_nombre' - 'supervisor_dni' - 'supervisor_usuario', v_cadena, p_por)
   returning id into v_id;
 
   insert into solicitud_eventos (solicitud_id, accion, paso, paso_titulo, por, persona_dni)
@@ -292,8 +311,10 @@ begin
 end $$;
 
 -- Mover el estado. Reglas: nadie resuelve su propia solicitud; el paso «jefe»
--- lo puede resolver el supervisor de la sede con nivel de acción, cualquier
--- otro paso exige nivel de aprobación; observar/rechazar/anular exigen motivo;
+-- lo puede resolver el jefe inmediato designado en la solicitud (sin exigirle
+-- el módulo: lo hace desde su buzón, 2026-10-01) o el supervisor de la sede
+-- con nivel de acción; cualquier otro paso exige nivel de aprobación (que
+-- también puede dar el paso «jefe»); observar/rechazar/anular exigen motivo;
 -- anular solo aprobadas y solo nivel de aprobación; la papeleta no se aprueba
 -- en su último paso sin el original firmado adjunto.
 create function resolver_solicitud(p_id bigint, p_decision text, p_comentario text default null, p_por text default 'RRHH')
@@ -336,11 +357,14 @@ begin
 
   v_paso := s.cadena -> (s.paso_actual - 1);
   v_titulo := v_paso->>'titulo';
-  -- Permiso sobre el paso actual: aprobación general, o el supervisor de la
-  -- sede del solicitante (con nivel de acción) cuando el paso es «jefe».
+  -- Permiso sobre el paso actual: aprobación general; o, cuando el paso es
+  -- «jefe», el jefe designado en la solicitud o el supervisor de la sede del
+  -- solicitante (este con nivel de acción). Un superadministrador con el
+  -- segundo factor pendiente vale 0 y tampoco entra por la vía del jefe.
   if v_nivel < 3 then
-    if not (v_paso->>'paso' = 'jefe' and v_nivel >= 2 and v_caller is not null
-            and exists (select 1 from sedes where id = s.sede_id and supervisor_dni = v_caller)) then
+    if not (v_paso->>'paso' = 'jefe' and v_caller is not null and not fn_factor_pendiente()
+            and (v_caller = s.supervisor_dni
+                 or (v_nivel >= 2 and exists (select 1 from sedes where id = s.sede_id and supervisor_dni = v_caller)))) then
       raise exception 'Este paso (%) exige nivel de aprobación en Solicitudes.', v_titulo;
     end if;
   end if;
@@ -404,7 +428,7 @@ begin
   insert into solicitud_eventos (solicitud_id, accion, datos_previos, por, persona_dni)
   values (p_id, 'reenviada', s.datos,
           coalesce(p_por, s.solicitante_nombre), coalesce(v_portal, v_caller));
-  update solicitudes set datos = p_datos - 'supervisor_nombre' - 'supervisor_dni',
+  update solicitudes set datos = p_datos - 'supervisor_nombre' - 'supervisor_dni' - 'supervisor_usuario',
     estado = 'enviada', paso_actual = 1 where id = p_id;
 end $$;
 
@@ -427,6 +451,49 @@ begin
     raise exception 'Se necesita nivel de aprobación en Solicitudes.';
   end if;
   delete from solicitud_avisos where id = p_id;
+end $$;
+
+-- Jefes que pueden dar su V°B° desde el buzón (2026-10-01): los usuarios
+-- administrativos activos. Devuelve el CÓDIGO del usuario (U-000N), nunca el
+-- documento: la persona la resuelve fn_solicitud_insertar en el servidor.
+-- Solo para administradores activos (una cuenta del portal recibe vacío).
+create function jefes_disponibles()
+returns table (codigo text, nombre text, cargo text, soy_yo boolean)
+language plpgsql stable security definer as $$
+declare v_yo text;
+begin
+  if not es_admin() or fn_factor_pendiente() then return; end if;
+  v_yo := fn_persona_llamador();
+  return query
+    select u.codigo, pe.nombre, vig.cargo, coalesce(u.persona_dni = v_yo, false)
+    from usuarios_admin u
+    join personas pe on pe.dni = u.persona_dni
+    left join lateral (select vi.cargo from vinculos vi
+                       where vi.persona_dni = u.persona_dni and vi.fecha_fin is null
+                       order by vi.fecha_inicio desc limit 1) vig on true
+    where u.estado = 'activo' and u.codigo is not null
+    order by pe.nombre;
+end $$;
+
+-- Buzón del jefe (2026-10-01): las solicitudes que esperan SU visto bueno (el
+-- paso actual es «jefe» y él es el jefe designado). La identidad sale del JWT,
+-- jamás de un parámetro; no exige el módulo Solicitudes.
+create function solicitudes_por_mi_visto_bueno()
+returns table (id bigint, numero text, tipo_id text, tipo text, solicitante_nombre text,
+               cargo text, sede_nombre text, datos jsonb, creado text, paso_titulo text)
+language plpgsql stable security definer as $$
+declare v_yo text;
+begin
+  v_yo := fn_persona_llamador();
+  if v_yo is null or fn_factor_pendiente() then return; end if;
+  return query
+    select s.id, s.numero, s.tipo_id, t.nombre, s.solicitante_nombre, s.cargo, s.sede_nombre,
+           s.datos - 'adjunto_url', to_char(s.creado_en, 'YYYY-MM-DD HH24:MI'),
+           s.cadena -> (s.paso_actual - 1) ->> 'titulo'
+    from solicitudes s join solicitud_tipos t on t.id = s.tipo_id
+    where s.supervisor_dni = v_yo and s.solicitante_dni <> v_yo and s.estado = 'enviada'
+      and s.cadena -> (s.paso_actual - 1) ->> 'paso' = 'jefe'
+    order by s.creado_en;
 end $$;
 
 -- --------------------------- vistas ----------------------------------------

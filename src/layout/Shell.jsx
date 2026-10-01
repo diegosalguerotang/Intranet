@@ -137,13 +137,14 @@ function NavGroup({ title, items, acceso }) {
 }
 
 export default function Shell() {
-  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen, db, reintentarCarga } = useApp();
+  const { user, salir, empresaId, setEmpresaId, empresasActivas, origen, db, reintentarCarga, vistosBuenos } = useApp();
   // Buzón personal: cuántas de MIS solicitudes siguen sin respuesta (enviadas)
-  // o me fueron devueltas para corregir (observadas). Alimenta el globito del
-  // botón flotante para que el usuario sepa que hay movimiento sin navegar.
+  // o me fueron devueltas para corregir (observadas), más las que esperan MI
+  // visto bueno como jefe directo. Alimenta el globito del botón flotante
+  // para que el usuario sepa que hay movimiento sin navegar.
   const misPendientes = (db?.misSolicitudes ?? []).filter(
     (s) => s.estado === "enviada" || s.estado === "observada"
-  ).length;
+  ).length + (vistosBuenos?.length ?? 0);
   const navigate = useNavigate();
 
   // Selector de empresa restringido al alcance de la categoría. Solo ofrece

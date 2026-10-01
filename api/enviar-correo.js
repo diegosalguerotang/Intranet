@@ -298,14 +298,35 @@ export default async function handler(req, res) {
     )).json ?? [];
     const correoSolicitante = (await rest(
       `/rest/v1/personas?dni=eq.${s.solicitante_dni}&select=correo&limit=1`)).json?.[0]?.correo ?? null;
-    const correoJefe = s.supervisor_dni
-      ? ((await rest(`/rest/v1/personas?dni=eq.${s.supervisor_dni}&select=correo&limit=1`)).json?.[0]?.correo ?? null)
-      : null;
+    // Correo del jefe inmediato: el de su cuenta del BackOffice (siempre existe
+    // si puede dar el visto bueno) y, si no tiene cuenta, el del maestro.
+    let correoJefe = null;
+    if (s.supervisor_dni) {
+      const cuenta = await rest("/rest/v1/rpc/api_admin_correo_por_dni", { method: "POST", body: JSON.stringify({ p_dni: s.supervisor_dni }) });
+      correoJefe = (cuenta.ok && typeof cuenta.json === "string" && cuenta.json) ? cuenta.json.toLowerCase()
+        : ((await rest(`/rest/v1/personas?dni=eq.${encodeURIComponent(s.supervisor_dni)}&select=correo&limit=1`)).json?.[0]?.correo ?? null);
+    }
+    // ¿La solicitud está esperando justamente su visto bueno?
+    const esperaJefe = s.estado === "enviada" && s.cadena?.[(s.paso_actual ?? 1) - 1]?.paso === "jefe";
 
     let destinos = [];
+    let enviadosJefe = 0;
     if (evento === "creada") {
       destinos = avisosTipo.map((a) => a.correo);
-      if (correoJefe) destinos.push(correoJefe);  // copia al jefe inmediato
+      if (correoJefe && esperaJefe) {
+        // Al jefe le llega SU correo: qué se le pide y dónde (su buzón, que no
+        // exige el módulo Solicitudes). No se le repite el aviso general.
+        destinos = destinos.filter((c) => String(c).toLowerCase() !== correoJefe);
+        const rJefe = await enviarALista([correoJefe], `Solicitud ${s.numero} espera tu visto bueno — IntraTech`, plantilla(
+          `Solicitud ${s.numero}: espera tu visto bueno`,
+          `<p><b>${s.tipo}</b> (${s.codigo_formato})</p>
+           <p>Solicitante: <b>${s.solicitante_nombre}</b>${s.sede_nombre ? ` — ${s.sede_nombre}` : ""}</p>
+           <p>Te eligieron como jefe inmediato: tu visto bueno es el primer paso de la aprobación.</p>
+           ${botonCorreo(`${APP}/mi-solicitud`, "Abrir mi buzón")}`), { accion, ip, sujeto: numero });
+        enviadosJefe = rJefe.enviados;
+      } else if (correoJefe) {
+        destinos.push(correoJefe);  // copia al jefe inmediato
+      }
     } else if (evento === "resuelta") {
       destinos = avisosTipo.filter((a) => !a.copia).map((a) => a.correo);
       if (correoSolicitante) destinos.push(correoSolicitante);
@@ -313,7 +334,7 @@ export default async function handler(req, res) {
       if (correoSolicitante) destinos = [correoSolicitante];
     }
     destinos = [...new Set(destinos)];
-    if (!destinos.length) return res.status(200).json({ enviados: 0 });
+    if (!destinos.length) return res.status(200).json({ enviados: enviadosJefe });
 
     const titulo = evento === "creada" ? `Nueva solicitud ${s.numero}`
       : evento === "resuelta" ? `Solicitud ${s.numero}: ${s.estado}`
@@ -324,8 +345,8 @@ export default async function handler(req, res) {
        <p>Estado: <b>${s.estado}</b>${s.paso_titulo ? ` · esperando ${s.paso_titulo}` : ""}</p>
        ${botonCorreo(`${APP}/solicitudes`, "Ver en la intranet")}`);
     const r = await enviarALista(destinos, `${titulo} — IntraTech`, html, { accion, ip, sujeto: numero });
-    if (!r.enviados && r.ultimoError) return res.status(503).json({ error: r.ultimoError });
-    return res.status(200).json({ enviados: r.enviados, omitidos: r.omitidos });
+    if (!r.enviados && !enviadosJefe && r.ultimoError) return res.status(503).json({ error: r.ultimoError });
+    return res.status(200).json({ enviados: r.enviados + enviadosJefe, omitidos: r.omitidos });
   }
 
   if (accion === "recordatorio-acuse") {

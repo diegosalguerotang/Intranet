@@ -1,12 +1,82 @@
-import { useMemo, useState } from "react";
-import { ClipboardPen, MailCheck, Hourglass, LifeBuoy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ClipboardPen, MailCheck, Hourglass, LifeBuoy, Stamp } from "lucide-react";
 import { useApp } from "../../state";
 import {
-  PageHeader, Card, Badge, Button, Select, Field, Note, EmptyState, Input, Textarea,
+  PageHeader, Card, Badge, Button, Select, Field, Note, EmptyState, Textarea,
 } from "../../components/ui";
-import { FormPapeleta, FormVacaciones, resumenDatos, avisarSolicitud } from "./formularios";
+import { FormPapeleta, FormVacaciones, SelectorJefe, resumenDatos, avisarSolicitud } from "./formularios";
 import { ESTADOS_SOL } from "./Bandeja";
 import { avisarTicket } from "../soporte/Tickets";
+import { JEFE_VACIO, datosConJefe } from "../../lib/jefe";
+
+// Una solicitud que espera el visto bueno del usuario como jefe designado. La
+// base decide si puede (resolver_solicitud); aquí solo se pide el motivo que
+// observar y rechazar exigen. El original firmado no se muestra: lo revisa RRHH.
+function VistoBueno({ solicitud: s }) {
+  const { resolverSolicitud } = useApp();
+  const [decision, setDecision] = useState(null); // null | "observar" | "rechazar"
+  const [motivo, setMotivo] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState(null);
+
+  const resolver = async (d) => {
+    if (ocupado) return;
+    setOcupado(true); setError(null);
+    try {
+      await resolverSolicitud(s.id, d, d === "aprobar" ? null : motivo.trim());
+      avisarSolicitud(s.numero, "estado");
+    } catch (err) {
+      setError(err.message);
+      setOcupado(false);
+    }
+  };
+  const datos = resumenDatos(s.tipo_id, s.datos ?? {}).filter(([k]) => k !== "Original firmado");
+
+  return (
+    <div className="rounded-caja border border-borde p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[12px] font-semibold">{s.numero}</span>
+        <span className="text-[13px] font-semibold">{s.tipo}</span>
+        <span className="flex-1" />
+        <span className="font-mono text-[10.5px] text-gris-cl">{s.creado}</span>
+      </div>
+      <div className="mt-1 text-[13px] text-tinta">
+        {s.solicitante_nombre}
+        <span className="text-gris">{[s.cargo, s.sede_nombre].filter(Boolean).map((t) => ` · ${t}`).join("")}</span>
+      </div>
+      <div className="mt-1 space-y-0.5 text-[12px] text-gris">
+        {datos.map(([k, v]) => <div key={k}><b className="font-semibold text-tinta-2">{k}:</b> {v}</div>)}
+      </div>
+      {decision && (
+        <div className="mt-2">
+          <Field label={decision === "observar" ? "¿Qué debe corregir?" : "Motivo del rechazo"} required>
+            <Textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} />
+          </Field>
+        </div>
+      )}
+      {error && <div className="mt-2"><Note tone="alerta">{error}</Note></div>}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {decision ? (
+          <>
+            <Button size="sm" variant={decision === "rechazar" ? "danger" : "primary"}
+              disabled={ocupado || !motivo.trim()} onClick={() => resolver(decision)}>
+              {ocupado ? "Enviando…" : decision === "observar" ? "Devolver con observación" : "Rechazar"}
+            </Button>
+            <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => { setDecision(null); setMotivo(""); setError(null); }}>Cancelar</Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" disabled={ocupado} onClick={() => resolver("aprobar")}>
+              {ocupado ? "Enviando…" : "Dar visto bueno"}
+            </Button>
+            <Button size="sm" variant="secondary" disabled={ocupado} onClick={() => setDecision("observar")}>Observar</Button>
+            <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => setDecision("rechazar")}>Rechazar</Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const ESTADOS_TK = {
   abierto: { tone: "pend", label: "Abierto" },
@@ -23,10 +93,16 @@ const ESTADOS_TK = {
 // Desde 2026-09-22 también aloja Soporte TI: el ticket propio del usuario
 // administrativo (crear_ticket_propio) y su buzón (v_mis_tickets). Soporte TI
 // salió del Portal del Trabajador ese día por decisión de Diego.
+// Desde 2026-10-01 es también el buzón del JEFE DIRECTO: quien fue elegido
+// como jefe inmediato en una solicitud ve aquí las que esperan su visto bueno
+// y lo da (o la observa / rechaza con motivo) sin necesitar el módulo.
 export default function MiSolicitud() {
-  const { db, user, crearSolicitudPropia, reenviarSolicitud, crearTicketPropio } = useApp();
+  const { db, user, crearSolicitudPropia, reenviarSolicitud, crearTicketPropio, vistosBuenos, recargarVistosBuenos } = useApp();
+  // Al abrir el buzón se vuelve a preguntar qué espera mi visto bueno (la
+  // carga inicial es de cuando entré a la intranet).
+  useEffect(() => { recargarVistosBuenos?.(); }, []);
   const [tipoId, setTipoId] = useState("");
-  const [supervisor, setSupervisor] = useState("");
+  const [jefe, setJefe] = useState(JEFE_VACIO);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState(null);
   const [corrigiendo, setCorrigiendo] = useState(null); // solicitud observada mía
@@ -73,13 +149,10 @@ export default function MiSolicitud() {
   const enviar = async (datos) => {
     setOcupado(true);
     try {
-      const conSupervisor = supervisor.trim()
-        ? { ...datos, supervisor_nombre: supervisor.trim() }
-        : datos;
-      const numero = await crearSolicitudPropia(tipoId, conSupervisor);
+      const numero = await crearSolicitudPropia(tipoId, datosConJefe(datos, jefe));
       avisarSolicitud(numero, "creada");
       setAviso(numero);
-      setTipoId(""); setSupervisor("");
+      setTipoId(""); setJefe(JEFE_VACIO);
     } finally {
       setOcupado(false);
     }
@@ -119,6 +192,23 @@ export default function MiSolicitud() {
         </div>
       )}
 
+      {vistosBuenos.length > 0 && (
+        <div className="mb-5">
+          <Card>
+            <h2 className="mb-1 flex items-center gap-2 font-display text-[15px] font-semibold text-tinta">
+              <Stamp size={16} className="text-petroleo" /> Esperan tu visto bueno
+              <Badge tone="pend">{vistosBuenos.length}</Badge>
+            </h2>
+            <p className="mb-3 text-[12.5px] text-gris">
+              Te eligieron como jefe inmediato. Tu visto bueno es el primer paso; después la solicitud sigue su cadena.
+            </p>
+            <div className="space-y-2.5">
+              {vistosBuenos.map((s) => <VistoBueno key={s.id} solicitud={s} />)}
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           {corrigiendo ? (
@@ -154,11 +244,7 @@ export default function MiSolicitud() {
                 </Field>
                 {tipo && (
                   <>
-                    <Field label="Jefe inmediato / supervisor"
-                      hint="Si tu sede ya tiene supervisor registrado, puedes dejarlo vacío.">
-                      <Input value={supervisor} onChange={(e) => setSupervisor(e.target.value)}
-                        placeholder="Nombre de tu jefe inmediato" />
-                    </Field>
+                    <SelectorJefe valor={jefe} onCambio={setJefe} excluirPropio />
                     {tipo.id === "papeleta-permiso"
                       ? <FormPapeleta onEnviar={enviar} ocupado={ocupado} textoEnviar="Enviar mi papeleta" />
                       : <FormVacaciones onEnviar={enviar} ocupado={ocupado} textoEnviar="Enviar mi solicitud" />}

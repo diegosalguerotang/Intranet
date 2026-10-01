@@ -25,6 +25,7 @@ to anon, authenticated;
 -- 2b · Con verificación del llamador (56) + dependencias de vistas (2).
 --      + crear_ticket_propio (2026-09-22: Soporte TI del usuario administrativo).
 --      + fn_politica_responsable (2026-10-01: la usa v_declaraciones_vigentes, invoker).
+--      + jefes_disponibles y solicitudes_por_mi_visto_bueno (2026-10-01: V°B° del jefe directo).
 grant execute on function
   actualizar_ticket(p_id bigint, p_estado text, p_atendido_por text, p_nota text, p_por text),
   alternar_ticket_subtipo(p_id integer, p_activo boolean),
@@ -62,6 +63,7 @@ grant execute on function
   guardar_ticket_subtipo(p_id integer, p_tipo integer, p_nombre text),
   guardar_ticket_tipo(p_id integer, p_nombre text),
   importar_asistencia(p_empresa text, p_registros jsonb, p_archivo text, p_resumen jsonb, p_por text),
+  jefes_disponibles(),
   importar_control(p_registros jsonb, p_trabajadores jsonb, p_archivo text, p_por text),
   importar_padron(p_filas jsonb, p_por text, p_ceses jsonb),
   importar_planilla_unificada(p_filas jsonb, p_periodo text, p_por text, p_ceses jsonb),
@@ -86,6 +88,7 @@ grant execute on function
   registrar_acuse_asistido(p_dni text, p_lote text, p_motivo text, p_entrega timestamp with time zone, p_adjunto text, p_dispositivo text),
   registrar_sesion_backoffice(p_marker text),
   resolver_solicitud(p_id bigint, p_decision text, p_comentario text, p_por text),
+  solicitudes_por_mi_visto_bueno(),
   ver_clave_equipo(p_codigo text, p_por text)
 to authenticated;
 

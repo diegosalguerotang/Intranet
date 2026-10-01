@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useApp } from "../../state";
 import { nivelDe } from "../../data/modulos";
 import { PageHeader, Card, Field, Select, Note, Button, EmptyState } from "../../components/ui";
-import { FormPapeleta, FormVacaciones, avisarSolicitud } from "./formularios";
+import { FormPapeleta, FormVacaciones, SelectorJefe, avisarSolicitud } from "./formularios";
+import { JEFE_VACIO, datosConJefe } from "../../lib/jefe";
 
 // SOL-02 — Nueva solicitud (BackOffice, a nombre de un trabajador). El enlace
 // directo /solicitudes/nueva abre este formulario sin recorrer el menú; si no
@@ -15,7 +16,7 @@ export default function NuevaSolicitud() {
   const puedeAccionar = nivelDe(acceso, "solicitudes") >= 2;
   const [tipoId, setTipoId] = useState("");
   const [dni, setDni] = useState("");
-  const [supervisor, setSupervisor] = useState("");
+  const [jefe, setJefe] = useState(JEFE_VACIO);
   const [ocupado, setOcupado] = useState(false);
   const [listo, setListo] = useState(null); // numero creado
   const [avisoFallo, setAvisoFallo] = useState(false);
@@ -30,10 +31,7 @@ export default function NuevaSolicitud() {
   const enviar = async (datos) => {
     setOcupado(true);
     try {
-      const conSupervisor = supervisor.trim()
-        ? { ...datos, supervisor_nombre: supervisor.trim() }
-        : datos;
-      const numero = await crearSolicitudAdmin(dni, tipoId, conSupervisor);
+      const numero = await crearSolicitudAdmin(dni, tipoId, datosConJefe(datos, jefe));
       const ok = await avisarSolicitud(numero, "creada");
       setAvisoFallo(!ok);
       setListo(numero);
@@ -62,7 +60,7 @@ export default function NuevaSolicitud() {
             )}
             <div className="flex gap-2">
               <Button onClick={() => navigate("/solicitudes")}>Ir a la bandeja</Button>
-              <Button variant="secondary" onClick={() => { setListo(null); setDni(""); setTipoId(""); setSupervisor(""); }}>
+              <Button variant="secondary" onClick={() => { setListo(null); setDni(""); setTipoId(""); setJefe(JEFE_VACIO); }}>
                 Registrar otra
               </Button>
             </div>
@@ -107,13 +105,7 @@ export default function NuevaSolicitud() {
               <Derivado etiqueta="Cargo" valor={trabajador.cargo} />
               <Derivado etiqueta="Sede" valor={sede?.nombre ?? trabajador.sede ?? "—"} />
               <Derivado etiqueta="Fecha de ingreso" valor={trabajador.ingreso ?? "—"} />
-              <Field label="Jefe inmediato / supervisor"
-                hint={supervisorSede ? `La sede propone: ${supervisorSede}. Editable.` : "La sede no tiene supervisor: escríbelo."}>
-                <input
-                  className="w-full rounded-caja border border-borde bg-white px-3 py-2 text-[13px] outline-none focus:border-petroleo"
-                  value={supervisor} onChange={(e) => setSupervisor(e.target.value)}
-                  placeholder={supervisorSede ?? "Nombre del jefe inmediato"} />
-              </Field>
+              <SelectorJefe valor={jefe} onCambio={setJefe} propuesta={supervisorSede} />
             </div>
           )}
 

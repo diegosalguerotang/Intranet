@@ -73,12 +73,23 @@ begin
   return n;
 end $$;
 
+-- Correo de la cuenta administrativa ACTIVA de una persona (2026-10-01): el
+-- aviso al jefe inmediato de una solicitud. El correo del maestro puede
+-- faltar; el de la cuenta con la que entra al BackOffice siempre existe.
+create or replace function api_admin_correo_por_dni(p_dni text)
+returns text
+language sql stable security definer set search_path = public, interno, extensions as $$
+  select u.correo from usuarios_admin u where u.persona_dni = p_dni and u.estado = 'activo' limit 1
+$$;
+
 -- Solo la llave de servicio. Ni anon ni authenticated (ni PUBLIC).
 revoke all on function
   api_admin_por_correo(text, boolean), api_admin_por_id(bigint), api_admin_marcar_clave(bigint, text, boolean),
-  api_token_crear(text, text, text, text, timestamptz), api_token_leer(text, text[]), api_token_usar(text)
+  api_token_crear(text, text, text, text, timestamptz), api_token_leer(text, text[]), api_token_usar(text),
+  api_admin_correo_por_dni(text)
 from public, anon, authenticated;
 grant execute on function
   api_admin_por_correo(text, boolean), api_admin_por_id(bigint), api_admin_marcar_clave(bigint, text, boolean),
-  api_token_crear(text, text, text, text, timestamptz), api_token_leer(text, text[]), api_token_usar(text)
+  api_token_crear(text, text, text, text, timestamptz), api_token_leer(text, text[]), api_token_usar(text),
+  api_admin_correo_por_dni(text)
 to service_role;

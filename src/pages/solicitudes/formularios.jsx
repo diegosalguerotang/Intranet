@@ -1,5 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useApp } from "../../state";
+import { OTRO_JEFE, jefesElegibles } from "../../lib/jefe";
 import { Button, Input, Select, Field, Note, Textarea } from "../../components/ui";
 
 // Formularios de los dos tipos iniciales del Centro de Solicitudes. Son
@@ -29,6 +31,49 @@ export function resumenDatos(tipoId, datos) {
     ["Periodo", datos.periodo ?? "—"],
     ["Horario", datos.horario ?? "—"],
   ];
+}
+
+// Jefe inmediato (2026-10-01). Se elige de la lista de usuarios del BackOffice:
+// esa persona recibe el aviso y da su visto bueno desde «Mi solicitud». Si el
+// jefe no tiene cuenta se escribe su nombre y el visto bueno lo da la
+// jefatura. `valor` = { usuario, nombre } (ver src/lib/jefe.js). Si la lista
+// no carga, queda el campo de texto de siempre.
+export function SelectorJefe({ valor, onCambio, excluirPropio = false, propuesta = null }) {
+  const { jefesDisponibles } = useApp();
+  const [lista, setLista] = useState([]);
+  useEffect(() => {
+    let vivo = true;
+    jefesDisponibles().then((l) => { if (vivo) setLista(l); }).catch(() => {});
+    return () => { vivo = false; };
+  }, []);
+  const opciones = jefesElegibles(lista, excluirPropio);
+  const aMano = valor.usuario === OTRO_JEFE || opciones.length === 0;
+  const pista = valor.usuario && valor.usuario !== OTRO_JEFE
+    ? "Recibirá el aviso y podrá dar su visto bueno desde su buzón «Mi solicitud»."
+    : aMano
+    ? "Sin cuenta en el BackOffice no puede aprobar aquí: el visto bueno lo dará la jefatura."
+    : propuesta
+    ? `Si lo dejas vacío se usa el supervisor de la sede: ${propuesta}.`
+    : "Si lo dejas vacío y la sede tiene supervisor registrado, se usa ese.";
+  return (
+    <Field label="Jefe inmediato / supervisor" hint={pista}>
+      {opciones.length > 0 && (
+        <Select value={valor.usuario} onChange={(e) => onCambio({ usuario: e.target.value, nombre: "" })}>
+          <option value="">{propuesta ? `El de la sede (${propuesta})` : "Seleccionar…"}</option>
+          {opciones.map((j) => (
+            <option key={j.codigo} value={j.codigo}>{j.nombre}{j.cargo ? ` — ${j.cargo}` : ""}</option>
+          ))}
+          <option value={OTRO_JEFE}>Otra persona (escribir su nombre)</option>
+        </Select>
+      )}
+      {aMano && (
+        <div className={opciones.length > 0 ? "mt-2" : ""}>
+          <Input value={valor.nombre} onChange={(e) => onCambio({ usuario: opciones.length > 0 ? OTRO_JEFE : "", nombre: e.target.value })}
+            placeholder={propuesta ?? "Nombre del jefe inmediato"} />
+        </div>
+      )}
+    </Field>
+  );
 }
 
 // Sube el original firmado al bucket privado y devuelve la RUTA interna.

@@ -167,6 +167,16 @@ export function AppProvider({ children }) {
     }
     setCorreoFallos(error || !Array.isArray(data) ? [] : data);
   };
+  // V°B° del jefe directo (2026-10-01): solicitudes que esperan el visto bueno
+  // del usuario como jefe designado. Mismo criterio que el aviso de correo: se
+  // carga después de publicar el usuario, sin esperar, y cualquier error deja
+  // la lista vacía (el buzón no bloquea nada).
+  const [vistosBuenos, setVistosBuenos] = useState([]);
+  const cargarVistosBuenos = async () => {
+    if (!conSupabase) { setVistosBuenos([]); return; }
+    const { data, error } = await supabase.rpc("solicitudes_por_mi_visto_bueno");
+    setVistosBuenos(error || !Array.isArray(data) ? [] : data);
+  };
 
   const recargar = async (...claves) => {
     if (!conSupabase) return true;
@@ -275,6 +285,7 @@ export function AppProvider({ children }) {
       setUser(base);
       // Informativo: después de publicar el usuario y sin esperar.
       cargarCorreoFallos(base.acceso.esSuperadmin).catch(() => setCorreoFallos([]));
+      cargarVistosBuenos().catch(() => setVistosBuenos([]));
     };
     resolverRef.current = resolver;
     supabase.auth.getSession().then(({ data }) => resolver(data.session));
@@ -295,6 +306,7 @@ export function AppProvider({ children }) {
     if (supabaseListo) await supabase.auth.signOut();
     if (conSupabase) setDb(dbVacia(FUENTES));
     setCorreoFallos([]);
+    setVistosBuenos([]);
     setUser(null);
   };
   // Tras verificar el código (o reconocer el equipo): se vuelve a resolver la
@@ -900,7 +912,15 @@ export function AppProvider({ children }) {
         p_por: user?.nombre ?? "RRHH",
       });
       if (error) throw new Error(error.message);
-      await recargar("solicitudes");
+      await Promise.all([recargar("solicitudes"), cargarVistosBuenos()]);
+    },
+    // Lista para elegir al jefe inmediato: usuarios administrativos activos
+    // (código, nombre, cargo). Vacía si la función aún no existe o falla: el
+    // formulario cae al nombre escrito a mano.
+    jefesDisponibles: async () => {
+      if (!supabaseListo) return [];
+      const { data, error } = await supabase.rpc("jefes_disponibles");
+      return error || !Array.isArray(data) ? [] : data;
     },
     reenviarSolicitud: async (id, datos) => {
       const { error } = await supabase.rpc("reenviar_solicitud", {
@@ -1087,7 +1107,8 @@ export function AppProvider({ children }) {
   return (
     <AppCtx.Provider
       value={{ user, salir, claveCambiada, factorVerificado, segundoFactor, empresaId, setEmpresaId, empresa, db, empresasActivas, origen, persona, sede, empresaPor, recargar, reintentarCarga,
-        correoFallos, recargarCorreoFallos: () => cargarCorreoFallos(Boolean(user?.acceso?.esSuperadmin)), ...acciones }}
+        correoFallos, recargarCorreoFallos: () => cargarCorreoFallos(Boolean(user?.acceso?.esSuperadmin)),
+        vistosBuenos, recargarVistosBuenos: cargarVistosBuenos, ...acciones }}
     >
       {children}
     </AppCtx.Provider>

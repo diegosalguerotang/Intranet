@@ -31,6 +31,7 @@ const reiniciar = () => Object.assign(estado, {
   conteos: {},             // { "ip:1.2.3.4": n, "sujeto:x": n } que devuelve el count=exact
   tablaCaida: false,
   consultas: [],           // URLs de los GET de conteo a correo_envios
+  solicitudes: [], solicitudAvisos: [], sinFuncionJefe: false,
 });
 const q = (url) => Object.fromEntries(new URL(url).searchParams);
 const valorEq = (v) => decodeURIComponent(String(v ?? "")).replace(/^(eq|ilike)\./, "");
@@ -68,6 +69,14 @@ globalThis.fetch = vi.fn(async (url, init = {}) => {
   if (u.includes("/rest/v1/v_tickets")) return json(estado.tickets.filter((t) => t.numero === valorEq(p.numero)));
   if (u.includes("/rest/v1/ticket_avisos")) return json(estado.ticketAvisos.map((correo) => ({ correo })));
   if (u.includes("/rest/v1/rpc/api_token_crear")) return json(null, 200);
+  // Centro de Solicitudes (aviso al jefe directo, 2026-10-01).
+  if (u.includes("/rest/v1/v_solicitudes")) return json((estado.solicitudes ?? []).filter((s) => s.numero === valorEq(p.numero)));
+  if (u.includes("/rest/v1/solicitud_avisos")) return json((estado.solicitudAvisos ?? []).map((correo) => ({ correo, copia: false })));
+  if (u.includes("/rest/v1/rpc/api_admin_correo_por_dni")) {
+    if (estado.sinFuncionJefe) return json({ code: "PGRST202", message: "Could not find the function" }, 404);
+    const { p_dni } = JSON.parse(init.body);
+    return json(estado.admins.find((a) => a.persona_dni === p_dni && a.estado === "activo")?.correo ?? null);
+  }
   throw new Error(`ruta no simulada: ${u}`);
 });
 
@@ -193,5 +202,42 @@ describe("recordatorio de acuse", () => {
   });
   it("un trabajador del portal → 403", async () => {
     expect((await llamar({ accion: "recordatorio-acuse", dni: "45231876" }, { "x-sesion": "jwt-rosa" })).status).toBe(403);
+  });
+});
+
+describe("aviso de solicitud: el jefe directo", () => {
+  const papeleta = {
+    numero: "PAP-NEG-2026-0001", tipo_id: "papeleta-permiso", tipo: "Papeleta de permiso", codigo_formato: "GR-F-14",
+    solicitante_dni: "45231876", solicitante_nombre: "Rosa Quispe", sede_nombre: "SUNAT", supervisor_dni: "40776655",
+    estado: "enviada", paso_actual: 1, paso_titulo: "V°B° del jefe inmediato",
+    cadena: [{ paso: "jefe", titulo: "V°B° del jefe inmediato" }, { paso: "rrhh", titulo: "V°B° de RRHH" }],
+  };
+  const pedir = () => llamar({ accion: "aviso-solicitud", numero: papeleta.numero, evento: "creada" }, { "x-sesion": "jwt-admin" });
+  const asuntosDe = (correo) => enviados.filter((e) => e.destino === correo).map((e) => e.asunto);
+
+  it("si el paso actual es el del jefe, a él le llega SU correo (a su cuenta) y no el aviso general; los avisos siguen saliendo", async () => {
+    estado.solicitudes = [papeleta]; estado.solicitudAvisos = ["dsalguero@grupoer.pe", "luis@gmail.com"];
+    const r = await pedir();
+    expect(r.status).toBe(200); expect(r.json.enviados).toBe(2);
+    expect(asuntosDe("dsalguero@grupoer.pe")).toEqual(["Solicitud PAP-NEG-2026-0001 espera tu visto bueno — IntraTech"]);
+    expect(asuntosDe("luis@gmail.com")).toEqual(["Nueva solicitud PAP-NEG-2026-0001 — IntraTech"]);
+  });
+  it("sin paso de jefe (vacaciones) el jefe recibe la copia general de siempre", async () => {
+    estado.solicitudes = [{ ...papeleta, cadena: [{ paso: "rrhh", titulo: "V°B° de Gerencia de RRHH" }] }]; estado.solicitudAvisos = ["luis@gmail.com"];
+    const r = await pedir();
+    expect(r.json.enviados).toBe(2);
+    expect(asuntosDe("dsalguero@grupoer.pe")).toEqual(["Nueva solicitud PAP-NEG-2026-0001 — IntraTech"]);
+  });
+  it("si la función de servicio aún no existe, cae al correo del maestro", async () => {
+    estado.solicitudes = [papeleta]; estado.solicitudAvisos = []; estado.sinFuncionJefe = true;
+    const r = await pedir();
+    expect(r.json.enviados).toBe(1);
+    expect(asuntosDe("dsalguero@grupoer.pe")).toEqual(["Solicitud PAP-NEG-2026-0001 espera tu visto bueno — IntraTech"]);
+  });
+  it("jefe escrito a mano (sin persona): solo salen los avisos configurados", async () => {
+    estado.solicitudes = [{ ...papeleta, supervisor_dni: null }]; estado.solicitudAvisos = ["luis@gmail.com"];
+    const r = await pedir();
+    expect(r.json.enviados).toBe(1);
+    expect(enviados.map((e) => e.destino)).toEqual(["luis@gmail.com"]);
   });
 });
