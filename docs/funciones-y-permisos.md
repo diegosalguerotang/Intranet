@@ -8,11 +8,11 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 |---|---|
 | administrativa (sesión propia) | 2 |
 | administrativa | 63 |
-| autoservicio del trabajador | 26 |
+| autoservicio del trabajador | 28 |
 | ayudante | 43 |
 | interna | 4 |
 | pre-login | 4 |
-| servicio (api/*.js con llave de servicio) | 13 |
+| servicio (api/*.js con llave de servicio) | 14 |
 | trigger | 11 |
 
 | Función | Grupo | Guarda / regla | EXECUTE |
@@ -23,6 +23,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `alta_trabajador(p_dni text, p_nombre text, p_cargo text, p_sede text, p_empresa text, p_ingreso date, p_celular text, p_banco text, p_cuenta text, p_correo text, p_cci text, p_tipo_documento text)` | administrativa | personal · nivel 2 | authenticated + service_role |
 | `alternar_ticket_subtipo(p_id integer, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `alternar_ticket_tipo(p_id integer, p_activo boolean)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
+| `api_admin_correo_por_dni(p_dni text)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_admin_marcar_clave(p_id bigint, p_correo text, p_requiere_cambio boolean)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_admin_por_correo(p_correo text, p_solo_activo boolean)` | servicio (api/*.js con llave de servicio) | — | service_role |
 | `api_admin_por_id(p_id bigint)` | servicio (api/*.js con llave de servicio) | — | service_role |
@@ -138,6 +139,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `importar_padron(p_filas jsonb, p_por text, p_ceses jsonb)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `importar_planilla(p_empresa text, p_filas jsonb, p_por text)` | interna | — | service_role |
 | `importar_planilla_unificada(p_filas jsonb, p_periodo text, p_por text, p_ceses jsonb)` | administrativa | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
+| `jefes_disponibles()` | autoservicio del trabajador | es_admin; identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `marcar_clave_cambiada(p_correo text)` | administrativa | solo la propia cuenta (correo del JWT) | authenticated + service_role |
 | `mi_segundo_factor()` | administrativa | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
 | `mi_sesion_backoffice()` | administrativa (sesión propia) | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
@@ -180,6 +182,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `requiere_superadmin()` | ayudante | — | service_role |
 | `resolver_memorandum(p_id text, p_decision text)` | administrativa | memorandums · nivel 3 | authenticated + service_role |
 | `resolver_solicitud(p_id bigint, p_decision text, p_comentario text, p_por text)` | autoservicio del trabajador | guarda propia sobre fn_nivel_modulo/nivel_en; identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
+| `solicitudes_por_mi_visto_bueno()` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `suspender_usuario_admin(p_id bigint)` | administrativa | superadmin | authenticated + service_role |
 | `ver_clave_equipo(p_codigo text, p_por text)` | administrativa | guarda propia sobre fn_nivel_modulo/nivel_en | authenticated + service_role |
 | `verificar_bloqueo(p_correo text)` | pre-login | SIN GUARDA (revisar) | anon + authenticated + service_role |
