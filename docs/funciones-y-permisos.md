@@ -1,4 +1,4 @@
-# Funciones y permisos — estado real de producción (2026-09-30)
+# Funciones y permisos — estado real de producción (2026-10-01)
 
 Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (proyecto `mzpbdkrmokfxrrsotfgs`): firma, guarda detectada en el cuerpo y roles con EXECUTE. Regenerar tras cada fase.
 

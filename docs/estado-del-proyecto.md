@@ -96,8 +96,8 @@ Vercel está en plan Hobby: tope de **12 funciones** (ya se usan las 12; hubo qu
 **Tablas que existen pero no se usan desde ninguna pantalla** (comprobado con búsqueda en el cliente y la API):
 - `solicitudes_cambio_cuenta` y su RPC: la UI del Portal se ocultó el 2026-08-21 por decisión del responsable.
 - `v_portal_tickets` y `portal_crear_ticket` (cerrada: siempre rechaza) desde que Soporte salió del Portal.
-- `tardanzas`, `contratos`, `plantillas`: se leen en cada carga del BackOffice pero nada las escribe salvo el seed; sus pantallas están en gris. `v_portal_mes` muestra al trabajador un conteo de tardanzas que sale de esa tabla, hoy vacía.
-- `epp_entregas`: se lee en el legajo; la única escritura está en una pantalla sin ruta.
+- `tardanzas`, `contratos`, `plantillas`: nada las escribe salvo el seed; sus pantallas están en gris. Desde el 2026-09-30 el BackOffice ya no las descarga (limpieza). `v_portal_mes` muestra al trabajador un conteo de tardanzas que sale de esa tabla, hoy vacía.
+- `epp_entregas`: se lee en el legajo; la pantalla que escribía se retiró el 2026-09-30 (la RPC `registrar_epp` sigue en la base).
 - Las funciones `importar_planilla` / `importar_planilla_unificada` y sus vistas previas siguen en la base con guarda, sin pantalla que las llame.
 
 **Divergencias documento/código.** `supabase/MODELO.md` todavía describe `usuario_alcance_empresa/sede`, eliminadas el 2026-08-13; habla de «53 tablas con RLS» cuando el conteo es 47 + 15; y lista como pendiente el catálogo de solicitudes, que en la práctica es `solicitud_tipos`. Además, `schema.sql` sigue declarando columnas bancarias de `personas` marcadas «deprecadas» que la fase 3b ya eliminó de producción: el canon histórico y el estado real difieren, y el estado real solo se reconstruye aplicando `seguridad.sql` al final.
@@ -260,15 +260,15 @@ Qué falta para arrancar, en el orden natural del propio sistema: (1) que las si
 - Formalmente, el spec del Centro de Solicitudes sigue encabezado «pendiente de aprobación» aunque está construido y en producción.
 
 **Deuda técnica conocida y su consecuencia práctica**
-- `importar_asistencia` borra el rango sin filtrar por origen: un archivo del reloj sobre un mes con control semanal cargado lo destruye.
-- `publicar_lote_pdf` no es idempotente: un reintento tras una respuesta perdida crea una versión nueva y marca reemplazadas las boletas de esos trabajadores.
+- *(corregido 2026-09-30)* `importar_asistencia` borraba el rango sin filtrar por origen; ahora solo toca `origen = 'reloj'` y no pisa el control semanal.
+- *(corregido 2026-09-30)* `publicar_lote_pdf` no era idempotente; ahora `lotes.huella` identifica un lote idéntico y lo devuelve sin crear versión. OJO: las reversiones históricas de la fase 1 y del hardening del 24-08 contienen los cuerpos viejos de estas dos funciones.
 - `/api/solicitud-pdf` no comprueba el enlace del documento a la solicitud: un fallo ahí más un reintento crea un documento duplicado.
 - Enlaces en correos y PDFs (`APP` en seis archivos de `api/`) y `site_url` de Auth apuntan al dominio de Vercel, no al propio.
 - El canon histórico (`schema.sql`) no refleja el estado real; solo `seguridad.sql` al final lo corrige. Quien lea `schema.sql` verá columnas que ya no existen. `MODELO.md` tiene tres afirmaciones desactualizadas (sección 4).
 - Formulario de alta manual (RRH-04) toma los cargos de un mock de seis valores, no del catálogo `cargos`.
 - El Portal muestra tardanzas leídas de una tabla que nada escribe.
-- `tardanzas`, `contratos`, `plantillas` se cargan en cada arranque del BackOffice sin uso.
-- Tres archivos de página huérfanos (Contratos, Tardanzas, EPP, Costos) con lógica demo.
+- *(limpiado 2026-09-30)* Las fuentes sin uso, las cuatro páginas huérfanas y los parsers de PLATRA1-unificada se retiraron del cliente; las funciones SQL legadas (`importar_planilla`, `importar_planilla_unificada` y sus vistas previas) siguen en la base con guarda porque están entrelazadas con las fases de seguridad.
+- Los ensayos históricos `ensayar-fase0` y `ensayar-fase1` ya no reproducen (replican la migración del 17-09 con precondiciones fijas; dejaron de pasar con los cambios del 22-09). El CI solo corre `ensayar-canon`, que sí cubre los invariantes.
 - Sin respaldos de la base (plan gratis). Los registros probatorios (acuses, consentimientos) no tienen copia fuera de Supabase.
 - Vercel Hobby: tope de 12 funciones alcanzado; cualquier endpoint nuevo exige fusionar rutas.
 - El job `produccion` del CI (verificadores contra la base) no corre porque falta el secreto en GitHub; por eso dos huecos de la fase 5 se descubrieron tarde.
