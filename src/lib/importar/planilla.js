@@ -1,3 +1,5 @@
+// LEGADO (2026-09-30): PLATRA1 ya no tiene pantalla (RRH-05 solo acepta el padrón de 12 columnas).
+// Se conserva por `normalizar` (lo usan activos.js y boletas/lote.js) y por la prueba integrada boletas+Excel.
 // src/lib/importar/planilla.js — parser del reporte PLATRA1 exportado a Excel.
 // Reporte de impresión, no hoja limpia: cabecera en filas 1-5 (todo en col A),
 // encabezados con "|" en la fila 6, datos después; en archivos multipágina el

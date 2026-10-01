@@ -82,30 +82,6 @@ export const MEMORANDUMS = [
   { id: "0140-2026", dni: "42345987", tipo: "Llamada de atención", motivo: "Tardanzas reiteradas — 3 tardanzas, 35 minutos en junio 2026", articulo: "Art. 12 RIT", emitido: "2026-07-10", notificado: "2026-07-11 08:30", plazoDias: 5, vence: "2026-07-18", estado: "resuelto", descargo: null, resolucion: { fecha: "2026-07-21", decision: "Se mantiene la sanción. El trabajador no presentó descargo dentro del plazo." } },
 ];
 
-export const TARDANZAS = [
-  { dni: "45231876", periodo: "Julio 2026", tardanzas: 2, minutos: 18, descuento: 12.5 },
-  { dni: "42345987", periodo: "Julio 2026", tardanzas: 1, minutos: 8, descuento: 5.6 },
-  { dni: "47893456", periodo: "Julio 2026", tardanzas: 4, minutos: 52, descuento: 36.1 },
-  { dni: "46782301", periodo: "Julio 2026", tardanzas: 0, minutos: 0, descuento: 0 },
-  { dni: "44567120", periodo: "Julio 2026", tardanzas: 1, minutos: 5, descuento: 3.5 },
-  { dni: "43678921", periodo: "Julio 2026", tardanzas: 3, minutos: 41, descuento: 28.4 },
-];
-
-export const PLANTILLAS = [
-  { id: 1, nombre: "Contrato a plazo fijo — Servicio específico", empresa: "negliaf", tipo: "Contrato", version: 3, actualizada: "2026-06-12" },
-  { id: 2, nombre: "Adenda de traslado de sede", empresa: "negliaf", tipo: "Adenda", version: 1, actualizada: "2026-03-20" },
-  { id: 3, nombre: "Memorándum — Llamada de atención", empresa: "negliaf", tipo: "Memorándum", version: 2, actualizada: "2026-05-02" },
-  { id: 4, nombre: "Certificado de trabajo", empresa: "negliaf", tipo: "Certificado", version: 1, actualizada: "2026-01-15" },
-  { id: 5, nombre: "Contrato a plazo fijo — Servicio específico", empresa: "bremco", tipo: "Contrato", version: 1, actualizada: "2026-04-10" },
-];
-
-export const CONTRATOS = [
-  { dni: "46782301", tipo: "Plazo fijo", inicio: "2026-02-01", fin: "2026-08-31", estado: "vigente", firma: "firmado" },
-  { dni: "44567120", tipo: "Plazo fijo", inicio: "2026-05-01", fin: "2026-10-31", estado: "vigente", firma: "firmado" },
-  { dni: "48012765", tipo: "Plazo fijo", inicio: "2026-06-01", fin: "2026-08-31", estado: "por_vencer", firma: "firmado" },
-  { dni: "43678921", tipo: "Plazo fijo", inicio: "2026-01-15", fin: "2026-08-15", estado: "por_vencer", firma: "pendiente" },
-];
-
 export const ACTIVOS = [
   { codigo: "TEL-0012", categoria: "Comunicaciones", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8871", imei: "358240051111110", estado: "asignado", asignado: "40125634", sede: "migraciones", empresa: "negliaf", valor: 620, compra: "2026-01-15" },
   { codigo: "TEL-0013", categoria: "Comunicaciones", marca: "Samsung", modelo: "Galaxy A15", serie: "SM-A155M-8872", imei: "358240051111128", estado: "disponible", asignado: null, sede: null, empresa: "negliaf", valor: 620, compra: "2026-01-15" },

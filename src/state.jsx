@@ -16,11 +16,8 @@ const FUENTES = {
   acuses: "v_acuses",
   comunicados: "v_comunicados",
   memorandums: "v_memorandums",
-  tardanzas: "tardanzas",
   asistenciaLotes: "v_asistencia_lotes",
   asistenciaConfig: "asistencia_config",
-  plantillas: "plantillas",
-  contratos: "v_contratos",
   activos: "v_activos",
   lineas: "lineas",
   licenciasOffice: "v_licencias_office",
@@ -51,11 +48,8 @@ const LOCAL = {
   acuses: MOCK.ACUSES,
   comunicados: MOCK.COMUNICADOS,
   memorandums: MOCK.MEMORANDUMS,
-  tardanzas: MOCK.TARDANZAS,
   asistenciaLotes: [],  // asistencia: solo existe con conexión real
   asistenciaConfig: [],
-  plantillas: MOCK.PLANTILLAS,
-  contratos: MOCK.CONTRATOS,
   activos: MOCK.ACTIVOS,
   lineas: MOCK.LINEAS,
   licenciasOffice: MOCK.LICENCIAS_OFFICE,
@@ -1087,17 +1081,6 @@ export function AppProvider({ children }) {
       if (error) throw new Error(error.message);
       await recargar("lotes", "acuses");
       return data;
-    },
-    addEpp: (rows) => {
-      local("epp_entregas", (xs) => [...rows, ...xs]);
-      (async () => {
-        for (const r of rows) {
-          await rpc("registrar_epp", {
-            p_dni: r.dni, p_items: r.items, p_entrega: r.entrega, p_reposicion: r.reposicion,
-          });
-        }
-        await recargar("epp_entregas");
-      })();
     },
   };
 
