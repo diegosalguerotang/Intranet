@@ -232,7 +232,7 @@ export default async function handler(req, res) {
   }
 
   y -= 14;
-  texto("Documento generado por la Intranet GrupoER: el registro de aprobación (hora del servidor) sustituye a las", 50, y, { size: 7.5, color: gris });
+  texto("Documento generado por IntraTech: el registro de aprobación (hora del servidor) sustituye a las", 50, y, { size: 7.5, color: gris });
   y -= 10;
   texto("firmas manuscritas. El descuento, si corresponde, lo determina la planilla.", 50, y, { size: 7.5, color: gris });
 

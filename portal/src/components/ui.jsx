@@ -1,4 +1,4 @@
-// Componentes mínimos del portal (estética GrupoER v2 en versión ligera).
+// Componentes mínimos del portal (estética IntraTech v2 en versión ligera).
 
 export function Tarjeta({ children, className = "" }) {
   return (

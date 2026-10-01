@@ -177,7 +177,7 @@ export default async function handler(req, res) {
     if (p.correo_verificado) return res.status(200).json({ yaVerificado: true });
     const token = await crearToken(p.dni, "verificacion", p.correo, 24 * 7);
     if (!token) return res.status(500).json({ error: "No se pudo generar el enlace." });
-    const r = await enviar(p.correo, "Confirma tu correo — GrupoER", plantilla(
+    const r = await enviar(p.correo, "Confirma tu correo — IntraTech", plantilla(
       "Confirma tu correo",
       `<p>Hola ${p.nombre.split(" ")[0]}: toca el botón para confirmar que este correo es tuyo.
           Así podrás recuperar tu clave si la olvidas.</p>
@@ -202,7 +202,7 @@ export default async function handler(req, res) {
     }
     const token = await crearToken(dni, "recuperacion", p.correo, 1);
     if (token) {
-      const r = await enviar(p.correo, "Crea una clave nueva — GrupoER", plantilla(
+      const r = await enviar(p.correo, "Crea una clave nueva — IntraTech", plantilla(
         "Crea una clave nueva para el portal",
         `<p>Hola ${p.nombre.split(" ")[0]}: pediste restablecer tu clave del Portal del Trabajador.</p>
          ${botonCorreo(`${APP}/portal/restablecer?token=${token}`, "Crear mi clave nueva")}
@@ -229,9 +229,9 @@ export default async function handler(req, res) {
     }
     const token = await crearToken(u.persona_dni, "recuperacion-admin", correo, 1);
     if (token) {
-      const r = await enviar(correo, "Crea una clave nueva — BackOffice GrupoER", plantilla(
+      const r = await enviar(correo, "Crea una clave nueva — BackOffice IntraTech", plantilla(
         "Crea una clave nueva para el BackOffice",
-        `<p>Pediste restablecer tu clave del BackOffice de GrupoER.</p>
+        `<p>Pediste restablecer tu clave del BackOffice de IntraTech.</p>
          ${botonCorreo(`${APP}/admin/restablecer?token=${token}`, "Crear mi clave nueva")}
          <p style="font-size:12px;color:#999">El enlace vence en 1 hora y sirve una sola vez.
             Si no fuiste tú, ignora este correo.</p>`));
@@ -266,7 +266,7 @@ export default async function handler(req, res) {
        <p>Solicitante: <b>${t.solicitante_nombre}</b>${t.area ? ` — ${t.area}` : ""}${t.solicitante_dni ? ` (DNI ${t.solicitante_dni})` : ""}</p>
        ${t.comentario ? `<p style="border-left:3px solid #3569a0;padding-left:10px;color:#555">${t.comentario}</p>` : ""}
        ${botonCorreo(`${APP}/soporte/tickets`, "Ver en la intranet")}`);
-    const r = await enviarALista(destinos, `Ticket ${t.numero}: ${t.tipo} — GrupoER`, html, { accion, ip, sujeto: numero });
+    const r = await enviarALista(destinos, `Ticket ${t.numero}: ${t.tipo} — IntraTech`, html, { accion, ip, sujeto: numero });
     if (!r.enviados && r.ultimoError) return res.status(503).json({ error: r.ultimoError });
     return res.status(200).json({ enviados: r.enviados, omitidos: r.omitidos });
   }
@@ -323,7 +323,7 @@ export default async function handler(req, res) {
        <p>Solicitante: <b>${s.solicitante_nombre}</b>${s.sede_nombre ? ` — ${s.sede_nombre}` : ""}</p>
        <p>Estado: <b>${s.estado}</b>${s.paso_titulo ? ` · esperando ${s.paso_titulo}` : ""}</p>
        ${botonCorreo(`${APP}/solicitudes`, "Ver en la intranet")}`);
-    const r = await enviarALista(destinos, `${titulo} — GrupoER`, html, { accion, ip, sujeto: numero });
+    const r = await enviarALista(destinos, `${titulo} — IntraTech`, html, { accion, ip, sujeto: numero });
     if (!r.enviados && r.ultimoError) return res.status(503).json({ error: r.ultimoError });
     return res.status(200).json({ enviados: r.enviados, omitidos: r.omitidos });
   }
@@ -362,7 +362,7 @@ export default async function handler(req, res) {
 
     const lista = pendientes.slice(0, 5).map((x) => `<li>${x.doc}</li>`).join("");
     const demas = pendientes.length > 5 ? `<p style="font-size:12px;color:#999">…y ${pendientes.length - 5} más.</p>` : "";
-    const r = await enviar(p.correo, "Tienes documentos por confirmar — GrupoER", plantilla(
+    const r = await enviar(p.correo, "Tienes documentos por confirmar — IntraTech", plantilla(
       "Documentos pendientes de confirmar",
       `<p>Hola ${p.nombre.split(" ")[0]}: tienes ${pendientes.length} documento${pendientes.length === 1 ? "" : "s"}
           esperando tu confirmación de recepción en el Portal del Trabajador:</p>

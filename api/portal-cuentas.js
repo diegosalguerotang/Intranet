@@ -31,7 +31,7 @@ const claveAleatoria = () => String(randomInt(0, 1_000_000)).padStart(6, "0");
 // «acceso-portal» queda FUERA del límite de tasa (contar() la excluye): una
 // creación masiva desde la oficina no debe bloquear las demás acciones.
 async function correoAcceso(persona, dni, clave, ip) {
-  const r = await enviar(persona.correo, "Tu acceso al Portal del Trabajador — GrupoER", plantilla(
+  const r = await enviar(persona.correo, "Tu acceso al Portal del Trabajador — IntraTech", plantilla(
     "Tu acceso al Portal del Trabajador",
     `<p>Hola ${persona.nombre.split(" ")[0]}: ya puedes entrar al portal.</p>
      <p><b>Dirección:</b> <a href="${APP}/portal">${APP}/portal</a><br/>

@@ -22,7 +22,7 @@ export default function Marco({ children }) {
     <div className="mx-auto flex min-h-dvh max-w-md flex-col">
       <header className="sticky top-0 z-30 flex items-center justify-between bg-white px-4 py-3 shadow-[0_1px_6px_rgba(0,0,0,0.08)]">
         <div className="font-display text-[17px] font-bold tracking-tight text-tinta">
-          Grupo<span className="text-petroleo">ER</span>
+          Intra<span className="text-petroleo">Tech</span>
         </div>
         <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-acero">Portal del Trabajador</div>
       </header>

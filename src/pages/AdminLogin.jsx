@@ -37,12 +37,12 @@ async function ecoCanales() {
   for (const [nombre, fn] of canales) {
     try {
       const r = await fn(`/api/eco?canal=${nombre}&apikey=${encodeURIComponent(supabaseAnonKey)}`, {
-        headers: { apikey: supabaseAnonKey, authorization: `Bearer ${supabaseAnonKey}`, "x-prueba": "GrupoER" },
+        headers: { apikey: supabaseAnonKey, authorization: `Bearer ${supabaseAnonKey}`, "x-prueba": "IntraTech" },
       });
       const j = await r.json();
       const cab = j.cabeceras ?? {};
       partes.push(
-        `${nombre}[apikey:${estado(cab.apikey, supabaseAnonKey)} auth:${estado(cab.authorization, `Bearer ${supabaseAnonKey}`)} x-prueba:${estado(cab["x-prueba"], "GrupoER")} urlApikey:${estado(j.query?.apikey, supabaseAnonKey)}]`
+        `${nombre}[apikey:${estado(cab.apikey, supabaseAnonKey)} auth:${estado(cab.authorization, `Bearer ${supabaseAnonKey}`)} x-prueba:${estado(cab["x-prueba"], "IntraTech")} urlApikey:${estado(j.query?.apikey, supabaseAnonKey)}]`
       );
     } catch (e) {
       partes.push(`${nombre}[ERR:${(e.message ?? "?").slice(0, 35)}]`);
@@ -231,7 +231,7 @@ export default function AdminLogin() {
           >
             <div className="mb-8 text-center">
               <div className="font-display text-[32px] font-bold leading-none tracking-tight text-tinta">
-                Grupo<span className="text-petroleo">ER</span>
+                Intra<span className="text-petroleo">Tech</span>
               </div>
               <div className="mt-2 text-[12px] font-medium uppercase tracking-[0.3em] text-acero">
                 Intranet · BackOffice
@@ -321,7 +321,7 @@ export default function AdminLogin() {
             </button>
 
             <p className="mt-7 text-center font-mono text-[10px] leading-relaxed text-gris-cl">
-              Acceso restringido a personal autorizado del Grupo ER.
+              Acceso restringido a personal autorizado de IntraTech.
               <br />
               Todo intento de ingreso queda registrado. · v9-diseno
             </p>

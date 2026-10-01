@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       await registrar({ accion: ACCION, ip, sujeto: correo, destinatario: correo, resultado: "error", detalle: "motor sin configurar" });
       return res.status(503).json({ error: MSJ_SIN_CORREO });
     }
-    const r = await enviar(correo, "Tu código de ingreso — GrupoER", plantilla(
+    const r = await enviar(correo, "Tu código de ingreso — IntraTech", plantilla(
       "Tu código de ingreso",
       `<p>Para entrar al BackOffice escribe este código:</p>
        <p style="font-size:30px;letter-spacing:8px;font-weight:bold;margin:12px 0">${codigo}</p>

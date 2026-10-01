@@ -16,7 +16,7 @@ async function rest(ruta, opciones = {}) {
 
 const pagina = (titulo, cuerpo, ok) => `<!doctype html><html lang="es"><head>
 <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>${titulo} — GrupoER</title></head>
+<title>${titulo} — IntraTech</title></head>
 <body style="font-family:Poppins,Arial,sans-serif;background:#f2f3f5;display:flex;min-height:100dvh;align-items:center;justify-content:center;margin:0">
 <div style="background:#fff;border-radius:10px;padding:32px;max-width:420px;text-align:center;box-shadow:0 2px 10px rgba(29,63,114,.08)">
 <div style="font-size:40px">${ok ? "✅" : "⚠️"}</div>

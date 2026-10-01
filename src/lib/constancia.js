@@ -80,7 +80,7 @@ export async function generarConstanciaPdf({
     escribir(`Declaración aceptada por el trabajador: «${declaracion}» El texto se guarda junto con el acuse, no como referencia a la plantilla.`, { cuerpo: 9.5, color: GRIS, salto: 3.5 });
   }
 
-  pagina.drawText(winAnsi("Intranet GrupoER — documento generado sin firma manuscrita; el registro digital del acuse la sustituye."), {
+  pagina.drawText(winAnsi("IntraTech — documento generado sin firma manuscrita; el registro digital del acuse la sustituye."), {
     x: MARGEN, y: MARGEN - 14, size: 8, font: normal, color: GRIS,
   });
   return doc.save();
@@ -150,7 +150,7 @@ export async function generarReporteAcusesPdf({ empresa, ruc, periodo, generadoE
     }
   }
 
-  const pie = "Generado desde el registro inmutable de acuses de la Intranet GrupoER (D.Leg. 1310, art. 3.2). " +
+  const pie = "Generado desde el registro inmutable de acuses de IntraTech (D.Leg. 1310, art. 3.2). " +
     "«Publicado» = puesta a disposición en el portal; «Notificado» = último aviso por correo registrado; " +
     "«Confirmado» = acuse de recepción del trabajador. Marcas de tiempo del reloj del servidor (NTP), zona UTC-5.";
   for (const p of doc.getPages()) {

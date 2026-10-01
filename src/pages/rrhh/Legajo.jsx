@@ -86,7 +86,7 @@ export default function Legajo() {
       ];
       const bytes = await generarConstanciaPdf({
         titulo: "LEGAJO DEL TRABAJADOR — RESUMEN",
-        subtitulo: "Generado desde el maestro y los registros de la Intranet GrupoER",
+        subtitulo: "Generado desde el maestro y los registros de IntraTech",
         numero: p.dni, campos,
       });
       const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));

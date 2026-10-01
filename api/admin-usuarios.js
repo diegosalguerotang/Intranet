@@ -17,9 +17,9 @@ const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\
 // Rastro en correo_envios (2026-09-30); la acción «acceso-admin» queda fuera
 // del límite de tasa (contar() la excluye): informa, no limita.
 async function enviarAccesoAdmin(correo, clave, ip) {
-  const r = await enviar(correo, "Tu acceso al BackOffice — GrupoER", plantilla(
+  const r = await enviar(correo, "Tu acceso al BackOffice — IntraTech", plantilla(
     "Tu acceso al BackOffice",
-    `<p>Ya tienes acceso al BackOffice de GrupoER.</p>
+    `<p>Ya tienes acceso al BackOffice de IntraTech.</p>
      <p><b>Dirección:</b> <a href="${APP}/admin/login">${APP}/admin/login</a><br/>
         <b>Usuario:</b> ${correo}<br/>
         <b>Clave provisional:</b> ${clave}</p>

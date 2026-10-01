@@ -17,14 +17,14 @@ afterEach(() => { vi.useRealTimers(); });
 describe("enviar por Resend", () => {
   it("POST a api.resend.com con Bearer, remitente de la env y el destino; 200 → {}", async () => {
     globalThis.fetch = vi.fn(async (url, init) => { llamadas.push({ url: String(url), init }); return respuesta(200, "{}"); });
-    const { enviar, motorConfigurado, REMITENTE } = await cargar({ RESEND_API_KEY: "re_prueba", CORREO_REMITENTE: "GrupoER <no-responder@avisos.ejemplo>" });
+    const { enviar, motorConfigurado, REMITENTE } = await cargar({ RESEND_API_KEY: "re_prueba", CORREO_REMITENTE: "IntraTech <no-responder@avisos.ejemplo>" });
     expect(motorConfigurado()).toBe(true);
-    expect(REMITENTE).toBe("GrupoER <no-responder@avisos.ejemplo>");
+    expect(REMITENTE).toBe("IntraTech <no-responder@avisos.ejemplo>");
     expect(await enviar("a@ejemplo.pe", "Asunto", "<p>Hola</p>")).toEqual({});
     expect(llamadas).toHaveLength(1);
     expect(llamadas[0].url).toBe("https://api.resend.com/emails");
     expect(llamadas[0].init.headers.Authorization).toBe("Bearer re_prueba");
-    expect(JSON.parse(llamadas[0].init.body)).toEqual({ from: "GrupoER <no-responder@avisos.ejemplo>", to: ["a@ejemplo.pe"], subject: "Asunto", html: "<p>Hola</p>" });
+    expect(JSON.parse(llamadas[0].init.body)).toEqual({ from: "IntraTech <no-responder@avisos.ejemplo>", to: ["a@ejemplo.pe"], subject: "Asunto", html: "<p>Hola</p>" });
   });
   it("un error del proveedor devuelve el estado y los primeros 200 caracteres del cuerpo", async () => {
     globalThis.fetch = vi.fn(async () => respuesta(400, JSON.stringify({ message: "API key is invalid" })));
@@ -54,15 +54,15 @@ describe("enviar por Resend", () => {
     globalThis.fetch = vi.fn();
     const { enviar, motorConfigurado, REMITENTE } = await cargar({ SMTP_USER: "x@gmail.com", SMTP_PASS: "clave" });
     expect(motorConfigurado()).toBe(false);
-    expect(REMITENTE).toBe("GrupoER <onboarding@resend.dev>");
+    expect(REMITENTE).toBe("IntraTech <onboarding@resend.dev>");
     expect((await enviar("a@ejemplo.pe", "x", "y")).error).toBe("El motor de correo aún no está configurado (falta RESEND_API_KEY).");
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
   it("la llave y el remitente se sanean de BOM y espacios", async () => {
     globalThis.fetch = vi.fn(async (url, init) => { llamadas.push({ init }); return respuesta(200, "{}"); });
-    const { enviar, REMITENTE } = await cargar({ RESEND_API_KEY: "﻿ re_prueba \n", CORREO_REMITENTE: " GrupoER <a@b.c> " });
+    const { enviar, REMITENTE } = await cargar({ RESEND_API_KEY: "﻿ re_prueba \n", CORREO_REMITENTE: " IntraTech <a@b.c> " });
     await enviar("a@ejemplo.pe", "x", "y");
     expect(llamadas[0].init.headers.Authorization).toBe("Bearer re_prueba");
-    expect(REMITENTE).toBe("GrupoER <a@b.c>");
+    expect(REMITENTE).toBe("IntraTech <a@b.c>");
   });
 });

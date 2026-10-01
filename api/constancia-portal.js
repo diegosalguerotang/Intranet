@@ -125,7 +125,7 @@ export default async function handler(req, res) {
       pagina.drawImage(img, { x: 50, y: y - alto, width: (img.width / img.height) * alto, height: alto });
     }
   } catch { /* sin logo */ }
-  texto("Intranet GrupoER", 430, y - 12, { b: true, size: 10, color: azul });
+  texto("IntraTech", 430, y - 12, { b: true, size: 10, color: azul });
   texto(`N.º de constancia: ${a.id}`, 430, y - 26, { size: 9 });
   y -= 58;
   texto(empresa?.nombre ?? "", 50, y, { size: 9, color: gris });
@@ -189,7 +189,7 @@ export default async function handler(req, res) {
 
   linea(50, y, 545, y); y -= 14;
   y = parrafo(
-    "Esta constancia se genera desde el registro inmutable de acuses de la Intranet GrupoER y acredita la " +
+    "Esta constancia se genera desde el registro inmutable de acuses de IntraTech y acredita la " +
     "puesta a disposición y recepción del documento por medios electrónicos conforme al artículo 3.2 del " +
     "Decreto Legislativo N.º 1310. La confirmación de recepción reemplaza la firma del cargo físico y no " +
     "implica conformidad con el contenido del documento. La huella SHA-256 permite verificar que el archivo " +

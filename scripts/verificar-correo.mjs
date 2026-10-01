@@ -37,9 +37,9 @@ await prueba("rastro: últimos 10 envíos (informativo); ningún error de Gmail/
 console.log("\n== Supabase Auth");
 await prueba("SMTP de Resend con el remitente del dominio y asuntos en español", async () => {
   const c = await api("/config/auth");
-  igual(`${c.smtp_host}/${c.smtp_user}/${c.smtp_admin_email}/${c.smtp_sender_name}`, "smtp.resend.com/resend/no-responder@avisos.servicios-intranet.net/GrupoER", "smtp");
-  igual(c.mailer_subjects_invite, "Tu acceso al BackOffice — GrupoER", "asunto invitación");
-  igual(c.mailer_subjects_recovery, "Crea una clave nueva — BackOffice GrupoER", "asunto recuperación");
+  igual(`${c.smtp_host}/${c.smtp_user}/${c.smtp_admin_email}/${c.smtp_sender_name}`, "smtp.resend.com/resend/no-responder@avisos.servicios-intranet.net/IntraTech", "smtp");
+  igual(c.mailer_subjects_invite, "Tu acceso al BackOffice — IntraTech", "asunto invitación");
+  igual(c.mailer_subjects_recovery, "Crea una clave nueva — BackOffice IntraTech", "asunto recuperación");
 });
 
 console.log("\n== Vercel (solo nombres de variables)");

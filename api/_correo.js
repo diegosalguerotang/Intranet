@@ -6,7 +6,7 @@
 // Sin llave, devuelve el error claro y quien llama decide si es bloqueante.
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const RESEND = limpiar(process.env.RESEND_API_KEY) || "";
-export const REMITENTE = limpiar(process.env.CORREO_REMITENTE) || "GrupoER <onboarding@resend.dev>";
+export const REMITENTE = limpiar(process.env.CORREO_REMITENTE) || "IntraTech <onboarding@resend.dev>";
 // Resend limita las peticiones por segundo: ante 429 se espera y se reintenta
 // UNA vez (cubre los envíos en lote de cuentas del portal).
 export const PAUSA_429_MS = 1000;
@@ -29,7 +29,7 @@ export async function enviar(destino, asunto, html) {
 
 export const plantilla = (titulo, cuerpo) => `
   <div style="font-family:Poppins,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#333">
-    <h2 style="color:#3569a0;margin-bottom:4px">GrupoER</h2>
+    <h2 style="color:#3569a0;margin-bottom:4px">IntraTech</h2>
     <h3 style="margin-top:0">${titulo}</h3>
     ${cuerpo}
     <p style="font-size:12px;color:#999;margin-top:28px">Si no esperabas este correo, ignóralo: nada cambia sin tu acción.</p>

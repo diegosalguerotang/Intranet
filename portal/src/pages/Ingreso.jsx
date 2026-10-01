@@ -107,7 +107,7 @@ export default function Ingreso() {
       <form onSubmit={ingresar} className="animar-aparicion rounded-caja bg-white px-6 py-8 shadow-[0_5px_30px_rgba(29,63,114,0.12)]">
         <div className="mb-7 text-center">
           <div className="font-display text-[30px] font-bold leading-none tracking-tight text-tinta">
-            Grupo<span className="text-petroleo">ER</span>
+            Intra<span className="text-petroleo">Tech</span>
           </div>
           <div className="mt-2 text-[11.5px] font-medium uppercase tracking-[0.25em] text-acero">
             Portal del Trabajador
