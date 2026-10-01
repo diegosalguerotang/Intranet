@@ -58,7 +58,7 @@ Quién lo usa hoy: **once cuentas administrativas activas** (RRHH, TI, gerencia)
 |---|---|---|
 | BackOffice (`src/`) + funciones (`api/*.js`) | Vercel, proyecto `intranet-general` | Push a `main` → build y deploy automático |
 | Portal (`portal/`) | Vercel, proyecto `intranet-portal`, enrutado por rewrite en `/portal` desde el dominio principal | Push a `main` |
-| Base, Auth, Storage | Supabase, plan gratis | Las migraciones SQL las aplica a mano el responsable del proyecto (Management API) **antes** del push del código que las necesita |
+| Base, Auth, Storage | Supabase, plan Pro (desde 2026-10-01) | Las migraciones SQL las aplica a mano el responsable del proyecto (Management API) **antes** del push del código que las necesita |
 | Dominios | `servicios-intranet.net` (oficial desde 2026-10-01, DNS en Vercel: enlaces de correos y PDFs, `site_url` de Auth) e `intranet-general.vercel.app` (sigue vivo: enlaces antiguos y scripts de verificación) | — |
 | Correo | Resend, dominio de envío `avisos.servicios-intranet.net` | Variables de entorno en Vercel; Supabase Auth usa el mismo SMTP |
 
@@ -197,7 +197,7 @@ Invariantes por trigger: siempre queda un superadministrador activo; el superadm
 
 | Dependencia | Para qué | Si se cae |
 |---|---|---|
-| **Supabase** (Postgres, Auth, Storage) — plan gratis | Todo el dato, todas las sesiones, todos los PDFs | Nada funciona: el BackOffice muestra «No se pudieron cargar los datos» y el Portal no entra. El plan gratis **pausa el proyecto tras una semana sin uso** (ocurrió el 2026-09-14: el proxy devolvía 500 hasta que se reactivó a mano) y **no tiene respaldos automáticos**. Sus límites por IP se comparten entre todos los usuarios porque solo ve la IP de Vercel |
+| **Supabase** (Postgres, Auth, Storage) — plan Pro desde 2026-10-01 | Todo el dato, todas las sesiones, todos los PDFs | Nada funciona: el BackOffice muestra «No se pudieron cargar los datos» y el Portal no entra. Con el plan Pro el proyecto ya no se pausa por inactividad (en el plan gratis ocurrió el 2026-09-14: el proxy devolvía 500 hasta que se reactivó a mano) y hay **respaldos diarios automáticos** de la base (comprobado el 2026-10-01 por la Management API: 8 respaldos, el último de ese día; sin recuperación a un punto en el tiempo). Los respaldos no cubren el bucket de documentos. Sus límites por IP se comparten entre todos los usuarios porque solo ve la IP de Vercel |
 | **Vercel** (Hobby) | BackOffice, Portal, 12 funciones serverless, DNS del dominio nuevo | Nada se sirve. Tope de 12 funciones ya alcanzado. Incidente del 2026-08-17: «Resource provisioning failed» en todo deploy durante 6 horas; se resolvió recreando el proyecto. Los logs de funciones tienen retención corta (no cubren investigaciones posteriores) |
 | **Resend** (gratis: 100 correos/día, 3,000/mes) | Código del segundo factor, accesos al Portal y al BackOffice, avisos de tickets y solicitudes, recordatorios, recuperaciones; y el SMTP de Supabase Auth (invitaciones, recuperación del BackOffice) | Los superadministradores **no pueden entrar** (el código no llega). Contingencia: apagar `politica_acceso.factor_superadmin` por Management API. Los demás flujos siguen; cada fallo queda como `error` en `correo_envios` y en la franja del BackOffice |
 | **Dominio `servicios-intranet.net`** (comprado en Vercel, DNS en Vercel) | Envío de correo (DKIM/SPF/DMARC) y dirección oficial de la intranet | Sin renovación (vence 2027-09-30) el correo deja de salir y los enlaces de correos y PDFs dejan de abrir (`intranet-general.vercel.app` seguiría sirviendo) |
@@ -232,7 +232,7 @@ No hay proveedor de SMS/WhatsApp (Motor 9), ni OCR, ni firma digital.
 | Bucket `documentos` | 1 objeto, 394 kB (el PDF del RIT) |
 | Catálogo | 47 tablas en `public`, 21 en `interno` (15 + 6 de respaldo), 49 vistas (48 invoker), 165 funciones, 78 políticas RLS |
 
-Ningún límite está cerca: la base usa el 4 % de los 500 MB del plan gratis y el bucket es despreciable. La única tabla que crece sola es la auditoría (~4 mil filas en 50 días, con la mayoría generada por importaciones y pruebas).
+Ningún límite está cerca: la base usaba el 4 % de los 500 MB del plan gratis (medido el 2026-09-30, antes de pasar al plan Pro) y el bucket es despreciable. La única tabla que crece sola es la auditoría (~4 mil filas en 50 días, con la mayoría generada por importaciones y pruebas).
 
 ---
 
@@ -268,7 +268,7 @@ Qué falta para arrancar, en el orden natural del propio sistema: (1) que las si
 - El Portal muestra tardanzas leídas de una tabla que nada escribe.
 - *(limpiado 2026-09-30)* Las fuentes sin uso, las cuatro páginas huérfanas y los parsers de PLATRA1-unificada se retiraron del cliente; las funciones SQL legadas (`importar_planilla`, `importar_planilla_unificada` y sus vistas previas) siguen en la base con guarda porque están entrelazadas con las fases de seguridad.
 - Los ensayos históricos `ensayar-fase0` y `ensayar-fase1` ya no reproducen (replican la migración del 17-09 con precondiciones fijas; dejaron de pasar con los cambios del 22-09). El CI solo corre `ensayar-canon`, que sí cubre los invariantes.
-- Sin respaldos de la base (plan gratis). Los registros probatorios (acuses, consentimientos) no tienen copia fuera de Supabase.
+- La base tiene respaldos diarios desde el plan Pro (2026-10-01), pero nunca se ha ensayado una restauración, y los PDFs del bucket no entran en esos respaldos. Los registros probatorios (acuses, consentimientos) no tienen copia fuera de Supabase.
 - Vercel Hobby: tope de 12 funciones alcanzado; cualquier endpoint nuevo exige fusionar rutas.
 - El job `produccion` del CI (verificadores contra la base) no corre porque falta el secreto en GitHub; por eso dos huecos de la fase 5 se descubrieron tarde.
 - Auditoría con 6 filas de `sesion_actual` sin redactar (2026-09-22) que hacen fallar `verificar-fase5`; corregirlas exige aprobación explícita porque la tabla es inmutable.
@@ -340,7 +340,7 @@ Qué falta para arrancar, en el orden natural del propio sistema: (1) que las si
 - **Logs de Vercel y de Supabase.** No se consultaron; la retención de Vercel es corta y la forense de la fase 0 ya documentó que no cubría el periodo relevante. Los 108 intentos fallidos de login del BackOffice no se investigaron (probablemente pruebas y claves olvidadas del propio responsable, pero no se verificó).
 - **Entrega real del correo.** Se verificó que Resend acepta y que dos correos llegaron a la bandeja del responsable; no se verificó la entrega a otros proveedores ni si caen en spam. Los rebotes no llegan al sistema.
 - **El Portal en teléfonos reales.** Toda la verificación del Portal fue por scripts y navegador de escritorio; no consta una prueba desde un celular.
-- **Configuración de respaldos y plan de Supabase.** Se asume plan gratis sin respaldos por el historial (pausa del 14-09); no se leyó la facturación.
+- **Configuración de respaldos y plan de Supabase.** El plan Pro lo informó el responsable el 2026-10-01 y los respaldos diarios se comprobaron por la Management API; no se leyó la facturación ni la retención exacta.
 - **El secreto del CI.** Se afirma que el job `produccion` no corre por falta del secreto según la memoria del proyecto y los mensajes del workflow; no se consultó la configuración del repositorio en GitHub.
 - **Fidelidad del documento funcional original.** Solo se leyó su resumen de pantallas (47) desde OneDrive; no se contrastó su texto completo contra el código. Los documentos de Casos de Referencia y Arquitectura Funcional no se releyeron para este informe.
 - **Comportamiento con formatos que no sean los de las pruebas.** Las rarezas de la sección 7 vienen de los archivos reales que se tuvieron a mano (planillas, formato 7.1, reloj, control, PDF de una razón social). Un PDF de boletas de otra razón social o de otro software de planilla puede tener otras anclas.

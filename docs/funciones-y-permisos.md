@@ -8,7 +8,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 |---|---|
 | administrativa (sesión propia) | 2 |
 | administrativa | 63 |
-| autoservicio del trabajador | 25 |
+| autoservicio del trabajador | 26 |
 | ayudante | 43 |
 | interna | 4 |
 | pre-login | 4 |
@@ -100,6 +100,7 @@ Generado por `scripts/funciones-y-permisos.mjs` desde `pg_proc` de producción (
 | `fn_perfil_nombre_unico()` | trigger | — | service_role |
 | `fn_perfil_para_cargo(p_cargo text)` | ayudante | — | service_role |
 | `fn_persona_llamador()` | ayudante | identidad del JWT (correo_llamador / auth.jwt / auth.uid): alcance o sesión propia resueltos en el cuerpo | authenticated + service_role |
+| `fn_politica_responsable()` | autoservicio del trabajador | identidad del JWT (portal_dni / fn_persona_llamador) | authenticated + service_role |
 | `fn_proteger_ultimo_superadmin()` | trigger | — | service_role |
 | `fn_recalcular_control(p_documento text, p_desde date, p_hasta date, p_motivo text)` | ayudante | — | service_role |
 | `fn_recalcular_mes_feriado(p_fecha date, p_motivo text)` | ayudante | — | service_role |
