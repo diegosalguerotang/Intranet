@@ -56,7 +56,7 @@ for (const s of SEMILLA) await sql(`update personas set banco = $2, banco_id = $
 // Una persona más con la columna «cuenta» en texto plano (el caso que P7 elimina).
 const [EXTRA] = await sql(`select p.dni from personas p where p.dni <> all($1) order by p.dni limit 1`, [SEMILLA.map((s) => s.dni)]);
 await sql(`update personas set cuenta = '19999999999999' where dni = $1`, [EXTRA.dni]);
-const TRABAJADOR = { correo: `${SEMILLA[0].dni}@portal.grupoer.pe`, sub: "11111111-1111-1111-1111-111111111111" };
+const TRABAJADOR = { correo: `${SEMILLA[0].dni}@portal.servicios-intranet.net`, sub: "11111111-1111-1111-1111-111111111111" };
 
 const foto = async () => {
   const filas = await sql(`

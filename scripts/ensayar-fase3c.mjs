@@ -42,7 +42,7 @@ const [TI] = await sql(`select ua.correo, au.id as sub from usuarios_admin ua jo
   join perfil_permisos pp on pp.perfil_id = p.id and pp.perfil_version = p.version and pp.modulo = 'activos' and pp.nivel >= 2
   where ua.estado = 'activo' and not p.es_superadmin order by ua.id limit 1`);
 const [PERSONA] = await sql(`select dni from personas where dni ~ '^9[0-9]{7}$' order by dni limit 1`);
-const TRABAJADOR = { correo: `${PERSONA.dni}@portal.grupoer.pe`, sub: "11111111-1111-1111-1111-111111111111" };
+const TRABAJADOR = { correo: `${PERSONA.dni}@portal.servicios-intranet.net`, sub: "11111111-1111-1111-1111-111111111111" };
 const [ACTIVO] = await sql(`select codigo from activos order by codigo limit 1`);
 if (!SUPER || !ACTIVO) throw new Error("el volcado no trae superadministrador o activos");
 

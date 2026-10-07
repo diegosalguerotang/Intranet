@@ -87,7 +87,7 @@ const [SUPER] = await sql(`select ua.correo, au.id as sub from usuarios_admin ua
 const [ADMIN] = await sql(`select ua.correo, au.id as sub from usuarios_admin ua join auth.users au on lower(au.email) = lower(ua.correo)
   join perfiles p on p.id = ua.perfil_id and p.version = ua.perfil_version where ua.estado = 'activo' and not p.es_superadmin order by ua.id limit 1`);
 const [PERSONA] = await sql(`select dni from personas where dni ~ '^9[0-9]{7}$' order by dni limit 1`);
-const TRABAJADOR = { correo: `${PERSONA.dni}@portal.grupoer.pe`, sub: "11111111-1111-1111-1111-111111111111" };
+const TRABAJADOR = { correo: `${PERSONA.dni}@portal.servicios-intranet.net`, sub: "11111111-1111-1111-1111-111111111111" };
 if (!SUPER) throw new Error("el volcado no trae un superadministrador activo con cuenta");
 
 // Foto de permisos: incluye el esquema en la clave (las tablas cambian de esquema

@@ -3,6 +3,7 @@
 // demuestra los huecos (un «exitoso» falso sin sesión; nivel 99 sin JWT con rol
 // activo authenticated), aplica la migración y comprueba cada regla; al final
 // ensaya la reversión y vuelve a aplicar.
+// Conserva dni@portal.grupoer.pe a propósito: reproduce la migración histórica de la fase 6 (el dominio cambió el 2026-10-07, bloque @@DOMINIO@@ que sinFase6 recorta).
 // Uso: node scripts/ensayar-fase6.mjs
 import { readFileSync } from "node:fs";
 import { arrancarPgLocal, cargarDatosAnonimizados } from "./pg-local.mjs";

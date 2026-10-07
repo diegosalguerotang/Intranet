@@ -17,6 +17,8 @@
 //   · 2026-09-28: segundo factor por correo (superadmin con JWT vale 0 hasta
 //     verificar; api_factor_* solo service_role; interruptor en la política;
 //     toda función que decide «superadmin» por su cuenta consulta el factor).
+//   · 2026-10-07: dominio técnico del Portal portal.servicios-intranet.net
+//     (ninguna función conserva portal.grupoer.pe).
 // Uso: node scripts/ensayar-canon.mjs
 import { arrancarPgLocal } from "./pg-local.mjs";
 
@@ -223,6 +225,21 @@ try {
     igual(`${g.nuevas}/${g.n}`, "true/2", "funciones nuevas");
     igual(/supervisor_usuario/.test(c.ins) && !/v_sup_dni := nullif\(trim\(coalesce\(p_datos->>'supervisor_dni'/.test(c.ins), true, "documento del cliente");
     igual(/v_caller = s\.supervisor_dni/.test(c.res) && /not fn_factor_pendiente\(\)/.test(c.res), true, "jefe designado");
+  });
+  await prueba("dominio del Portal (2026-10-07): ninguna función de public/interno nombra portal.grupoer.pe; portal_dni resuelve con portal.servicios-intranet.net", async () => {
+    vacio(await sql(`select p.oid::regprocedure::text as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname in ('public', 'interno') and p.prosrc ~ 'portal\\.grupoer\\.pe'`), "dominio viejo");
+    const [g] = await sql(`select bool_and(p.prosrc ~ 'portal\\.servicios-intranet\\.net') as nuevo, count(*)::int as n from pg_proc p
+      where p.oid in ('public.portal_dni()'::regprocedure, 'public.portal_registrar_ingreso(text, text, text)'::regprocedure,
+        'public.api_login_permitido(text, text)'::regprocedure, 'public.api_login_registrar(text, text, text, text)'::regprocedure)`);
+    igual(`${g.nuevo}/${g.n}`, "true/4", "cuatro funciones");
+    const [P] = await sql("select persona_dni as dni from vinculos where fecha_fin is null order by persona_dni limit 1");
+    await sql("begin");
+    try {
+      await sql("set local role authenticated");
+      await sql(`select set_config('request.jwt.claims', '${JSON.stringify({ role: "authenticated", email: `${P.dni.toLowerCase()}@portal.servicios-intranet.net` })}', true)`);
+      const [r] = await sql("select portal_dni() as d"); igual(r.d, P.dni, "resuelve");
+    } finally { await sql("rollback"); }
   });
 
   console.log("\n== Segundo factor (2026-09-28) · el superadmin vale 0 hasta verificar la sesión");

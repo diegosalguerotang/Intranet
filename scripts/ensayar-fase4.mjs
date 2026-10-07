@@ -46,7 +46,7 @@ const [E1] = await sql(`select empresa_id as id from vinculos where fecha_fin is
 const [E2] = await sql(`select id from empresas where id <> $1 order by id limit 1`, [E1.id]);
 // Trabajador: persona con vínculo vigente en E1.
 const [P] = await sql(`select v.persona_dni as dni, v.sede_id as sede from vinculos v where v.empresa_id = $1 and v.fecha_fin is null and v.persona_dni ~ '^9' order by v.persona_dni limit 1`, [E1.id]);
-const TRABAJADOR = { correo: `${P.dni}@portal.grupoer.pe`, sub: "11111111-1111-1111-1111-111111111111" };
+const TRABAJADOR = { correo: `${P.dni}@portal.servicios-intranet.net`, sub: "11111111-1111-1111-1111-111111111111" };
 // Administrador con alcance a E1 y módulos limitados; administrador de TI con todas las empresas.
 const RESTRINGIDO = { dni: null, correo: "zz.alcance@pruebas.invalido", sub: "22222222-2222-2222-2222-222222222223" };
 const TI = { dni: null, correo: "zz.ti@pruebas.invalido", sub: "33333333-3333-3333-3333-333333333334" };

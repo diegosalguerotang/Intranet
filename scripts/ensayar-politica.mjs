@@ -30,7 +30,7 @@ const sesion = async (dni, fn, rol = "authenticated") => {
   try {
     await cliente.query(`set local role ${rol}`);
     await cliente.query(`select set_config('request.jwt.claims', $1, true)`,
-      [dni ? JSON.stringify({ role: rol, email: `${dni.toLowerCase()}@portal.grupoer.pe` }) : ""]);
+      [dni ? JSON.stringify({ role: rol, email: `${dni.toLowerCase()}@portal.servicios-intranet.net` }) : ""]);
     return await fn(async (texto, params) => (await cliente.query(texto, params)).rows);
   } finally { await cliente.query("rollback"); }
 };

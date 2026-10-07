@@ -100,7 +100,7 @@ try {
     igual(l.find((x) => x.codigo === YO.codigo)?.soy_yo, true, "soy yo");
   });
   await prueba("una cuenta del portal y una sesión sin identidad reciben la lista vacía; anon no la ejecuta", async () => {
-    igual((await sesion({ correo: `${OTRO.dni}@portal.grupoer.pe` }, (q) => q("select * from jefes_disponibles()"))).length, 0, "portal");
+    igual((await sesion({ correo: `${OTRO.dni}@portal.servicios-intranet.net` }, (q) => q("select * from jefes_disponibles()"))).length, 0, "portal");
     igual((await sesion(null, (q) => q("select * from jefes_disponibles()"))).length, 0, "sin claims");
     let codigo = null;
     try { await sesion(null, (q) => q("select * from jefes_disponibles()"), "anon"); } catch (e) { codigo = e.code; }
