@@ -6,7 +6,7 @@
 // auth.users, y reversión + reaplicación. Uso: node scripts/ensayar-dominio-portal.mjs
 import { readFileSync } from "node:fs";
 import { arrancarPgLocal } from "./pg-local.mjs";
-import { FECHA, DOMINIO_VIEJO, DOMINIO_NUEVO } from "./dominio-portal-generar.mjs";
+import { FECHA, DOMINIO_VIEJO, DOMINIO_NUEVO } from "./lib/dominio-portal.mjs";
 
 const MIGRACION = readFileSync(`supabase/migraciones/${FECHA}-dominio-portal.sql`, "utf8");
 const REVERSION = readFileSync(`supabase/respaldos/${FECHA}-dominio-portal-reversion.sql`, "utf8");

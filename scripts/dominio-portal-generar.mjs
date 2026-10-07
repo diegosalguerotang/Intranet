@@ -6,16 +6,16 @@
 // cuerpos VIEJOS (reversión) salen del commit anterior a la edición. El bloque
 // @@FASE6@@ de seguridad.sql y su migración histórica NO se tocan: el bloque
 // @@DOMINIO@@, al final, pisa esas cuatro definiciones con el dominio nuevo.
+// OJO: importar este módulo ejecuta git show (cuerpos viejos): nada que corra en CI debe importarlo; las constantes viven en scripts/lib/dominio-portal.mjs.
 // Uso: node scripts/dominio-portal-generar.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { entre } from "./politica-generar.mjs";
 
-export const FECHA = "2026-10-07";
+import { FECHA, DOMINIO_VIEJO, DOMINIO_NUEVO } from "./lib/dominio-portal.mjs";
+export { FECHA, DOMINIO_VIEJO, DOMINIO_NUEVO };
 export const COMMIT_PREVIO = "44097c5";
-export const DOMINIO_VIEJO = "portal.grupoer.pe";
-export const DOMINIO_NUEVO = "portal.servicios-intranet.net";
 
 const leer = (ruta) => readFileSync(ruta, "utf8").replace(/\r\n/g, "\n");
 const deGit = (ruta) => execFileSync("git", ["show", `${COMMIT_PREVIO}:${ruta}`], { encoding: "utf8" }).replace(/\r\n/g, "\n");

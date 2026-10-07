@@ -10,7 +10,7 @@
 //   powershell -NoProfile -Command ". ./scripts/token-supabase.ps1; node scripts/migrar-dominio-portal.mjs --aplicar"
 // Requiere SUPABASE_ACCESS_TOKEN (Management API; de ahí sale la llave de servicio).
 import { fileURLToPath } from "node:url";
-import { DOMINIO_VIEJO, DOMINIO_NUEVO } from "./dominio-portal-generar.mjs";
+import { DOMINIO_VIEJO, DOMINIO_NUEVO } from "./lib/dominio-portal.mjs";
 
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
 const SUPA = `https://${PROYECTO}.supabase.co`;
