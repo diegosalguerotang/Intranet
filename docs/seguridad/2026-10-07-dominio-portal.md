@@ -8,7 +8,7 @@ Cada cuenta del Portal necesita un correo único en Supabase Auth; el sistema lo
 
 ## 2. Qué cambió
 
-- **Base:** `portal_dni()`, `portal_registrar_ingreso`, `api_login_permitido` y `api_login_registrar` comparan con `@portal.servicios-intranet.net`. Migración `supabase/migraciones/2026-10-07-dominio-portal.sql` (reversión en `respaldos/`, que se niega si `auth.users` tiene cuentas con el dominio nuevo). Canónicos `portal.sql` y `limites.sql`; bloque `@@DOMINIO@@` al final de `seguridad.sql` (el `@@FASE6@@` histórico no se tocó).
+- **Base:** `portal_dni()`, `portal_registrar_ingreso`, `api_login_permitido` y `api_login_registrar` comparan con `@portal.servicios-intranet.net`. Migración `supabase/migraciones/2026-10-07-dominio-portal.sql` (reversión en `respaldos/`, que se niega si `auth.users` tiene cuentas con el dominio nuevo). Canónicos `portal.sql` y `limites.sql`; bloque `@@DOMINIO@@` al final de `seguridad.sql` (el `@@FASE6@@` histórico no se tocó). `portal_dni` pasa de `search_path = public, extensions` (fase 0) a `public, interno, extensions`, alineado con las otras tres; la reversión conserva el valor nuevo (inocuo).
 - **Auth:** `scripts/migrar-dominio-portal.mjs --aplicar` renombró las cuentas (`PUT /auth/v1/admin/users/{id}`, `email_confirm`).
 - **Código:** `api/_clave.js` es el único dueño de `DOMINIO_PORTAL`; ocho endpoints lo importan; `portal/src/lib/api.js` fabrica el correo con el dominio nuevo.
 - **DNS (Vercel):** `portal MX 0 .` (MX nulo) y `portal TXT "v=spf1 -all"`.

@@ -371,7 +371,7 @@ process.exit(fallos ? 1 : 0);
 - [ ] **Step 2: Correr el ensayo**
 
 Run: `node scripts/ensayar-dominio-portal.mjs`
-Expected: `7 verdes, 0 fallo(s).` Si la prueba 0 falla porque la reversión no aplica, el problema está en los cuerpos viejos del generador (Task 1 Step 2, `deGit`).
+Expected: `8 verdes, 0 fallo(s).` Si la prueba 0 falla porque la reversión no aplica, el problema está en los cuerpos viejos del generador (Task 1 Step 2, `deGit`).
 
 - [ ] **Step 3: Invariante 27 en `ensayar-canon.mjs`**
 
@@ -850,12 +850,12 @@ EOF
 - [ ] **Step 1: Revisión final de la rama antes de pedir nada a Diego**
 
 ```bash
-git log --oneline origin/main..HEAD        # 7 commits: spec, sql, ensayos, script Auth, api+portal, scripts, docs
+git log --oneline origin/main..HEAD        # 9 commits (spec, plan, sql, ensayos, script Auth, api+portal, scripts + título de la invariante, docs)
 npx vitest run && node scripts/ensayar-canon.mjs && node scripts/ensayar-dominio-portal.mjs && npm run build && (cd portal && npm run build) && node scripts/comprobar-paquete.mjs
 grep -rIn "portal.grupoer.pe" api/ portal/src/ tests/ supabase/*.sql
 ```
 
-Expected: verde todo. El grep devuelve exactamente tres líneas, todas de `supabase/seguridad.sql` entre `@@FASE6-INICIO@@` y `@@FASE6-FIN@@` (hoy 1340, 1396 y 1412). Cualquier otra línea es un olvido.
+Expected: verde todo. En `api/`, `portal/src/` y `supabase/*.sql` el grep devuelve exactamente tres líneas, todas de `supabase/seguridad.sql` entre `@@FASE6-INICIO@@` y `@@FASE6-FIN@@` (hoy 1340, 1396 y 1412); cualquier otra línea ahí es un olvido. En `tests/` el dominio viejo puede aparecer solo en `tests/api/clave.test.js` (aserción negativa) y `tests/migrar-dominio-portal.test.js` (fixtures del renombrado viejo→nuevo); esas líneas NO se «corrigen».
 
 - [ ] **Step 2: Diego aplica la migración SQL (`!`, Git Bash)**
 
