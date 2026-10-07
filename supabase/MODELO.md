@@ -102,6 +102,10 @@ Lo que el modelo de datos garantiza hoy:
    `es_superadmin()`, `nivel_en()`. Sin JWT, un rol activo `authenticated`/`anon`
    vale 0 (fase 6); 99 solo para `postgres`, `supabase_admin` y `service_role`.
    El trabajador del Portal se identifica por `portal_dni()` / `fn_persona_llamador()`.
+   El correo técnico es `dni@portal.servicios-intranet.net` (minúsculas; desde el
+   2026-10-07, antes `portal.grupoer.pe`): el dominio solo aparece en `portal_dni()`,
+   `portal_registrar_ingreso`, `api_login_permitido` y `api_login_registrar`
+   (bloque `@@DOMINIO@@` de `seguridad.sql`, generado por `scripts/dominio-portal-generar.mjs`).
 2. **`anon` cerrado**: exactamente 4 RPC (`verificar_bloqueo`, `registrar_ingreso`,
    `portal_verificar_bloqueo`, `portal_registrar_ingreso`). Toda función nueva nace sin
    EXECUTE para la API (`ALTER DEFAULT PRIVILEGES`); el grant es explícito en `seguridad.sql`.

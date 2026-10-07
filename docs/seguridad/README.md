@@ -16,7 +16,7 @@ No cubre: compromiso de la llave de servicio de Supabase o de las variables de V
 
 La identidad se resuelve **en cada consulta** en la base de datos, nunca en la interfaz: correo del JWT → `interno.usuarios_admin` activo → categoría vigente (`perfiles` + `perfil_permisos` + `perfil_empresas`). Ayudantes: `correo_llamador()`, `es_admin()`, `es_superadmin()`, `nivel_en(modulo)`, `requiere_nivel(modulo, nivel[, alternativo])`, `requiere_superadmin()`, `requiere_correo_propio(correo)`. Toda RPC administrativa empieza por una de esas guardas (`docs/funciones-y-permisos.md`, generado desde producción). Sin JWT, una sesión cuyo rol activo es `authenticated` o `anon` vale nivel 0 (fase 6); solo `postgres`, `supabase_admin` y `service_role` valen 99.
 
-El trabajador del Portal se identifica por su correo técnico `dni@portal.grupoer.pe` (`portal_dni()`, `fn_persona_llamador()`); ninguna RPC de autoservicio recibe la identidad como parámetro.
+El trabajador del Portal se identifica por su correo técnico `dni@portal.servicios-intranet.net` (`portal_dni()`, `fn_persona_llamador()`); ninguna RPC de autoservicio recibe la identidad como parámetro.
 
 `anon` ejecuta exactamente cuatro RPC (`verificar_bloqueo`, `registrar_ingreso`, `portal_verificar_bloqueo`, `portal_registrar_ingreso`) y nada más; los privilegios por defecto dejan toda función nueva sin EXECUTE para la API.
 
@@ -46,6 +46,7 @@ El navegador habla **solo con su propio dominio**: `/api/supa` (Vercel) inyecta 
 - Riesgo residual: Supabase ve solo las IP de Vercel, así que sus propios límites por IP se comparten entre todos los usuarios (detalle en el informe de la fase 6).
 - **Segundo factor por correo (2026-09-28):** el Superadministrador teclea un código de 6 dígitos enviado a su correo en cada ingreso (o presenta un equipo recordado de 30 días); hasta verificar, su sesión vale nivel 0 en toda la base (`fn_nivel_modulo` v4). Interruptor `politica_acceso.factor_superadmin`; contingencia solo técnica. Informe `2026-09-28-segundo-factor.md`.
 - **Motor de correo en Resend (2026-09-30):** único proveedor, dominio propio `avisos.servicios-intranet.net` (DKIM/SPF/DMARC en el DNS de Vercel), llave de solo envío en `RESEND_API_KEY`; Supabase Auth envía por el mismo SMTP con plantillas en español. Gmail retirado. Todo intento (incluidos los correos de acceso) deja rastro en `correo_envios`; `correo_fallos_recientes()` (solo superadministradores) alimenta la franja de aviso del BackOffice. Informe `2026-09-30-motor-correo-resend.md`.
+- **Dominio técnico del Portal (2026-10-07):** las cuentas `dni@portal.grupoer.pe` pasaron a `dni@portal.servicios-intranet.net` (subdominio propio, sin MX, con SPF `-all`). Canónicos `portal.sql`/`limites.sql`, bloque `@@DOMINIO@@` de `seguridad.sql`, constante única en `api/_clave.js`. Informe: `2026-10-07-dominio-portal.md`.
 
 ## 7. Cómo se comprueba (fase 7)
 
