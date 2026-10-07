@@ -21,9 +21,11 @@ Cuatro funciones comparan el correo del JWT con el dominio:
 | Función | Canónico | Qué hace con el dominio |
 |---|---|---|
 | `portal_dni()` | `supabase/portal.sql` | Resuelve la persona del Portal a partir del correo del JWT. Base de toda la RLS del Portal. |
-| `api_login_registrar` | `supabase/limites.sql` (bloque `@@FASE6@@` de seguridad.sql) | Solo la propia sesión `dni@dominio` puede registrar un ingreso exitoso. |
+| `portal_registrar_ingreso` | `supabase/limites.sql` (bloque `@@FASE6@@` de seguridad.sql) | Solo la propia sesión `dni@dominio` puede registrar un ingreso exitoso. |
 | `api_login_permitido` | `supabase/limites.sql` | Si el correo es del Portal, consulta el bloqueo por cuenta. |
-| `api_login_registrar_proxy` | `supabase/limites.sql` | Si el correo es del Portal, registra el fallo con superficie `portal`. |
+| `api_login_registrar` | `supabase/limites.sql` | Si el correo es del Portal, registra el fallo del proxy con superficie `portal`. |
+
+En producción las cuatro son `security definer` con `search_path = public, interno, extensions`. Privilegios de ejecución: `portal_dni` → `authenticated` y `service_role`; `portal_registrar_ingreso` → `anon`, `authenticated` y `service_role` (es una de las 4 RPC pre-login); `api_login_*` → solo `service_role`. `create or replace` conserva los privilegios pero NO los atributos: la migración los vuelve a declarar y la verificación embebida los comprueba.
 
 - Se editan los canónicos `portal.sql` y `limites.sql` con el dominio nuevo.
 - **No se regenera el bloque `@@FASE6@@` ni la migración histórica `2026-09-21-fase6-limites.sql`** (son historia; `fase6-generar.mjs` las reescribiría). En su lugar, un generador nuevo `scripts/dominio-portal-generar.mjs` extrae las cuatro funciones del canónico nuevo y los cuerpos viejos de git (`COMMIT_PREVIO = 44097c5`), y produce:
