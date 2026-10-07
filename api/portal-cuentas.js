@@ -1,6 +1,6 @@
 // Cuentas del Portal del Trabajador (service key; nunca en el navegador).
 // El llamador es un usuario del BackOffice (JWT en x-sesion) con nivel >= 2
-// en el módulo personal. La cuenta técnica es {dni}@portal.grupoer.pe y el
+// en el módulo personal. La cuenta técnica es {dni}@portal.servicios-intranet.net y el
 // trabajador solo teclea su DNI. La clave inicial es ALEATORIA de 6 dígitos
 // (decisión de Diego 2026-08-21, #13: la fija 111111 del 2026-08-17 se retiró
 // porque ya hay canales para repartirla — correo, o CSV/pantalla para entrega
@@ -11,10 +11,10 @@ import { randomInt } from "node:crypto";
 import { enviar, plantilla } from "./_correo.js";
 import { registrar, ipDe } from "./enviar-correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
+import { DOMINIO_PORTAL } from "./_clave.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://servicios-intranet.net";
-const DOMINIO = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";
 
@@ -65,7 +65,7 @@ async function crearCuenta(dni, creadoPor, conCorreo = false, ip = null) {
   )).json?.[0];
   if (!persona) return { dni, error: "La persona no existe en el maestro." };
   dni = persona.dni; // forma canónica (mayúsculas)
-  const correo = `${dni.toLowerCase()}@${DOMINIO}`;
+  const correo = `${dni.toLowerCase()}@${DOMINIO_PORTAL}`;
   const clave = claveAleatoria();
   const alta = await rest("/auth/v1/admin/users", {
     method: "POST",
@@ -88,7 +88,7 @@ async function crearCuenta(dni, creadoPor, conCorreo = false, ip = null) {
 
 async function restablecerCuenta(dni, conCorreo = false, ip = null) {
   dni = dni.toUpperCase();
-  const correo = `${dni.toLowerCase()}@${DOMINIO}`;
+  const correo = `${dni.toLowerCase()}@${DOMINIO_PORTAL}`;
   const cuenta = await buscarCuenta(correo);
   if (!cuenta) return { dni, error: "La cuenta del portal no existe: usa Crear cuenta." };
   const persona = (await rest(
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
   const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${sesion}` }, method: "GET" });
   const correoLlamador = quien.json?.email;
   if (!quien.ok || !correoLlamador) return res.status(401).json({ error: "Sesión inválida o vencida." });
-  if (correoLlamador.toLowerCase().endsWith(`@${DOMINIO}`)) {
+  if (correoLlamador.toLowerCase().endsWith(`@${DOMINIO_PORTAL}`)) {
     return res.status(403).json({ error: "Los trabajadores no administran cuentas." });
   }
   if (await factorPendiente(sesion)) return res.status(403).json({ error: MSJ_FACTOR });

@@ -17,7 +17,7 @@ beforeAll(async () => { ({ default: handler, secretoCoincide } = await import(".
 // --- Doble de Supabase: rutas REST y auth ------------------------------------
 const estado = {};
 const reiniciar = () => Object.assign(estado, {
-  sesiones: { "jwt-rosa": "45231876@portal.grupoer.pe", "jwt-luis": "41887203@portal.grupoer.pe", "jwt-admin": "dsalguero@grupoer.pe", "jwt-ajeno": "otro@ejemplo.com" },
+  sesiones: { "jwt-rosa": "45231876@portal.servicios-intranet.net", "jwt-luis": "41887203@portal.servicios-intranet.net", "jwt-admin": "dsalguero@grupoer.pe", "jwt-ajeno": "otro@ejemplo.com" },
   admins: [{ id: 1, correo: "dsalguero@grupoer.pe", persona_dni: "40776655", estado: "activo" }],
   personas: [
     { dni: "45231876", nombre: "Rosa Quispe", correo: "rosa@gmail.com", correo_verificado: true },

@@ -145,12 +145,12 @@ describe("handler /api/supa · compuerta de login", () => {
   });
   it("credenciales incorrectas: reenvía el 400 de Auth tal cual y anota «fallido» con IP y agente", async () => {
     estado.tokenStatus = 400;
-    const { req, res } = login("45231876@portal.grupoer.pe");
+    const { req, res } = login("45231876@portal.servicios-intranet.net");
     await handler(req, res);
     expect(res.codigo).toBe(400);
     expect(JSON.parse(res.cuerpo.toString()).error).toBe("invalid_grant");
     const [registro] = hacia("api_login_registrar");
-    expect(cuerpoDe(registro)).toEqual({ p_correo: "45231876@portal.grupoer.pe", p_resultado: "fallido", p_ip: "190.1.2.3", p_agente: "Prueba/1" });
+    expect(cuerpoDe(registro)).toEqual({ p_correo: "45231876@portal.servicios-intranet.net", p_resultado: "fallido", p_ip: "190.1.2.3", p_agente: "Prueba/1" });
   });
   it("fallo cerrado: si la base no responde, 503 y no se habla con Auth", async () => {
     estado.compuertaCaida = true;
@@ -168,7 +168,7 @@ describe("handler /api/supa · compuerta de login", () => {
     expect(hacia("auth/v1/token")).toHaveLength(1);
     llamadas.length = 0;
     estado.bloqueoAnon = true;
-    ({ req, res } = login("45231876@portal.grupoer.pe"));
+    ({ req, res } = login("45231876@portal.servicios-intranet.net"));
     await handler(req, res);
     expect(res.codigo).toBe(429);
     expect(hacia("rpc/portal_verificar_bloqueo")).toHaveLength(1);
@@ -200,7 +200,7 @@ describe("handler /api/supa · clave del BackOffice (P11)", () => {
     expect(res.codigo).toBe(200);
     expect(hacia("auth/v1/user")).toHaveLength(1);
     llamadas.length = 0;
-    ({ req, res } = cambio({ email: "45231876@portal.grupoer.pe" }, "123456"));
+    ({ req, res } = cambio({ email: "45231876@portal.servicios-intranet.net" }, "123456"));
     await handler(req, res);
     expect(res.codigo).toBe(200);
     expect(hacia("auth/v1/user")).toHaveLength(1);
@@ -213,10 +213,10 @@ describe("handler /api/supa · clave del BackOffice (P11)", () => {
 });
 
 describe("handler /api/supa · correos de Auth a cuentas técnicas del portal (2026-09-30)", () => {
-  // portal.grupoer.pe no recibe correo: un recover/otp a esas cuentas rebotaría
+  // portal.servicios-intranet.net no recibe correo: un recover/otp a esas cuentas rebotaría
   // en Resend. Respuesta genérica de Auth ({} 200) sin reenviar nada.
-  it("recover a dni@portal.grupoer.pe → 200 {} sin tocar Auth; a un correo real se reenvía", async () => {
-    let { req, res } = peticion({ ruta: "auth/v1/recover", metodo: "POST", cuerpo: { email: "45231876@portal.grupoer.pe" } });
+  it("recover a dni@portal.servicios-intranet.net → 200 {} sin tocar Auth; a un correo real se reenvía", async () => {
+    let { req, res } = peticion({ ruta: "auth/v1/recover", metodo: "POST", cuerpo: { email: "45231876@portal.servicios-intranet.net" } });
     await handler(req, res);
     expect(res.codigo).toBe(200);
     expect(JSON.parse(res.cuerpo)).toEqual({});
@@ -228,7 +228,7 @@ describe("handler /api/supa · correos de Auth a cuentas técnicas del portal (2
   it("otp y magiclink a una cuenta técnica tampoco salen; resend se trata igual", async () => {
     for (const ruta of ["auth/v1/otp", "auth/v1/magiclink", "auth/v1/resend"]) {
       llamadas.length = 0;
-      const { req, res } = peticion({ ruta, metodo: "POST", cuerpo: { email: "45231876@PORTAL.grupoer.pe" } });
+      const { req, res } = peticion({ ruta, metodo: "POST", cuerpo: { email: "45231876@PORTAL.servicios-intranet.net" } });
       await handler(req, res);
       expect(res.codigo).toBe(200);
       expect(llamadas).toHaveLength(0);

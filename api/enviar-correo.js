@@ -28,10 +28,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { enviar, plantilla, botonCorreo } from "./_correo.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
+import { DOMINIO_PORTAL } from "./_clave.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://servicios-intranet.net";
-const DOMINIO_PORTAL = "portal.grupoer.pe";
 const VENTANA_MIN = 60;
 // Máximo de intentos por ventana. IP: cualquier acción. Sujeto: por acción.
 export const LIMITES = {

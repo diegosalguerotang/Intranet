@@ -23,12 +23,12 @@ const jwtCon = (payload) => `x.${Buffer.from(JSON.stringify(payload)).toString("
 const SID = "11111111-2222-4333-8444-555555555555";
 const JWT_SUPER = jwtCon({ email: "diego@ejemplo.pe", session_id: SID });
 const JWT_SIN_SID = jwtCon({ email: "diego@ejemplo.pe" });
-const JWT_PORTAL = jwtCon({ email: "12345678@portal.grupoer.pe", session_id: SID });
+const JWT_PORTAL = jwtCon({ email: "12345678@portal.servicios-intranet.net", session_id: SID });
 
 const estado = {};
 const rpc = [];   // llamadas a api_factor_* con sus argumentos
 const reiniciar = () => Object.assign(estado, {
-  sesiones: { [JWT_SUPER]: "diego@ejemplo.pe", [JWT_SIN_SID]: "diego@ejemplo.pe", [JWT_PORTAL]: "12345678@portal.grupoer.pe" },
+  sesiones: { [JWT_SUPER]: "diego@ejemplo.pe", [JWT_SIN_SID]: "diego@ejemplo.pe", [JWT_PORTAL]: "12345678@portal.servicios-intranet.net" },
   envios: 0,                                     // filas en correo_envios (para limitar)
   consultas: [],                                 // URLs de los GET de conteo a correo_envios
   emitir: { ok: true, expira_en: "2026-09-28T12:10:00Z" },

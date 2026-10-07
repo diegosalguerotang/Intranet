@@ -24,8 +24,10 @@ describe("validarClaveBackoffice", () => {
 });
 
 describe("identidad del correo", () => {
-  it("distingue cuentas del Portal", () => {
-    expect(esCorreoPortal("45231876@portal.grupoer.pe")).toBe(true);
+  it("distingue cuentas del Portal (dominio técnico 2026-10-07); el dominio viejo ya no lo es", () => {
+    expect(esCorreoPortal("45231876@portal.servicios-intranet.net")).toBe(true);
+    expect(esCorreoPortal("45231876@PORTAL.servicios-intranet.NET")).toBe(true);
+    expect(esCorreoPortal("45231876@portal.grupoer.pe")).toBe(false);
     expect(esCorreoPortal("Karen@GRUPOER.pe")).toBe(false);
     expect(esCorreoPortal("")).toBe(false);
   });

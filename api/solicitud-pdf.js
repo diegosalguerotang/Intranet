@@ -10,6 +10,7 @@
 // Solicitudes.
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createHash } from "node:crypto";
+import { esCorreoPortal } from "./_clave.js";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
@@ -38,7 +39,7 @@ export default async function handler(req, res) {
   if (!jwt) return res.status(401).json({ error: "Sesión requerida." });
   const quien = await rest("/auth/v1/user", { headers: { authorization: `Bearer ${jwt}`, apikey: SERVICE } });
   const correo = (quien.json?.email ?? "").toLowerCase();
-  if (!quien.ok || !correo || correo.endsWith("@portal.grupoer.pe")) {
+  if (!quien.ok || !correo || esCorreoPortal(correo)) {
     return res.status(401).json({ error: "Sesión inválida." });
   }
   if (await factorPendiente(jwt)) return res.status(403).json({ error: MSJ_FACTOR });

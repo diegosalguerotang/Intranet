@@ -13,10 +13,10 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createHash } from "node:crypto";
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
 import { textoPolitica } from "./_politica.js";
+import { DOMINIO_PORTAL } from "./_clave.js";
 
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
 const APP = "https://servicios-intranet.net";
-const DOMINIO_PORTAL = "portal.grupoer.pe";
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || "";
 const cabService = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };

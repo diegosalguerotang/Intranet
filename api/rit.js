@@ -6,8 +6,8 @@
 // · Cuenta del portal → SU reglamento (el de su sede/empresa).
 // · Admin activo    → cualquier reglamento (?rit=id) o el general por defecto.
 import { factorPendiente, MSJ_FACTOR } from "./_factor.js";
+import { DOMINIO_PORTAL } from "./_clave.js";
 const SUPABASE = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-const DOMINIO_PORTAL = "portal.grupoer.pe";
 const EXPIRA_SEGUNDOS = 600;
 const limpiar = (v) => (typeof v === "string" ? v.replace(/^[﻿​\s]+|[﻿​\s]+$/g, "") : v);
 const SERVICE = limpiar(process.env.SUPA_SERVICE_KEY) || limpiar(process.env.SUPABASE_SERVICE_ROLE_KEY) || "";

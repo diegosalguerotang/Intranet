@@ -6,9 +6,10 @@
 // BackOffice: al menos 10 caracteres, con letras y números. La política de
 // acceso (ACC-05) solo puede SUBIR ese mínimo. Portal: 6 (celulares de gama
 // baja; decisión de Diego del 2026-08-21), lo aplica Auth (password_min_length).
+// El dominio técnico del Portal vive SOLO aquí (2026-10-07): los endpoints lo importan.
 export const CLAVE_MIN_BACKOFFICE = 10;
 export const CLAVE_MIN_PORTAL = 6;
-export const DOMINIO_PORTAL = "portal.grupoer.pe";
+export const DOMINIO_PORTAL = "portal.servicios-intranet.net";
 
 export function validarClaveBackoffice(clave, minimo = CLAVE_MIN_BACKOFFICE) {
   const c = String(clave ?? "");

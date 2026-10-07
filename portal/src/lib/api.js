@@ -18,7 +18,7 @@ const BASE = mismoOrigen
 // por diseño. La rama se elimina del paquete de producción al compilar.
 const APIKEY_DEV = import.meta.env.DEV ? "sb_publishable_qgPwZ8-4neRlKQXpCe9tnw_Dix4Ddwg" : "";
 
-export const DOMINIO_PORTAL = "portal.grupoer.pe";
+export const DOMINIO_PORTAL = "portal.servicios-intranet.net";
 // El correo técnico va SIEMPRE en minúsculas (CE/pasaporte traen letras).
 export const correoDe = (dni) => `${String(dni).toLowerCase()}@${DOMINIO_PORTAL}`;
 

@@ -142,7 +142,7 @@ export default async function handler(req, res) {
   }
 
   // Correos que GoTrue mandaría a una cuenta técnica del Portal (2026-09-30):
-  // dni@portal.grupoer.pe no recibe correo (sin MX) y con el SMTP de Resend el
+  // dni@portal.servicios-intranet.net no recibe correo (sin MX) y con el SMTP de Resend el
   // rebote contaría contra el dominio. El Portal recupera su clave por el
   // motor propio (api/enviar-correo) al correo declarado. Respuesta genérica
   // idéntica a la de Auth, sin reenviar.
