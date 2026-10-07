@@ -92,7 +92,7 @@ console.log("\n== Trabajador del Portal");
 if (!PORTAL_DNI || !PORTAL_CLAVE) console.log("(sin PORTAL_DNI/PORTAL_CLAVE — se salta)");
 else {
   let jwt;
-  await prueba("login del Portal", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.grupoer.pe`, PORTAL_CLAVE); });
+  await prueba("login del Portal", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.servicios-intranet.net`, PORTAL_CLAVE); });
   if (jwt) {
     await prueba(`trabajador: 0 filas en las ${ADMINISTRATIVAS.length} vistas administrativas (antes de la fase 2 las leía todas)`, async () => {
       const mal = [];

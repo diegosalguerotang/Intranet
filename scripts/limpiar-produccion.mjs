@@ -75,7 +75,7 @@ await sql(`
 `);
 console.log("   BD limpia.");
 
-console.log("2 · Cuentas Auth del portal (@portal.grupoer.pe)");
+console.log("2 · Cuentas Auth del portal (@portal.servicios-intranet.net)");
 const claves = await json(await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}/api-keys?reveal=true`, {
   headers: { Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}` },
 }));
@@ -84,7 +84,7 @@ if (!service) { console.error("La Management API no devolvió la service key.");
 const cabService = { apikey: service, authorization: `Bearer ${service}`, "Content-Type": "application/json" };
 
 const lista = await json(await fetch(`${SUPA}/auth/v1/admin/users?per_page=1000`, { headers: cabService }));
-const portalUsers = (lista.users ?? []).filter((u) => (u.email ?? "").toLowerCase().endsWith("@portal.grupoer.pe"));
+const portalUsers = (lista.users ?? []).filter((u) => (u.email ?? "").toLowerCase().endsWith("@portal.servicios-intranet.net"));
 for (const u of portalUsers) {
   const r = await fetch(`${SUPA}/auth/v1/admin/users/${u.id}`, { method: "DELETE", headers: cabService });
   console.log(`   ${r.ok ? "borrada" : `ERROR ${r.status}`}: ${u.email}`);

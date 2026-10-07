@@ -87,14 +87,14 @@ ok(`trabajador ${DNI} con documento ${docCon.id} acusado y ${docSin.id} sin acus
 // Cuentas de portal reales (GoTrue) para el dueño y para un ajeno.
 const clavePortal = "Cl" + String(Math.floor(Math.random() * 1e8)).padStart(8, "0");
 for (const d of [DNI, AJENO]) {
-  await borrarCuentaGoTrue(`${d}@portal.grupoer.pe`);
+  await borrarCuentaGoTrue(`${d}@portal.servicios-intranet.net`);
   const r = await gotrue("/auth/v1/admin/users", {
-    method: "POST", body: JSON.stringify({ email: `${d}@portal.grupoer.pe`, password: clavePortal, email_confirm: true }),
+    method: "POST", body: JSON.stringify({ email: `${d}@portal.servicios-intranet.net`, password: clavePortal, email_confirm: true }),
   });
   if (!r.ok) mal(`cuenta portal ${d}`, r.status);
 }
-const sesionDueno = await login(`${DNI}@portal.grupoer.pe`, clavePortal);
-const sesionAjeno = await login(`${AJENO}@portal.grupoer.pe`, clavePortal);
+const sesionDueno = await login(`${DNI}@portal.servicios-intranet.net`, clavePortal);
+const sesionAjeno = await login(`${AJENO}@portal.servicios-intranet.net`, clavePortal);
 if (!sesionDueno.access_token || !sesionAjeno.access_token) { mal("login portal", "sin token"); }
 
 const constancia = async (id, token) => {
@@ -141,8 +141,8 @@ await sql(`
   delete from personas where dni in ('${DNI}', '${AJENO}');
 `);
 await borrarCuentaGoTrue(CORREO_TEMP);
-await borrarCuentaGoTrue(`${DNI}@portal.grupoer.pe`);
-await borrarCuentaGoTrue(`${AJENO}@portal.grupoer.pe`);
+await borrarCuentaGoTrue(`${DNI}@portal.servicios-intranet.net`);
+await borrarCuentaGoTrue(`${AJENO}@portal.servicios-intranet.net`);
 const resto = await sql(`select (select count(*) from personas where dni in ('${DNI}','${AJENO}'))
   + (select count(*) from documentos where id in (${docCon.id}, ${docSin.id}))
   + (select count(*) from usuarios_admin where correo = '${CORREO_TEMP}') as n`);

@@ -130,7 +130,7 @@ console.log("\n== Sesión de trabajador del Portal: cada función administrativa
 if (!PORTAL_DNI || !PORTAL_CLAVE) console.log("(sin PORTAL_DNI/PORTAL_CLAVE — se salta la prueba una por una)");
 else {
   let jwt;
-  await prueba("login del Portal por el proxy", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.grupoer.pe`, PORTAL_CLAVE); });
+  await prueba("login del Portal por el proxy", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.servicios-intranet.net`, PORTAL_CLAVE); });
   if (!jwt) console.log("(login fallido: se salta la prueba una por una)");
   else {
   await prueba("trabajador: v_portal_perfil devuelve SU fila", async () => {

@@ -72,7 +72,7 @@ await prueba("E2E portal: cuenta técnica en minúsculas entra y portal_dni() re
     headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
   const SERVICE = llaves.find((k) => k.name === "service_role" || k.type === "secret")?.api_key;
   const admin = { apikey: SERVICE, authorization: `Bearer ${SERVICE}`, "content-type": "application/json" };
-  const correo = `${CE.toLowerCase()}@portal.grupoer.pe`;
+  const correo = `${CE.toLowerCase()}@portal.servicios-intranet.net`;
   const alta = await fetch(`${SUPA}/auth/v1/admin/users`, {
     method: "POST", headers: admin,
     body: JSON.stringify({ email: correo, password: "111111", email_confirm: true }),

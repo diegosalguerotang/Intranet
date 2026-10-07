@@ -34,15 +34,15 @@ console.log("vigentes por razón social:", JSON.stringify(vig));
 const cuentas = await uno(`select
   (select count(*) from cuentas_portal)::int as cuentas_portal,
   (select count(*) from cuentas_portal where primer_ingreso_pendiente)::int as portal_primer_ingreso_pendiente,
-  (select count(*) from auth.users where email like '%@portal.grupoer.pe')::int as auth_portal,
-  (select count(*) from auth.users where email not like '%@portal.grupoer.pe')::int as auth_admin,
+  (select count(*) from auth.users where email like '%@portal.servicios-intranet.net')::int as auth_portal,
+  (select count(*) from auth.users where email not like '%@portal.servicios-intranet.net')::int as auth_admin,
   (select count(*) from interno.usuarios_admin where estado = 'activo')::int as usuarios_admin_activos,
   (select count(*) from interno.usuarios_admin)::int as usuarios_admin_total,
   (select count(*) from interno.perfiles p where p.estado = 'activa' or p.estado = 'activo')::int as categorias_activas,
   (select count(distinct id) from interno.perfiles)::int as categorias_total`).catch(async () => uno(`select
   (select count(*) from cuentas_portal)::int as cuentas_portal,
-  (select count(*) from auth.users where email like '%@portal.grupoer.pe')::int as auth_portal,
-  (select count(*) from auth.users where email not like '%@portal.grupoer.pe')::int as auth_admin,
+  (select count(*) from auth.users where email like '%@portal.servicios-intranet.net')::int as auth_portal,
+  (select count(*) from auth.users where email not like '%@portal.servicios-intranet.net')::int as auth_admin,
   (select count(*) from interno.usuarios_admin where estado = 'activo')::int as usuarios_admin_activos,
   (select count(*) from interno.usuarios_admin)::int as usuarios_admin_total,
   (select count(distinct id) from interno.perfiles)::int as categorias_total`));

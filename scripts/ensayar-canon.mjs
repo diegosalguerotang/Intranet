@@ -18,7 +18,7 @@
 //     verificar; api_factor_* solo service_role; interruptor en la política;
 //     toda función que decide «superadmin» por su cuenta consulta el factor).
 //   · 2026-10-07: dominio técnico del Portal portal.servicios-intranet.net
-//     (ninguna función conserva portal.grupoer.pe).
+//     (ninguna función usa el dominio anterior).
 // Uso: node scripts/ensayar-canon.mjs
 import { arrancarPgLocal } from "./pg-local.mjs";
 
@@ -226,7 +226,7 @@ try {
     igual(/supervisor_usuario/.test(c.ins) && !/v_sup_dni := nullif\(trim\(coalesce\(p_datos->>'supervisor_dni'/.test(c.ins), true, "documento del cliente");
     igual(/v_caller = s\.supervisor_dni/.test(c.res) && /not fn_factor_pendiente\(\)/.test(c.res), true, "jefe designado");
   });
-  await prueba("dominio del Portal (2026-10-07): ninguna función de public/interno nombra portal.grupoer.pe; portal_dni resuelve con portal.servicios-intranet.net", async () => {
+  await prueba("dominio del Portal (2026-10-07): todas las funciones de public/interno usan portal.servicios-intranet.net; portal_dni resuelve correctamente", async () => {
     vacio(await sql(`select p.oid::regprocedure::text as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname in ('public', 'interno') and p.prosrc ~ 'portal\\.grupoer\\.pe'`), "dominio viejo");
     const [g] = await sql(`select bool_and(p.prosrc ~ 'portal\\.servicios-intranet\\.net') as nuevo, count(*)::int as n from pg_proc p

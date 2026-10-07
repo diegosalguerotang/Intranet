@@ -20,8 +20,8 @@
 // Consistencia: las sustituciones son deterministas (hash md5 del valor real),
 // así que el mismo DNI/correo/celular real produce siempre el mismo valor
 // ficticio en TODAS las tablas y las relaciones (vínculos, cuentas, acuses,
-// auditoría) se conservan. Un correo del Portal (dni@portal.grupoer.pe) se
-// convierte en dniFicticio@portal.grupoer.pe para que portal_dni() siga
+// auditoría) se conservan. Un correo del Portal (dni@portal.servicios-intranet.net) se
+// convierte en dniFicticio@portal.servicios-intranet.net para que portal_dni() siga
 // funcionando; cualquier otro correo pasa a uNNNNNN@pruebas.invalido.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -32,7 +32,7 @@ export const CARPETA = join(RAIZ, "supabase", "pruebas");
 export const ARCHIVO_DATOS = join(CARPETA, "datos-anonimizados.sql");
 export const ARCHIVO_RESUMEN = join(CARPETA, "resumen.json");
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
-const DOMINIO_PORTAL = "portal.grupoer.pe";
+const DOMINIO_PORTAL = "portal.servicios-intranet.net";
 export const DOMINIO_PRUEBAS = "pruebas.invalido";
 
 // --- Expresiones SQL de sustitución (deterministas) -------------------------
@@ -229,7 +229,7 @@ export function revisarTexto(texto) {
   if (dominiosReales.test(texto)) problemas.push("aparece un dominio de correo real");
   for (const m of texto.matchAll(/\$anon\$([^$]*@[^$]*)\$anon\$/g)) {
     const c = m[1];
-    if (!(c.endsWith(`@${DOMINIO_PRUEBAS}`) || /^9\d{7}@portal\.grupoer\.pe$/.test(c))) { problemas.push(`correo fuera de patrón: ${c}`); if (problemas.length > 20) break; }
+    if (!(c.endsWith(`@${DOMINIO_PRUEBAS}`) || /^9\d{7}@portal\.servicios-intranet\.net$/.test(c))) { problemas.push(`correo fuera de patrón: ${c}`); if (problemas.length > 20) break; }
   }
   // DNIs: toda columna con regla dni debe traer valores que empiezan por 9 (7 dígitos después).
   for (const [t, reglas] of Object.entries(REGLAS)) {
@@ -299,7 +299,7 @@ async function probar() {
     });
     await prueba("ningún dato con forma real: DNIs empiezan por 9, correos en dominios de prueba, sin cuentas bancarias ni claves", async () => {
       const [r] = await sql(`select (select count(*) from personas where dni !~ '^9[0-9]{7}$')::int as dni,
-        (select count(*) from personas where correo is not null and correo !~ '(@pruebas\\.invalido|^9[0-9]{7}@portal\\.grupoer\\.pe)$')::int as correo,
+        (select count(*) from personas where correo is not null and correo !~ '(@pruebas\\.invalido|^9[0-9]{7}@portal\\.servicios-intranet\\.net)$')::int as correo,
         (select count(*) from personas where cuenta is not null or cci is not null or cuenta_cifrada is not null)::int as banco,
         (select count(*) from usuarios_admin where clave_provisional is not null or sesion_actual is not null)::int as claves,
         (select count(*) from personas where nombre !~ '^Persona [0-9A-F]{5}$')::int as nombres`);

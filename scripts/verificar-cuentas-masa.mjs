@@ -115,7 +115,7 @@ const r1 = lote.resultados?.[0] ?? {};
 (r1.nombre ?? "").startsWith("ZZPRUEBA") ? ok("el resultado trae el nombre (para el CSV)") : mal("nombre", JSON.stringify(r1));
 
 console.log("2 · La clave devuelta abre sesión en el portal");
-const ses1 = await login(`${DNI}@portal.grupoer.pe`, r1.clave);
+const ses1 = await login(`${DNI}@portal.servicios-intranet.net`, r1.clave);
 ses1.access_token ? ok("login del trabajador 200") : mal("login portal", JSON.stringify(ses1));
 
 console.log("3 · v_personal refleja tieneCuenta");
@@ -133,13 +133,13 @@ const once = await endpoint({ accion: "crear-lote", dnis: Array.from({ length: 1
 console.log("5 · Restablecer rota la clave");
 const rst = await endpoint({ accion: "restablecer", dni: DNI });
 (/^[0-9]{6}$/.test(rst.clave ?? "") && rst.clave !== r1.clave) ? ok(`clave nueva distinta (${rst.clave})`) : mal("restablecer", JSON.stringify(rst));
-const vieja = await login(`${DNI}@portal.grupoer.pe`, r1.clave);
+const vieja = await login(`${DNI}@portal.servicios-intranet.net`, r1.clave);
 (!vieja.access_token) ? ok("la clave vieja ya no entra") : mal("clave vieja", "sigue entrando");
-const nueva = await login(`${DNI}@portal.grupoer.pe`, rst.clave);
+const nueva = await login(`${DNI}@portal.servicios-intranet.net`, rst.clave);
 nueva.access_token ? ok("la clave nueva entra") : mal("clave nueva", JSON.stringify(nueva));
 
 console.log("6 · Limpieza (cuentas GoTrue + BD)");
-(await borrarCuentaGoTrue(`${DNI}@portal.grupoer.pe`)) ? ok("cuenta del portal de prueba eliminada")
+(await borrarCuentaGoTrue(`${DNI}@portal.servicios-intranet.net`)) ? ok("cuenta del portal de prueba eliminada")
   : mal("borrar cuenta portal", "no se encontró o no se pudo borrar");
 await sql(`delete from cuentas_portal where dni = '${DNI}'`);
 await sql(`delete from vinculos where persona_dni = '${DNI}'`);

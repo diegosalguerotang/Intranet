@@ -134,7 +134,7 @@ console.log("\n== Trabajador del Portal: las 25 administrativas re-otorgadas, un
 if (!PORTAL_DNI || !PORTAL_CLAVE) console.log("(sin PORTAL_DNI/PORTAL_CLAVE — se salta)");
 else {
   let jwt;
-  await prueba("login del Portal", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.grupoer.pe`, PORTAL_CLAVE); });
+  await prueba("login del Portal", async () => { jwt = await login(`${PORTAL_DNI.toLowerCase()}@portal.servicios-intranet.net`, PORTAL_CLAVE); });
   if (jwt) {
     let denegadas = 0; const mal = [];
     for (const n of CON_GRANT) {

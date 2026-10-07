@@ -53,7 +53,7 @@ if (process.argv.includes("--endpoint")) {
   console.log("\n--- api/descargar-documento contra producción (--endpoint) ---\n");
   const APP = "https://intranet-general.vercel.app";
   const SUPA = "https://mzpbdkrmokfxrrsotfgs.supabase.co";
-  const DOMINIO_PORTAL = "portal.grupoer.pe";
+  const DOMINIO_PORTAL = "portal.servicios-intranet.net";
   const json = async (r) => { const t = await r.text(); try { return JSON.parse(t); } catch { return { crudo: t }; } };
   const login = async (email, password) => json(await fetch(`${APP}/api/supa/auth/v1/token?grant_type=password`, {
     method: "POST", headers: { "content-type": "application/json" },

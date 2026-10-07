@@ -22,7 +22,7 @@ const { sql, cliente } = bd;
 // Identidades (mismas que ensayar-fase1): trabajadora Rosa y superadmin Diego
 // vienen del seed; el administrador sin marca se crea aquí ANTES de aplicar el
 // estado de seguridad (crear_usuario_admin exige superadmin desde la fase 1).
-const TRABAJADOR = { dni: "45231876", correo: "45231876@portal.grupoer.pe", sub: "11111111-1111-1111-1111-111111111111" };
+const TRABAJADOR = { dni: "45231876", correo: "45231876@portal.servicios-intranet.net", sub: "11111111-1111-1111-1111-111111111111" };
 const SUPER = { dni: "40776655", correo: "dsalguero@grupoer.pe", sub: "22222222-2222-2222-2222-222222222222" };
 const ADMIN = { dni: "41887203", correo: "luis.rrhh@grupoer.pe", sub: "33333333-3333-3333-3333-333333333333" };
 await sql(`insert into auth.users (id, email) values ($1, $2), ($3, $4), ($5, $6)`,

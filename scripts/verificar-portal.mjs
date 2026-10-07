@@ -49,8 +49,8 @@ if (cuentaB.error) cuentaB = await cuenta("crear", B);
 if (cuentaA.clave && cuentaB.clave) ok("cuentas listas con claves numéricas");
 else mal("cuentas", JSON.stringify({ cuentaA, cuentaB }));
 
-const sesA = await login(`${A}@portal.grupoer.pe`, cuentaA.clave);
-const sesB = await login(`${B}@portal.grupoer.pe`, cuentaB.clave);
+const sesA = await login(`${A}@portal.servicios-intranet.net`, cuentaA.clave);
+const sesB = await login(`${B}@portal.servicios-intranet.net`, cuentaB.clave);
 if (sesA.access_token && sesB.access_token) ok("ambos trabajadores inician sesión");
 else mal("login trabajadores", JSON.stringify({ a: !!sesA.access_token, b: !!sesB.access_token }));
 const cliA = conToken(sesA.access_token), cliB = conToken(sesB.access_token);
@@ -77,7 +77,7 @@ if (!cand) mal("documento pendiente", "no queda ningún documento sin acuse en l
 else {
   let cuentaC = await cuenta("restablecer", cand.dni);
   if (cuentaC.error) cuentaC = await cuenta("crear", cand.dni);
-  const sesC = await login(`${cand.dni}@portal.grupoer.pe`, cuentaC.clave);
+  const sesC = await login(`${cand.dni}@portal.servicios-intranet.net`, cuentaC.clave);
   const cliC = conToken(sesC.access_token);
   const c1 = await cliC.rpc("portal_confirmar_recepcion", { p_documento_id: cand.id, p_dispositivo: "verificar-portal" });
   c1.ok ? ok(`recepción confirmada por ${cand.dni}, constancia ${c1.cuerpo}`) : mal("confirmar", JSON.stringify(c1.cuerpo));

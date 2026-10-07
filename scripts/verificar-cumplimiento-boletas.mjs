@@ -88,12 +88,12 @@ const [doc2] = await sql(`insert into documentos (vinculo_id, tipo, titulo, peri
   values (${vinc.id}, 'Boleta de pago', 'Boleta anti-spoof', '2026-07', '${HASH}') returning id`);
 await sql(`insert into cuentas_portal (dni, creado_por) values ('${DNI}', 'verificar-cumplimiento')`);
 const clavePortal = "Cl" + String(Math.floor(Math.random() * 1e8)).padStart(8, "0");
-await borrarCuentaGoTrue(`${DNI}@portal.grupoer.pe`);
+await borrarCuentaGoTrue(`${DNI}@portal.servicios-intranet.net`);
 const altaPortal = await gotrue("/auth/v1/admin/users", {
-  method: "POST", body: JSON.stringify({ email: `${DNI}@portal.grupoer.pe`, password: clavePortal, email_confirm: true }),
+  method: "POST", body: JSON.stringify({ email: `${DNI}@portal.servicios-intranet.net`, password: clavePortal, email_confirm: true }),
 });
 if (!altaPortal.ok) mal("cuenta portal", altaPortal.status);
-const dueno = await login(`${DNI}@portal.grupoer.pe`, clavePortal);
+const dueno = await login(`${DNI}@portal.servicios-intranet.net`, clavePortal);
 if (!dueno.access_token) { mal("login portal", "sin token"); process.exit(1); }
 ok(`trabajador ${DNI} con documentos ${doc1.id}/${doc2.id} y sesión de portal`);
 
@@ -180,7 +180,7 @@ await sql(`
   delete from personas where dni = '${DNI}';
 `);
 await borrarCuentaGoTrue(CORREO_TEMP);
-await borrarCuentaGoTrue(`${DNI}@portal.grupoer.pe`);
+await borrarCuentaGoTrue(`${DNI}@portal.servicios-intranet.net`);
 const resto = await sql(`select (select count(*) from personas where dni = '${DNI}')
   + (select count(*) from documentos where id in (${doc1.id}, ${doc2.id}))
   + (select count(*) from consentimientos where dni = '${DNI}')

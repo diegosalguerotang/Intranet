@@ -24,7 +24,7 @@ const token = process.env.SUPABASE_ACCESS_TOKEN;
 if (!token) { console.error("Falta SUPABASE_ACCESS_TOKEN (. .\\scripts\\token-supabase.ps1)."); process.exit(1); }
 const PROYECTO = "mzpbdkrmokfxrrsotfgs";
 const ESPERADOS = (process.env.SUPERADMINS_ESPERADOS ?? "diegosalguerotang@gmail.com,renato.espinoza@promant.pe,asistgerencia@promant.pe").toLowerCase().split(",").map((s) => s.trim()).filter(Boolean);
-const DOMINIO_PORTAL = "portal.grupoer.pe";
+const DOMINIO_PORTAL = "portal.servicios-intranet.net";
 
 const api = async (ruta, opciones = {}) => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${PROYECTO}${ruta}`, {
