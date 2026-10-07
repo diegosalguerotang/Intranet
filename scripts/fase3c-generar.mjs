@@ -125,7 +125,7 @@ ${CANONICO}
 
 // Quita la fase 3c y todas las posteriores (4…): el ensayo parte del estado de la 3b.
 // también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
-export const sinFase3c = (texto) => texto.replace(/-- @@(FASE(?:3[C-Z]|[4-9][A-Z]?)|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+export const sinFase3c = (texto) => texto.replace(/-- @@(FASE(?:3[C-Z]|[4-9][A-Z]?)|FACTOR|LICENCIAS|DOMINIO)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

@@ -4,7 +4,7 @@
 -- Idempotente: sirve de migración sobre la BD viva y de canónico en resets
 -- (aplicar SIEMPRE después de schema.sql y accesos.sql).
 -- Principio central: el DNI SIEMPRE se deriva del JWT de la sesión en el
--- servidor (cuenta técnica {dni}@portal.grupoer.pe). Ningún RPC ni vista del
+-- servidor (cuenta técnica {dni}@portal.servicios-intranet.net). Ningún RPC ni vista del
 -- portal acepta un dni por parámetro, salvo los dos pre-login.
 -- ============================================================================
 
@@ -204,7 +204,7 @@ on conflict (id, version) do nothing;
 -- vaya en minúsculas. Devuelve el dni TAL COMO está en personas.
 create or replace function portal_dni() returns text language sql stable as $$
   select p.dni from personas p
-  where coalesce(auth.jwt()->>'email','') like '%@portal.grupoer.pe'
+  where coalesce(auth.jwt()->>'email','') like '%@portal.servicios-intranet.net'
     and lower(p.dni) = split_part(auth.jwt()->>'email','@',1)
   limit 1
 $$;

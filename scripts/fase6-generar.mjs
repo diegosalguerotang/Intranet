@@ -112,8 +112,9 @@ ${CANONICO}
 -- @@FASE6-FIN@@`;
 
 // Recorta la fase 6 y todo lo posterior (fases 7-9 y el bloque @@FACTOR@@ del
-// segundo factor, 2026-09-28): así ensayar-fase6 parte del estado de la fase 5.
-export const sinFase6 = (texto) => texto.replace(/-- @@(FASE[6-9][A-Z]?|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+// segundo factor, 2026-09-28, y el bloque @@DOMINIO@@ del dominio del Portal,
+// 2026-10-07): así ensayar-fase6 parte del estado de la fase 5.
+export const sinFase6 = (texto) => texto.replace(/-- @@(FASE[6-9][A-Z]?|FACTOR|LICENCIAS|DOMINIO)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {

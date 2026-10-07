@@ -91,7 +91,7 @@ declare v_dni text := trim(coalesce(p_dni, ''));
 begin
   if v_dni = '' then raise exception 'Falta el documento.'; end if;
   if p_resultado not in ('exitoso', 'fallido', 'bloqueado') then raise exception 'Resultado inválido.'; end if;
-  if p_resultado = 'exitoso' and correo_llamador() is distinct from lower(v_dni) || '@portal.grupoer.pe' then
+  if p_resultado = 'exitoso' and correo_llamador() is distinct from lower(v_dni) || '@portal.servicios-intranet.net' then
     raise insufficient_privilege using message = 'Solo la propia sesión puede registrar un ingreso exitoso.';
   end if;
   insert into registro_accesos (dni, superficie, resultado, ip, dispositivo, fuente)
@@ -147,7 +147,7 @@ begin
     where ip = v_ip and fuente = 'proxy' and resultado = 'fallido' and fecha > now() - interval '15 minutes';
     if n >= 30 then return jsonb_build_object('permitido', false, 'motivo', 'ip'); end if;
   end if;
-  if v_correo like '%@portal.grupoer.pe' then
+  if v_correo like '%@portal.servicios-intranet.net' then
     if portal_verificar_bloqueo(split_part(v_correo, '@', 1)) then return jsonb_build_object('permitido', false, 'motivo', 'cuenta'); end if;
   elsif v_correo <> '' then
     if verificar_bloqueo(v_correo) then return jsonb_build_object('permitido', false, 'motivo', 'cuenta'); end if;
@@ -163,7 +163,7 @@ declare u usuarios_admin%rowtype; v_correo text := lower(trim(coalesce(p_correo,
 begin
   if v_correo = '' then return; end if;
   if p_resultado not in ('fallido', 'bloqueado') then raise exception 'Resultado inválido para el proxy.'; end if;
-  if v_correo like '%@portal.grupoer.pe' then
+  if v_correo like '%@portal.servicios-intranet.net' then
     insert into registro_accesos (dni, superficie, resultado, ip, dispositivo, fuente)
     values (upper(split_part(v_correo, '@', 1)), 'portal', p_resultado, left(trim(coalesce(p_ip, '')), 64), left(p_agente, 200), 'proxy');
   else

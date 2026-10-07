@@ -376,7 +376,7 @@ ${RLS_SQL}
 
 // Quita la fase 4 y todas las posteriores: el ensayo parte del estado de la 3c.
 // también recorta el bloque @@FACTOR@@ del segundo factor, 2026-09-28
-export const sinFase4 = (texto) => texto.replace(/-- @@(FASE[4-9][A-Z]?|FACTOR|LICENCIAS)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
+export const sinFase4 = (texto) => texto.replace(/-- @@(FASE[4-9][A-Z]?|FACTOR|LICENCIAS|DOMINIO)-INICIO@@[\s\S]*?-- @@\1-FIN@@\n?/g, "");
 
 const esPrincipal = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (esPrincipal) {
