@@ -226,7 +226,7 @@ try {
     igual(/supervisor_usuario/.test(c.ins) && !/v_sup_dni := nullif\(trim\(coalesce\(p_datos->>'supervisor_dni'/.test(c.ins), true, "documento del cliente");
     igual(/v_caller = s\.supervisor_dni/.test(c.res) && /not fn_factor_pendiente\(\)/.test(c.res), true, "jefe designado");
   });
-  await prueba("dominio del Portal (2026-10-07): todas las funciones de public/interno usan portal.servicios-intranet.net; portal_dni resuelve correctamente", async () => {
+  await prueba("dominio del Portal (2026-10-07): ninguna función de public/interno nombra el dominio anterior (grupoer); las cuatro de identidad nombran portal.servicios-intranet.net; portal_dni resuelve al trabajador", async () => {
     vacio(await sql(`select p.oid::regprocedure::text as f from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname in ('public', 'interno') and p.prosrc ~ 'portal\\.grupoer\\.pe'`), "dominio viejo");
     const [g] = await sql(`select bool_and(p.prosrc ~ 'portal\\.servicios-intranet\\.net') as nuevo, count(*)::int as n from pg_proc p
